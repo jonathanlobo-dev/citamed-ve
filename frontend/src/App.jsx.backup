@@ -1,0 +1,84 @@
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/LoginPage';
+import RegistroPage from './pages/RegistroPage';
+import DashboardPage from './pages/DashboardPage';
+import AgendamientoPage from './pages/modules/AgendamientoPage';
+import TelemedicinaPage from './pages/modules/TelemedicinaPage';
+import MarketMedPage from './pages/modules/MarketMedPage';
+import CitamedPagaPage from './pages/modules/CitamedPagaPage';
+
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+  
+  return user ? children : <Navigate to="/login" />;
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/registro" element={<RegistroPage />} />
+      
+      <Route path="/dashboard" element={
+        <ProtectedRoute>
+          <DashboardPage />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/modulo/agendamiento" element={<AgendamientoPage />} />
+      <Route path="/modulo/telemedicina" element={<TelemedicinaPage />} />
+      <Route path="/modulo/marketmed" element={<MarketMedPage />} />
+      <Route path="/modulo/citamed-paga" element={<CitamedPagaPage />} />
+    </Routes>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <div className="app">
+          <AppRoutes />
+          <Toaster 
+            position="top-right"
+            toastOptions={{
+              duration: 3000,
+              style: {
+                background: '#363636',
+                color: '#fff',
+              },
+              success: {
+                duration: 3000,
+                iconTheme: {
+                  primary: '#00BFA6',
+                  secondary: '#fff',
+                },
+              },
+              error: {
+                duration: 4000,
+                iconTheme: {
+                  primary: '#ef4444',
+                  secondary: '#fff',
+                },
+              },
+            }}
+          />
+        </div>
+      </Router>
+    </AuthProvider>
+  );
+}
+
+export default App;

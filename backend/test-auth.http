@@ -1,0 +1,43 @@
+### REGISTER PATIENT
+POST http://localhost:5000/api/auth/register
+Content-Type: application/json
+
+{
+  "role": "patient",
+  "email": "paciente@test.com",
+  "password": "123456",
+  "name": "Juan Pérez",
+  "phone": "+58 412 1234567",
+  "dateOfBirth": "1990-01-15",
+  "gender": "M",
+  "bloodType": "O+"
+}
+
+### REGISTER DOCTOR
+POST http://localhost:5000/api/auth/register
+Content-Type: application/json
+
+{
+  "role": "doctor",
+  "email": "doctor@test.com",
+  "password": "123456",
+  "name": "Dr. María González",
+  "phone": "+58 412 7654321",
+  "licenseNumber": "MPPS-12345",
+  "specialty": "Cardiología",
+  "yearsExperience": 10,
+  "consultationFee": 50
+}
+
+### LOGIN
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "paciente@test.com",
+  "password": "123456"
+}
+
+### GET PROFILE (usar token del login)
+GET http://localhost:5000/api/auth/profile
+Authorization: Bearer TU_TOKEN_AQUI

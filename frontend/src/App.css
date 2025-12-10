@@ -1,0 +1,1045 @@
+/**
+ * 🎨 APP.CSS - CITAMED.VE LANDING PAGE
+ * Estilos para las 14 secciones
+ */
+
+/* ============================================
+   GENERAL & LAYOUT
+   ============================================ */
+
+.app {
+  margin: 0;
+  padding: 0;
+  padding-top: 73px; /* altura del navbar */
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+section {
+  padding: 5rem 0;
+}
+
+.section-light {
+  background-color: var(--color-gray-50);
+}
+
+.section-white {
+  background-color: white;
+}
+
+.section-gradient {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  color: white;
+}
+
+/* ============================================
+   SECCIÓN 1: HERO
+   ============================================ */
+
+.hero {
+  background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-primary) 100%);
+  color: white;
+  text-align: center;
+  padding: 8rem 0 6rem;
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.hero-title {
+  font-size: 4rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+  letter-spacing: -2px;
+}
+
+.hero-accent {
+  color: var(--color-accent);
+}
+
+.hero-subtitle-large {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  line-height: 1.3;
+}
+
+.hero-subtitle {
+  font-size: 1.15rem;
+  margin-bottom: 3rem;
+  opacity: 0.95;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ============================================
+   SECCIÓN 2: ¿QUÉ ES?
+   ============================================ */
+
+.section-heading {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--color-secondary);
+  margin-bottom: 1rem;
+}
+
+.section-heading-white {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 1rem;
+}
+
+.section-lead {
+  font-size: 1.25rem;
+  color: var(--color-gray-600);
+  margin-bottom: 2rem;
+}
+
+.section-lead-white {
+  font-size: 1.25rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 2rem;
+}
+
+.features-grid-simple {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.feature-item {
+  text-align: center;
+}
+
+.feature-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.feature-text {
+  font-size: 1.125rem;
+  color: var(--color-gray-700);
+  margin: 0;
+}
+
+/* ============================================
+   SECCIÓN 3: ¿PARA QUIÉN?
+   ============================================ */
+
+.three-col-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.profile-card {
+  text-align: center;
+  padding: 2rem;
+}
+
+.profile-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.profile-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.profile-benefits {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem 0;
+  text-align: left;
+}
+
+.profile-benefits li {
+  padding: 0.5rem 0;
+  color: var(--color-gray-700);
+}
+
+/* ============================================
+   SECCIÓN 4: PLAN DE FIDELIZACIÓN
+   ============================================ */
+
+.loyalty-card {
+  padding: 2rem;
+}
+
+.loyalty-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-secondary);
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.loyalty-section {
+  margin-bottom: 1.5rem;
+}
+
+.loyalty-section h4 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.loyalty-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.loyalty-section ul li {
+  padding: 0.5rem 0;
+  color: var(--color-gray-700);
+  font-size: 0.95rem;
+}
+
+/* ============================================
+   SECCIÓN 5: ¿CÓMO FUNCIONA?
+   ============================================ */
+
+.timeline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 3rem;
+}
+
+.timeline-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 200px;
+}
+
+.timeline-number {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.timeline-content h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.timeline-content p {
+  font-size: 0.95rem;
+  color: var(--color-gray-600);
+  margin: 0;
+}
+
+.timeline-arrow {
+  font-size: 2rem;
+  color: var(--color-primary);
+  margin: 0 0.5rem;
+}
+
+/* ============================================
+   SECCIÓN 6: LOS 4 MÓDULOS
+   ============================================ */
+
+.module-block {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.module-header {
+  padding: 2rem;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.module-icon {
+  font-size: 3rem;
+}
+
+.module-header h3 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+}
+
+.module-badges {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.badge {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.module-description {
+  padding: 1.5rem 2rem;
+  color: var(--color-gray-700);
+  font-size: 1.125rem;
+  margin: 0;
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.module-components {
+  padding: 1.5rem 2rem;
+}
+
+.module-components h4 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-secondary);
+  margin-bottom: 1rem;
+}
+
+.components-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.component-item {
+  background: var(--color-gray-50);
+  padding: 1rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: var(--color-gray-700);
+  border-left: 3px solid var(--color-primary);
+}
+
+/* ============================================
+   SECCIÓN 7: DEMO INTERACTIVA
+   ============================================ */
+
+.demo-container {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.demo-tabs {
+  display: flex;
+  background: var(--color-gray-100);
+  border-bottom: 2px solid var(--color-gray-200);
+  overflow-x: auto;
+}
+
+.demo-tab {
+  flex: 1;
+  padding: 1.25rem 1.5rem;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-gray-600);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.demo-tab:hover {
+  background: rgba(0, 212, 196, 0.1);
+  color: var(--color-primary);
+}
+
+.demo-tab.active {
+  background: white;
+  color: var(--color-primary);
+  border-bottom: 3px solid var(--color-primary);
+}
+
+.demo-content {
+  padding: 2rem;
+  min-height: 400px;
+}
+
+.demo-panel h3 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.demo-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.demo-stat-card {
+  background: var(--color-gray-50);
+  padding: 1.5rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.demo-stat-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 0.5rem;
+}
+
+.demo-stat-label {
+  font-size: 0.9rem;
+  color: var(--color-gray-600);
+}
+
+.demo-patients-list h4 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-secondary);
+  margin-bottom: 1rem;
+}
+
+.demo-patient-card {
+  background: var(--color-gray-50);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.demo-badge {
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.demo-badge-waiting {
+  background: #FFF3E0;
+  color: #E65100;
+}
+
+.demo-badge-confirmed {
+  background: #E8F5E9;
+  color: #2E7D32;
+}
+
+.demo-badge-verified {
+  background: #E3F2FD;
+  color: #1976D2;
+}
+
+.waiting-room {
+  text-align: center;
+}
+
+.your-turn-card {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  color: white;
+  padding: 3rem 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+}
+
+.your-turn-card h2 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.turn-status {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.turn-estimate {
+  font-size: 1rem;
+  opacity: 0.9;
+  margin-bottom: 2rem;
+}
+
+.turn-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.queue-visual {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.queue-person {
+  font-size: 2.5rem;
+  opacity: 0.5;
+}
+
+.queue-you {
+  opacity: 1;
+  position: relative;
+}
+
+.queue-you::after {
+  content: '👆';
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.5rem;
+}
+
+.telemedicine-interface {
+  text-align: center;
+}
+
+.video-placeholder {
+  position: relative;
+  background: #000;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-box {
+  background: var(--color-gray-800);
+  color: white;
+  padding: 3rem;
+  border-radius: 8px;
+  font-size: 1.25rem;
+}
+
+.video-box-small {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  background: var(--color-gray-700);
+  color: white;
+  padding: 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.telemedicine-controls {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.marketplace-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.marketplace-item-card {
+  background: var(--color-gray-50);
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-gray-200);
+}
+
+.marketplace-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.marketplace-item-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+/* ============================================
+   SECCIÓN 8: QUIÉNES SOMOS
+   ============================================ */
+
+.about-content {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.about-text {
+  font-size: 1.25rem;
+  color: var(--color-gray-700);
+  margin-bottom: 3rem;
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+}
+
+.about-item h3 {
+  font-size: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: var(--color-secondary);
+}
+
+.about-item p {
+  color: var(--color-gray-600);
+}
+
+/* ============================================
+   SECCIÓN 9: TESTIMONIOS
+   ============================================ */
+
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.testimonial-card {
+  padding: 2rem;
+  text-align: center;
+}
+
+.testimonial-stars {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.testimonial-text {
+  font-size: 1.125rem;
+  color: var(--color-gray-700);
+  font-style: italic;
+  margin-bottom: 1rem;
+}
+
+.testimonial-author {
+  font-size: 0.95rem;
+  color: var(--color-gray-600);
+  font-weight: 600;
+}
+
+/* ============================================
+   SECCIÓN 10: FAQ
+   ============================================ */
+
+.faq-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.faq-item {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border-left: 4px solid var(--color-primary);
+}
+
+.faq-question {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.faq-answer {
+  color: var(--color-gray-700);
+  margin: 0;
+}
+
+/* ============================================
+   SECCIÓN 11: NÚMEROS
+   ============================================ */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.stat-card {
+  padding: 2rem;
+  text-align: center;
+}
+
+.stat-number {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  font-size: 1rem;
+  color: var(--color-gray-600);
+}
+
+/* ============================================
+   SECCIÓN 12: CTA FINAL
+   ============================================ */
+
+.cta-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 1rem;
+}
+
+.cta-subtitle {
+  font-size: 1.25rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 2rem;
+}
+
+.cta-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ============================================
+   SECCIÓN 13: REGISTRO
+   ============================================ */
+
+.register-card {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 3rem;
+}
+
+.register-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-secondary);
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: var(--color-secondary);
+}
+
+.form-input {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-gray-300);
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(0, 212, 196, 0.1);
+}
+
+.radio-group {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.radio-label input[type="radio"] {
+  cursor: pointer;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.form-info {
+  background: var(--color-blue-50);
+  border-left: 4px solid var(--color-primary);
+  padding: 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: var(--color-gray-700);
+}
+
+.form-footer {
+  text-align: center;
+  margin-top: 1rem;
+}
+
+.form-footer a {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+/* ============================================
+   SECCIÓN 14: FOOTER
+   ============================================ */
+
+.footer {
+  background: var(--color-secondary);
+  color: white;
+  padding: 3rem 0 1.5rem;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.footer-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.footer-text {
+  font-size: 0.95rem;
+  opacity: 0.8;
+  line-height: 1.6;
+}
+
+.footer-heading {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.footer-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.footer-links a {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.footer-links a:hover {
+  color: var(--color-primary);
+}
+
+.footer-divider {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  margin: 2rem 0;
+}
+
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.footer-bottom p {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.footer-social {
+  display: flex;
+  gap: 1rem;
+}
+
+.footer-social a {
+  font-size: 1.5rem;
+  transition: transform 0.2s ease;
+}
+
+.footer-social a:hover {
+  transform: scale(1.1);
+}
+
+/* ============================================
+   UTILIDADES
+   ============================================ */
+
+.text-center {
+  text-align: center;
+}
+
+.mb-3 {
+  margin-bottom: 1rem;
+}
+
+.mb-5 {
+  margin-bottom: 3rem;
+}
+
+.mt-3 {
+  margin-top: 1rem;
+}
+
+.mt-5 {
+  margin-top: 3rem;
+}
+
+.lead {
+  font-size: 1.25rem;
+  color: var(--color-gray-600);
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 2.5rem;
+  }
+
+  .hero-subtitle-large {
+    font-size: 1.75rem;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .section-heading,
+  .section-heading-white {
+    font-size: 2rem;
+  }
+
+  .timeline {
+    flex-direction: column;
+  }
+
+  .timeline-arrow {
+    transform: rotate(90deg);
+  }
+
+  .demo-tabs {
+    flex-direction: column;
+  }
+
+  .demo-tab {
+    border-bottom: 1px solid var(--color-gray-200);
+  }
+
+  .demo-tab.active {
+    border-bottom: 1px solid var(--color-primary);
+    border-left: 3px solid var(--color-primary);
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero {
+    padding: 4rem 0 3rem;
+  }
+
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .hero-subtitle-large {
+    font-size: 1.5rem;
+  }
+
+  section {
+    padding: 3rem 0;
+  }
+
+  .module-header {
+    flex-direction: column;
+    text-align: center;
+  }
+}

@@ -1,0 +1,134 @@
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Calendar, Clock, Bell, History, ArrowLeft, Shield } from 'lucide-react';
+import Button from '../../components/common/button/button';
+
+function AgendamientoPage() {
+  const navigate = useNavigate();
+
+  const features = [
+    {
+      icon: <Video className="w-8 h-8" />,
+      title: 'Videollamadas HD Encriptadas',
+      description: 'Consultas médicas por videollamada con calidad HD y cifrado de extremo a extremo para máxima privacidad.'
+    },
+    {
+      icon: <MessageSquare className="w-8 h-8" />,
+      title: 'Chat en Tiempo Real',
+      description: 'Comunícate con tu médico mediante chat seguro antes, durante y después de la consulta.'
+    },
+    {
+      icon: <FileText className="w-8 h-8" />,
+      title: 'Compartir Archivos Médicos',
+      description: 'Envía y recibe estudios, recetas y documentos médicos de forma segura durante la consulta.'
+    },
+    {
+      icon: <CreditCard className="w-8 h-8" />,
+      title: 'Cobro Automático Integrado',
+      description: 'Sistema de pagos integrado con múltiples métodos. El médico recibe su pago garantizado.'
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#0B2D4A] via-[#1565C0] to-[#1976D2]">
+      <section className="relative py-32 overflow-hidden">
+        <div className="container mx-auto px-4 lg:px-8 relative z-10">
+          <motion.button
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            onClick={() => navigate('/')}
+            className="mb-8 flex items-center gap-2 text-white/80 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Volver al inicio
+          </motion.button>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-center"
+          >
+            <div className="text-6xl mb-6">💻</div>
+            <div className="inline-block px-6 py-2 rounded-full bg-green-500 text-white font-bold mb-6">
+              ACTIVO - MÓDULO PRINCIPAL
+            </div>
+            <h1 className="text-6xl lg:text-7xl font-extrabold mb-6 text-white">
+              Agendamiento Inteligente
+            </h1>
+            <p className="text-2xl lg:text-3xl mb-8 text-white/90 max-w-3xl mx-auto">
+              Consultas médicas desde cualquier lugar. Videollamadas HD, chat seguro y cobro automático.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button
+                variant="outline"
+                size="xl"
+                className="bg-white/10 hover:bg-white/20 text-white border-white/30"
+                onClick={() => navigate('/registro')}
+              >
+                Únete a la Lista de Espera
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+
+        <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse-slow" />
+      </section>
+
+      <section className="py-24 bg-gray-50">
+        <div className="container mx-auto px-4 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-5xl font-extrabold mb-4">
+              <span className="gradient-text">Características que Llegarán</span>
+            </h2>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {features.map((feature, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                className="glass rounded-2xl p-8"
+              >
+                <div className="text-secondary mb-4">{feature.icon}</div>
+                <h3 className="text-2xl font-bold mb-3 text-gray-900">{feature.title}</h3>
+                <p className="text-gray-600 leading-relaxed">{feature.description}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-24 bg-white">
+        <div className="container mx-auto px-4 lg:px-8 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="max-w-3xl mx-auto"
+          >
+            <Shield className="w-20 h-20 text-secondary mx-auto mb-6" />
+            <h2 className="text-4xl font-extrabold mb-6">
+              <span className="gradient-text">Seguridad y Privacidad Garantizadas</span>
+            </h2>
+            <p className="text-xl text-gray-600 mb-8">
+              Todas las consultas están protegidas con cifrado de extremo a extremo. 
+              Cumplimos con todas las normativas de protección de datos médicos.
+            </p>
+          </motion.div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export default AgendamientoPage;
