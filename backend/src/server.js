@@ -360,4 +360,10 @@ async function startServer() {
   }
 }
 
-startServer();
+// Exportar app para testing
+module.exports = app;
+
+// Solo iniciar servidor si NO estamos en tests
+if (require.main === module) {
+  startServer();
+}
