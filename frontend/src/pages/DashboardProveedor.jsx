@@ -53,7 +53,7 @@ function DashboardProveedor() {
     }
   ];
 
-  const firstName = user?.profile?.name?.split(' ')[0] || user?.name?.split(' ')[0] || 'Proveedor';
+  const firstName = user?.name?.split(' ')[0] || user?.firstName || 'Proveedor';
   const companyName = user?.profile?.companyName || user?.companyName || 'Su Empresa';
   const providerType = user?.profile?.providerType || user?.providerType || 'Proveedor Médico';
 
@@ -88,7 +88,7 @@ function DashboardProveedor() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-blue-100 text-sm font-medium">Productos</p>
-                <p className="text-3xl font-bold">156</p>
+                <p className="text-3xl font-bold">0</p>
                 <p className="text-blue-100 text-xs">En catálogo</p>
               </div>
               <Package className="w-12 h-12 text-blue-200 opacity-50" />
@@ -104,7 +104,7 @@ function DashboardProveedor() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-green-100 text-sm font-medium">Pedidos</p>
-                <p className="text-3xl font-bold">24</p>
+                <p className="text-3xl font-bold">0</p>
                 <p className="text-green-100 text-xs">Pendientes</p>
               </div>
               <ShoppingCart className="w-12 h-12 text-green-200 opacity-50" />
@@ -120,7 +120,7 @@ function DashboardProveedor() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-orange-100 text-sm font-medium">Ventas</p>
-                <p className="text-3xl font-bold">$8.5K</p>
+                <p className="text-3xl font-bold">$0</p>
                 <p className="text-orange-100 text-xs">Este mes</p>
               </div>
               <TrendingUp className="w-12 h-12 text-orange-200 opacity-50" />
@@ -136,7 +136,7 @@ function DashboardProveedor() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-purple-100 text-sm font-medium">Clientes</p>
-                <p className="text-3xl font-bold">342</p>
+                <p className="text-3xl font-bold">0</p>
                 <p className="text-purple-100 text-xs">Activos</p>
               </div>
               <Users className="w-12 h-12 text-purple-200 opacity-50" />

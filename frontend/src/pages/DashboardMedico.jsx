@@ -120,7 +120,7 @@ function DashboardMedico() {
     }
   ];
 
-  const firstName = user?.profile?.name?.split(' ')[0] || user?.name?.split(' ')[0] || 'Doctor';
+  const firstName = user?.profile?.firstName || user?.firstName || 'Doctor';
   const specialty = user?.profile?.specialty || user?.specialty || 'Medicina General';
 
   return (
@@ -154,7 +154,7 @@ function DashboardMedico() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-blue-100 text-sm font-medium">Hoy</p>
-                <p className="text-3xl font-bold">12</p>
+                <p className="text-3xl font-bold">0</p>
                 <p className="text-blue-100 text-xs">Pacientes</p>
               </div>
               <Users className="w-12 h-12 text-blue-200 opacity-50" />
@@ -170,7 +170,7 @@ function DashboardMedico() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-purple-100 text-sm font-medium">En Espera</p>
-                <p className="text-3xl font-bold">3</p>
+                <p className="text-3xl font-bold">0</p>
                 <p className="text-purple-100 text-xs">Pacientes</p>
               </div>
               <Clock className="w-12 h-12 text-purple-200 opacity-50" />
@@ -186,7 +186,7 @@ function DashboardMedico() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-green-100 text-sm font-medium">Esta Semana</p>
-                <p className="text-3xl font-bold">48</p>
+                <p className="text-3xl font-bold">0</p>
                 <p className="text-green-100 text-xs">Consultas</p>
               </div>
               <Calendar className="w-12 h-12 text-green-200 opacity-50" />
@@ -202,7 +202,7 @@ function DashboardMedico() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-orange-100 text-sm font-medium">Ingresos</p>
-                <p className="text-3xl font-bold">$2.4K</p>
+                <p className="text-3xl font-bold">$0</p>
                 <p className="text-orange-100 text-xs">Este mes</p>
               </div>
               <DollarSign className="w-12 h-12 text-orange-200 opacity-50" />

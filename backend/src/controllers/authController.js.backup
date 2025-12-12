@@ -1,11 +1,11 @@
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { User, DoctorProfile, PatientProfile, sequelize } = require('../models/index');
 
 const authController = {
   register: async (req, res) => {
     const transaction = await sequelize.transaction();
-
+    
     try {
       const { role, email, password, name, phone, ...additionalData } = req.body;
 
@@ -31,17 +31,11 @@ const authController = {
         });
       }
 
-      // Separar nombre en firstName y lastName
-      const nameParts = name.trim().split(' ');
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || '';
-
       // NO hashear aquí - el modelo User tiene hook beforeCreate que lo hace automáticamente
       const user = await User.create({
         email,
-        password,
-        firstName,
-        lastName,
+        password, // El hook beforeCreate del modelo User hashea automáticamente
+        name,
         phone: phone || null,
         role,
         isActive: true
@@ -49,17 +43,27 @@ const authController = {
 
       let profile = null;
       if (role === 'doctor') {
+        // Split name into firstName and lastName
+        const nameParts = name.trim().split(' ');
+        const firstName = nameParts[0] || 'N/A';
+        const lastName = nameParts.slice(1).join(' ') || 'N/A';
+
         profile = await DoctorProfile.create({
           userId: user.id,
           firstName,
           lastName,
           phoneNumber: phone || null,
-          licenseNumber: additionalData.licenseNumber || `TEMP-${Date.now()}`,
-          subSpecialty: additionalData.specialty || null,
-          experienceYears: additionalData.yearsExperience || 0,
+          licenseNumber: additionalData.licenseNumber || null,
+          subSpecialty: additionalData.specialty || null, // Using subSpecialty for now
+          yearsExperience: additionalData.yearsExperience || 0,
           consultationFee: additionalData.consultationFee || 0
         }, { transaction });
       } else if (role === 'patient') {
+        // Split name into firstName and lastName
+        const nameParts = name.trim().split(' ');
+        const firstName = nameParts[0] || 'N/A';
+        const lastName = nameParts.slice(1).join(' ') || 'N/A';
+
         profile = await PatientProfile.create({
           userId: user.id,
           firstName,
@@ -82,9 +86,6 @@ const authController = {
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
       );
 
-      // Construir nombre completo para la respuesta
-      const fullName = lastName ? `${firstName} ${lastName}` : firstName;
-
       res.status(201).json({
         success: true,
         message: 'Usuario registrado exitosamente',
@@ -93,9 +94,7 @@ const authController = {
           user: {
             id: user.id,
             email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            name: fullName,
+            name: user.name,
             phone: user.phone,
             role: user.role
           },
@@ -107,6 +106,7 @@ const authController = {
       await transaction.rollback();
       console.error('Error en register:', error);
 
+      // Handle unique constraint violations
       if (error.name === 'SequelizeUniqueConstraintError') {
         if (error.errors && error.errors.length > 0) {
           const field = error.errors[0].path;
@@ -117,18 +117,10 @@ const authController = {
             });
           }
         }
+        // Fallback for unique constraint errors
         return res.status(400).json({
           success: false,
           message: 'Este registro ya existe en el sistema. Verifica los datos ingresados.'
-        });
-      }
-
-      // Manejar errores de validación de Sequelize
-      if (error.name === 'SequelizeValidationError') {
-        const messages = error.errors.map(e => e.message).join(', ');
-        return res.status(400).json({
-          success: false,
-          message: `Error de validación: ${messages}`
         });
       }
 
@@ -182,9 +174,6 @@ const authController = {
         profile = await PatientProfile.findOne({ where: { userId: user.id } });
       }
 
-      // Construir nombre completo para la respuesta
-      const fullName = user.lastName ? `${user.firstName} ${user.lastName}` : (user.firstName || user.email);
-
       res.json({
         success: true,
         message: 'Login exitoso',
@@ -193,9 +182,7 @@ const authController = {
           user: {
             id: user.id,
             email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            name: fullName,
+            name: user.name,
             phone: user.phone,
             role: user.role
           },

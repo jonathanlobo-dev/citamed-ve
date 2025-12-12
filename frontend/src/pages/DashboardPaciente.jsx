@@ -84,7 +84,7 @@ function DashboardPaciente() {
     }
   ];
 
-  const firstName = user?.profile?.name?.split(' ')[0] || user?.name?.split(' ')[0] || 'Usuario';
+  const firstName = user?.profile?.firstName || user?.firstName || 'Usuario';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
-import { Mail, Lock, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, ArrowLeft, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import Button from '../components/common/button/button';
 import toast from 'react-hot-toast';
 
@@ -14,16 +14,62 @@ function LoginPage() {
     password: ''
   });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  const validateField = (name, value) => {
+    const newErrors = { ...errors };
+    switch (name) {
+      case 'email':
+        if (!value) {
+          newErrors.email = 'El correo es obligatorio';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          newErrors.email = 'Ingresa un correo válido';
+        } else {
+          delete newErrors.email;
+        }
+        break;
+      case 'password':
+        if (!value) {
+          newErrors.password = 'La contraseña es obligatoria';
+        } else if (value.length < 6) {
+          newErrors.password = 'Mínimo 6 caracteres';
+        } else {
+          delete newErrors.password;
+        }
+        break;
+      default:
+        break;
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    if (errors[name]) {
+      validateField(name, value);
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    validateField(name, value);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    const emailValid = validateField('email', formData.email);
+    const passwordValid = validateField('password', formData.password);
 
-    if (!formData.email || !formData.password) {
-      toast.error('Por favor complete todos los campos');
-      setLoading(false);
+    if (!emailValid || !passwordValid) {
+      toast.error('Por favor corrige los errores en el formulario');
       return;
     }
+
+    setLoading(true);
+    setErrors({});
 
     try {
       const result = await login({
@@ -34,17 +80,20 @@ function LoginPage() {
       if (result.success) {
         const userRole = result.user.role;
         const dashboardPath = getDashboardPath(userRole);
-
         toast.success('¡Bienvenido de vuelta!');
         setTimeout(() => {
           navigate(dashboardPath);
         }, 1000);
       } else {
-        toast.error(result.message || 'Error al iniciar sesión');
+        const errorMessage = result.message || 'Error al iniciar sesión';
+        setErrors({ general: errorMessage });
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error('Error en login:', error);
-      toast.error('Error al iniciar sesión');
+      const errorMessage = error.response?.data?.message || 'Error de conexión con el servidor';
+      setErrors({ general: errorMessage });
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -73,22 +122,47 @@ function LoginPage() {
             <p className="text-gray-600">Iniciar Sesión</p>
           </div>
 
+          {errors.general && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3"
+            >
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-red-700 font-medium">Error de autenticación</p>
+                <p className="text-red-600 text-sm">{errors.general}</p>
+              </div>
+            </motion.div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Correo Electrónico
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Mail className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${errors.email ? 'text-red-400' : 'text-gray-400'}`} />
                 <input
                   type="email"
+                  name="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-colors ${errors.email ? 'border-red-300 focus:ring-red-200 bg-red-50' : 'border-gray-300 focus:ring-primary'}`}
                   placeholder="tu@email.com"
-                  required
                 />
               </div>
+              {errors.email && (
+                <motion.p
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-1 text-sm text-red-600 flex items-center gap-1"
+                >
+                  <AlertCircle className="w-4 h-4" />
+                  {errors.email}
+                </motion.p>
+              )}
             </div>
 
             <div>
@@ -96,15 +170,36 @@ function LoginPage() {
                 Contraseña
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Lock className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${errors.password ? 'text-red-400' : 'text-gray-400'}`} />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
                   value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-colors ${errors.password ? 'border-red-300 focus:ring-red-200 bg-red-50' : 'border-gray-300 focus:ring-primary'}`}
                   placeholder="••••••••"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  tabIndex={-1}
+                  title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
+              {errors.password && (
+                <motion.p
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-1 text-sm text-red-600 flex items-center gap-1"
+                >
+                  <AlertCircle className="w-4 h-4" />
+                  {errors.password}
+                </motion.p>
+              )}
             </div>
 
             <Button
