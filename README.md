@@ -1,5 +1,28 @@
 # CITAMED.VE - Ecosistema de Salud Digital para Venezuela
 
+![CI Tests](https://github.com/USUARIO/CITAMED.VE/actions/workflows/ci.yml/badge.svg)
+
+## Estado del Proyecto
+
+| Aspecto | Estado |
+|---------|--------|
+| Tests Automatizados | 44 passed |
+| CI/CD | GitHub Actions |
+| Coverage | 32% |
+| Backend | Node.js + PostgreSQL |
+| Frontend | React + Vite |
+
+## Testing Local
+
+```bash
+cd backend
+npm test
+npm run test:coverage
+```
+
+---
+
+
 ## 🏥 Descripción del Proyecto
 
 CITAMED.VE es una plataforma integral de salud digital diseñada para conectar pacientes, médicos y proveedores en Venezuela. El ecosistema incluye 4 módulos principales:
