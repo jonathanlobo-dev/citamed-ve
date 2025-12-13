@@ -1,12 +1,30 @@
-﻿require("dotenv").config();
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middlewares
 app.use(cors());
 app.use(express.json());
+
+// ==================== SWAGGER DOCUMENTATION ====================
+app.get('/api-docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'CITAMED.VE - API Documentation',
+  swaggerOptions: {
+    persistAuthorization: true,
+    docExpansion: 'none',
+    filter: true,
+    showRequestDuration: true
+  }
+}));
 
 // Importar modelos
 const { sequelize, Specialty, User, DoctorProfile, PatientProfile, Appointment } = require("./models/index");
@@ -19,12 +37,12 @@ const verificationRoutes = require("./routes/verification");
 app.use("/api/auth", authRoutes);
 app.use("/api/verification", verificationRoutes);
 
-// ==================== RUTAS BÁSICAS ====================
+// ==================== RUTAS B�SICAS ====================
 app.get("/", (req, res) => {
   res.json({
-    message: '🏥 CITAMED.VE - API REST',
+    message: '?? CITAMED.VE - API REST',
     version: '2.0',
-    module: 'Módulo 2.5 - Primera Vista Frontend',
+    module: 'M�dulo 2.5 - Primera Vista Frontend',
     endpoints: {
       health: 'GET /api/health',
       register: 'POST /api/auth/register',
@@ -40,7 +58,7 @@ app.get("/", (req, res) => {
 app.get("/api/health", (req, res) => {
   res.json({
     status: "OK",
-    message: "🚀 CITAMED.VE - Servidor funcionando",
+    message: "?? CITAMED.VE - Servidor funcionando",
     timestamp: new Date().toISOString()
   });
 });
@@ -50,18 +68,44 @@ app.get("/api/db-test", async (req, res) => {
     await sequelize.authenticate();
     res.json({
       success: true,
-      message: "✅ Conexión a PostgreSQL exitosa"
+      message: "? Conexi�n a PostgreSQL exitosa"
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "❌ Error en base de datos",
+      message: "? Error en base de datos",
       error: error.message
     });
   }
 });
 
 // ==================== ESPECIALIDADES ====================
+/**
+ * @swagger
+ * /api/specialties:
+ *   get:
+ *     tags: [Specialties]
+ *     summary: Obtener todas las especialidades médicas
+ *     description: Retorna listado de especialidades activas ordenadas alfabéticamente
+ *     responses:
+ *       200:
+ *         description: Lista de especialidades
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 total:
+ *                   type: integer
+ *                   example: 102
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Specialty'
+ */
 app.get("/api/specialties", async (req, res) => {
   try {
     const specialties = await Specialty.findAll({
@@ -85,6 +129,38 @@ app.get("/api/specialties", async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/specialties/search:
+ *   get:
+ *     tags: [Specialties]
+ *     summary: Buscar especialidades por nombre o descripción
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         schema:
+ *           type: string
+ *         description: Término de búsqueda (ej. cardio, pediatr)
+ *         example: cardio
+ *     responses:
+ *       200:
+ *         description: Resultados de búsqueda
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 total:
+ *                   type: integer
+ *                 query:
+ *                   type: string
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Specialty'
+ */
 app.get("/api/specialties/search", async (req, res) => {
   try {
     const { q } = req.query;
@@ -115,25 +191,81 @@ app.get("/api/specialties/search", async (req, res) => {
       data: specialties
     });
   } catch (error) {
-    console.error('Error en búsqueda:', error);
+    console.error('Error en b�squeda:', error);
     res.status(500).json({
       success: false,
-      message: "Error en la búsqueda",
+      message: "Error en la b�squeda",
       error: error.message
     });
   }
 });
 
 // ==================== DIRECTORIO MÉDICO ====================
-// PRODUCCIÓN: Solo muestra médicos VERIFICADOS y ACTIVOS al público
-// Para desarrollo/testing usar ?includeUnverified=true
+/**
+ * @swagger
+ * /api/doctors:
+ *   get:
+ *     tags: [Doctors]
+ *     summary: Buscar médicos con filtros
+ *     description: Retorna listado de médicos verificados y activos. En desarrollo se puede usar includeUnverified=true
+ *     parameters:
+ *       - in: query
+ *         name: specialty
+ *         schema:
+ *           type: string
+ *         description: Filtrar por especialidad
+ *         example: Cardiología
+ *       - in: query
+ *         name: city
+ *         schema:
+ *           type: string
+ *         description: Filtrar por ciudad
+ *         example: Caracas
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Buscar por nombre del médico
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Número de página
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Resultados por página
+ *     responses:
+ *       200:
+ *         description: Lista paginada de médicos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 total:
+ *                   type: integer
+ *                 page:
+ *                   type: integer
+ *                 totalPages:
+ *                   type: integer
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Doctor'
+ */
 app.get("/api/doctors", async (req, res) => {
   try {
     const { specialty, city, search, page = 1, limit = 20, includeUnverified } = req.query;
     const { Op } = require('sequelize');
     const offset = (page - 1) * limit;
 
-    // PRODUCCIÓN: Por defecto solo médicos verificados y activos
+    // PRODUCCI�N: Por defecto solo m�dicos verificados y activos
     let whereClause = {
       acceptingNewPatients: true,
       isVerified: true,
@@ -145,7 +277,7 @@ app.get("/api/doctors", async (req, res) => {
       whereClause = { acceptingNewPatients: true };
     }
 
-    // Filtros de búsqueda
+    // Filtros de b�squeda
     if (specialty) {
       whereClause.subSpecialty = { [Op.iLike]: `%${specialty}%` };
     }
@@ -172,8 +304,8 @@ app.get("/api/doctors", async (req, res) => {
       ],
       order: [
         ['isVerified', 'DESC'],      // Verificados primero
-        ['averageRating', 'DESC'],   // Mejor calificación
-        ['totalReviews', 'DESC']     // Más reviews
+        ['averageRating', 'DESC'],   // Mejor calificaci�n
+        ['totalReviews', 'DESC']     // M�s reviews
       ],
       limit: parseInt(limit),
       offset: parseInt(offset)
@@ -192,16 +324,44 @@ app.get("/api/doctors", async (req, res) => {
       }))
     });
   } catch (error) {
-    console.error('Error obteniendo médicos:', error);
+    console.error('Error obteniendo m�dicos:', error);
     res.status(500).json({
       success: false,
-      message: "Error al obtener médicos",
+      message: "Error al obtener m�dicos",
       error: error.message
     });
   }
 });
 
-// Endpoint para obtener un médico específico (público)
+/**
+ * @swagger
+ * /api/doctors/{id}:
+ *   get:
+ *     tags: [Doctors]
+ *     summary: Obtener perfil de un médico específico
+ *     description: Retorna información detallada del médico. Info sensible solo visible si está verificado
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID del médico
+ *     responses:
+ *       200:
+ *         description: Perfil del médico
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: '#/components/schemas/Doctor'
+ *       404:
+ *         description: Médico no encontrado
+ */
 app.get("/api/doctors/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -221,11 +381,11 @@ app.get("/api/doctors/:id", async (req, res) => {
     if (!doctor) {
       return res.status(404).json({
         success: false,
-        message: 'Médico no encontrado'
+        message: 'M�dico no encontrado'
       });
     }
 
-    // Solo mostrar información completa si está verificado
+    // Solo mostrar informaci�n completa si est� verificado
     const publicProfile = {
       id: doctor.id,
       displayName: `Dr. ${doctor.firstName} ${doctor.lastName}`,
@@ -253,7 +413,7 @@ app.get("/api/doctors/:id", async (req, res) => {
       workingHours: doctor.workingHours,
       acceptsInsurance: doctor.acceptsInsurance,
       insuranceProviders: doctor.insuranceProviders,
-      // Solo mostrar info sensible si está verificado
+      // Solo mostrar info sensible si est� verificado
       ...(doctor.isVerified && {
         licenseNumber: doctor.licenseNumber,
         medicalSchool: doctor.medicalSchool,
@@ -268,15 +428,47 @@ app.get("/api/doctors/:id", async (req, res) => {
       data: publicProfile
     });
   } catch (error) {
-    console.error('Error obteniendo médico:', error);
+    console.error('Error obteniendo m�dico:', error);
     res.status(500).json({
       success: false,
-      message: "Error al obtener médico",
+      message: "Error al obtener m�dico",
       error: error.message
     });
   }
 });
 
+/**
+ * @swagger
+ * /api/stats:
+ *   get:
+ *     tags: [Statistics]
+ *     summary: Obtener estadísticas generales del sistema
+ *     description: Retorna contadores de especialidades, usuarios, médicos, pacientes y citas
+ *     responses:
+ *       200:
+ *         description: Estadísticas del sistema
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     total_specialties:
+ *                       type: integer
+ *                       example: 102
+ *                     total_users:
+ *                       type: integer
+ *                     total_doctors:
+ *                       type: integer
+ *                     total_patients:
+ *                       type: integer
+ *                     total_appointments:
+ *                       type: integer
+ */
 app.get("/api/stats", async (req, res) => {
   try {
     const [
@@ -307,54 +499,54 @@ app.get("/api/stats", async (req, res) => {
     console.error('Error obteniendo stats:', error);
     res.status(500).json({
       success: false,
-      message: "Error al obtener estadísticas",
+      message: "Error al obtener estad�sticas",
       error: error.message
     });
   }
 });
 
-// ==================== INICIALIZACIÓN ====================
+// ==================== INICIALIZACI�N ====================
 async function startServer() {
-  console.log('🚀 Iniciando CITAMED.VE...');
+  console.log('?? Iniciando CITAMED.VE...');
   
   try {
-    console.log('🔌 Conectando a PostgreSQL...');
+    console.log('?? Conectando a PostgreSQL...');
     await sequelize.authenticate();
-    console.log('✅ Conectado a PostgreSQL');
+    console.log('? Conectado a PostgreSQL');
 
-    console.log('🔄 Verificando sincronización...');
+    console.log('?? Verificando sincronizaci�n...');
     // await sequelize.sync({ force: false, alter: true });
-    console.log('✅ Tablas verificadas (sync skipped temporarily)');
+    console.log('? Tablas verificadas (sync skipped temporarily)');
 
-    console.log('📥 Contando registros...');
+    console.log('?? Contando registros...');
     const count = await Specialty.count({ where: { isActive: true } });
-    console.log(`✅ ${count} especialidades activas`);
+    console.log(`? ${count} especialidades activas`);
 
     app.listen(PORT, () => {
       console.log('');
       console.log('========================================');
-      console.log('🏥 CITAMED.VE - BACKEND FUNCIONANDO');
+      console.log('?? CITAMED.VE - BACKEND FUNCIONANDO');
       console.log('========================================');
-      console.log(`🌐 Servidor: http://localhost:${PORT}`);
-      console.log(`📊 Base de datos: ${process.env.DB_NAME}`);
+      console.log(`?? Servidor: http://localhost:${PORT}`);
+      console.log(`?? Base de datos: ${process.env.DB_NAME}`);
       console.log('');
-      console.log('📋 Endpoints disponibles:');
-      console.log('   🔐 Auth:');
+      console.log('?? Endpoints disponibles:');
+      console.log('   ?? Auth:');
       console.log(`      POST http://localhost:${PORT}/api/auth/register`);
       console.log(`      POST http://localhost:${PORT}/api/auth/login`);
       console.log(`      GET  http://localhost:${PORT}/api/auth/profile`);
       console.log('');
-      console.log('   📊 Data:');
+      console.log('   ?? Data:');
       console.log(`      GET http://localhost:${PORT}/api/specialties`);
       console.log(`      GET http://localhost:${PORT}/api/specialties/search?q=cardio`);
       console.log(`      GET http://localhost:${PORT}/api/stats`);
       console.log('');
-      console.log('✅ Listo para conectar con React Frontend');
+      console.log('? Listo para conectar con React Frontend');
       console.log('========================================');
       console.log('');
     });
   } catch (error) {
-    console.error('❌ Error iniciando servidor:', error.message);
+    console.error('? Error iniciando servidor:', error.message);
     console.error('Stack:', error.stack);
     process.exit(1);
   }

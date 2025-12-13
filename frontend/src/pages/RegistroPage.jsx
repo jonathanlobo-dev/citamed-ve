@@ -1,11 +1,72 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
-import { User, Mail, Lock, Phone, ArrowLeft, Calendar, Droplet, Users as UsersIcon, Briefcase, FileText, DollarSign, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
+import { User, Mail, Lock, Phone, ArrowLeft, Calendar, Droplet, Users as UsersIcon, Briefcase, FileText, DollarSign, Eye, EyeOff, AlertCircle, CheckCircle, Stethoscope, Building2 } from 'lucide-react';
 import Button from '../components/common/button/button';
 import toast from 'react-hot-toast';
 import axios from 'axios';
+
+// IMPORTANTE: InputField DEBE estar FUERA del componente principal
+// para evitar re-creación en cada render (causa pérdida de foco)
+const InputField = memo(function InputField({
+  label,
+  name,
+  type = 'text',
+  value,
+  onChange,
+  onBlur,
+  placeholder,
+  required,
+  icon: Icon,
+  showToggle,
+  onToggle,
+  toggleState,
+  error
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <div className="relative">
+        {Icon && (
+          <Icon className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${error ? "text-red-400" : "text-gray-400"}`} />
+        )}
+        <input
+          type={showToggle ? (toggleState ? 'text' : 'password') : type}
+          name={name}
+          value={value}
+          onChange={onChange}
+          onBlur={onBlur}
+          className={`w-full ${Icon ? "pl-10" : "px-4"} ${showToggle ? "pr-12" : "pr-4"} py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-colors ${error ? "border-red-300 focus:ring-red-200 bg-red-50" : "border-gray-300 focus:ring-primary"}`}
+          placeholder={placeholder}
+        />
+        {showToggle && (
+          <button
+            type="button"
+            onClick={onToggle}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+            tabIndex={-1}
+            title={toggleState ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          >
+            {toggleState ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+          </button>
+        )}
+      </div>
+      {error && (
+        <motion.p
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-1 text-sm text-red-600 flex items-center gap-1"
+        >
+          <AlertCircle className="w-4 h-4" />
+          {error}
+        </motion.p>
+      )}
+    </div>
+  );
+});
 
 function RegistroPage() {
   const navigate = useNavigate();
@@ -54,9 +115,9 @@ function RegistroPage() {
   });
 
   const roles = [
-    { id: 'patient', name: 'Paciente', icon: '👤', description: 'Agenda citas y consulta médicos' },
-    { id: 'doctor', name: 'Médico', icon: '👨‍⚕️', description: 'Gestiona tus pacientes y consultas' },
-    { id: 'provider', name: 'Proveedor', icon: '🏢', description: 'Ofrece servicios y productos médicos' }
+    { id: 'patient', name: 'Paciente', icon: User, color: 'text-blue-600', description: 'Agenda citas y consulta médicos' },
+    { id: 'doctor', name: 'Médico', icon: Stethoscope, color: 'text-teal-600', description: 'Gestiona tus pacientes y consultas' },
+    { id: 'provider', name: 'Proveedor', icon: Building2, color: 'text-orange-600', description: 'Ofrece servicios y productos médicos' }
   ];
 
   const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
@@ -172,7 +233,7 @@ function RegistroPage() {
 
   const handleCommonChange = (e) => {
     const { name, value } = e.target;
-    setCommonData({ ...commonData, [name]: value });
+    setCommonData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) {
       validateField(name, value);
     }
@@ -284,48 +345,7 @@ function RegistroPage() {
   const selectedRole = roles.find(r => r.id === role);
   const titleText = step === 1 ? 'Selecciona tu tipo de cuenta' : 'Registro como ' + (selectedRole ? selectedRole.name : '');
 
-  const InputField = ({ label, name, type = 'text', value, onChange, onBlur, placeholder, required, icon: Icon, showToggle, onToggle, toggleState }) => (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <div className="relative">
-        {Icon && (
-          <Icon className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${errors[name] ? 'text-red-400' : 'text-gray-400'}`} />
-        )}
-        <input
-          type={showToggle ? (toggleState ? 'text' : 'password') : type}
-          name={name}
-          value={value}
-          onChange={onChange}
-          onBlur={onBlur}
-          className={`w-full ${Icon ? 'pl-10' : 'px-4'} ${showToggle ? 'pr-12' : 'pr-4'} py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-colors ${errors[name] ? 'border-red-300 focus:ring-red-200 bg-red-50' : 'border-gray-300 focus:ring-primary'}`}
-          placeholder={placeholder}
-        />
-        {showToggle && (
-          <button
-            type="button"
-            onClick={onToggle}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-            tabIndex={-1}
-            title={toggleState ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-          >
-            {toggleState ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-          </button>
-        )}
-      </div>
-      {errors[name] && (
-        <motion.p
-          initial={{ opacity: 0, y: -5 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-1 text-sm text-red-600 flex items-center gap-1"
-        >
-          <AlertCircle className="w-4 h-4" />
-          {errors[name]}
-        </motion.p>
-      )}
-    </div>
-  );
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary via-primary-light to-secondary flex items-center justify-center px-4 py-8">
@@ -366,20 +386,25 @@ function RegistroPage() {
 
           {step === 1 ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {roles.map((r, index) => (
-                <motion.div
-                  key={r.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  onClick={() => handleRoleSelect(r.id)}
-                  className="p-6 border-2 border-gray-200 rounded-xl hover:border-primary hover:shadow-lg transition-all cursor-pointer text-center"
-                >
-                  <div className="text-5xl mb-3">{r.icon}</div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">{r.name}</h3>
-                  <p className="text-sm text-gray-600">{r.description}</p>
-                </motion.div>
-              ))}
+              {roles.map((r, index) => {
+                const IconComponent = r.icon;
+                return (
+                  <motion.div
+                    key={r.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    onClick={() => handleRoleSelect(r.id)}
+                    className="p-6 border-2 border-gray-200 rounded-xl hover:border-primary hover:shadow-lg transition-all cursor-pointer text-center"
+                  >
+                    <div className="flex justify-center mb-3">
+                      <IconComponent className={`w-12 h-12 ${r.color}`} />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">{r.name}</h3>
+                    <p className="text-sm text-gray-600">{r.description}</p>
+                  </motion.div>
+                );
+              })}
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -392,7 +417,7 @@ function RegistroPage() {
                 placeholder="Juan Pérez"
                 required
                 icon={User}
-              />
+              error={errors.name}/>
 
               <InputField
                 label="Correo Electrónico"
@@ -404,7 +429,7 @@ function RegistroPage() {
                 placeholder="tu@email.com"
                 required
                 icon={Mail}
-              />
+              error={errors.email}/>
 
               <InputField
                 label="Teléfono"
@@ -415,7 +440,7 @@ function RegistroPage() {
                 onBlur={handleBlur}
                 placeholder="+58 412 1234567"
                 icon={Phone}
-              />
+              error={errors.phone}/>
 
               {role === 'patient' && (
                 <>
@@ -428,7 +453,7 @@ function RegistroPage() {
                       <input
                         type="date"
                         value={patientData.dateOfBirth}
-                        onChange={(e) => setPatientData({ ...patientData, dateOfBirth: e.target.value })}
+                        onChange={(e) => setPatientData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                       />
                     </div>
@@ -442,7 +467,7 @@ function RegistroPage() {
                       <UsersIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                       <select
                         value={patientData.gender}
-                        onChange={(e) => setPatientData({ ...patientData, gender: e.target.value })}
+                        onChange={(e) => setPatientData(prev => ({ ...prev, gender: e.target.value }))}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                       >
                         <option value="">Seleccionar...</option>
@@ -461,7 +486,7 @@ function RegistroPage() {
                       <Droplet className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                       <select
                         value={patientData.bloodType}
-                        onChange={(e) => setPatientData({ ...patientData, bloodType: e.target.value })}
+                        onChange={(e) => setPatientData(prev => ({ ...prev, bloodType: e.target.value }))}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                       >
                         <option value="">Seleccionar...</option>
@@ -487,7 +512,7 @@ function RegistroPage() {
                         name="licenseNumber"
                         value={doctorData.licenseNumber}
                         onChange={(e) => {
-                          setDoctorData({ ...doctorData, licenseNumber: e.target.value });
+                          setDoctorData(prev => ({ ...prev, licenseNumber: e.target.value }));
                           if (errors.licenseNumber) validateField('licenseNumber', e.target.value);
                         }}
                         onBlur={(e) => validateField('licenseNumber', e.target.value)}
@@ -512,7 +537,7 @@ function RegistroPage() {
                         name="specialty"
                         value={doctorData.specialty}
                         onChange={(e) => {
-                          setDoctorData({ ...doctorData, specialty: e.target.value });
+                          setDoctorData(prev => ({ ...prev, specialty: e.target.value }));
                           if (errors.specialty) validateField('specialty', e.target.value);
                         }}
                         onBlur={(e) => validateField('specialty', e.target.value)}
@@ -540,7 +565,7 @@ function RegistroPage() {
                       min="0"
                       max="60"
                       value={doctorData.yearsExperience}
-                      onChange={(e) => setDoctorData({ ...doctorData, yearsExperience: e.target.value })}
+                      onChange={(e) => setDoctorData(prev => ({ ...prev, yearsExperience: e.target.value }))}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                       placeholder="Ej: 5"
                     />
@@ -557,7 +582,7 @@ function RegistroPage() {
                         min="0"
                         step="0.01"
                         value={doctorData.consultationFee}
-                        onChange={(e) => setDoctorData({ ...doctorData, consultationFee: e.target.value })}
+                        onChange={(e) => setDoctorData(prev => ({ ...prev, consultationFee: e.target.value }))}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                         placeholder="Ej: 30.00"
                       />
@@ -579,7 +604,7 @@ function RegistroPage() {
                         name="companyName"
                         value={providerData.companyName}
                         onChange={(e) => {
-                          setProviderData({ ...providerData, companyName: e.target.value });
+                          setProviderData(prev => ({ ...prev, companyName: e.target.value }));
                           if (errors.companyName) validateField('companyName', e.target.value);
                         }}
                         onBlur={(e) => validateField('companyName', e.target.value)}
@@ -602,7 +627,7 @@ function RegistroPage() {
                       name="providerType"
                       value={providerData.providerType}
                       onChange={(e) => {
-                        setProviderData({ ...providerData, providerType: e.target.value });
+                        setProviderData(prev => ({ ...prev, providerType: e.target.value }));
                         if (errors.providerType) validateField('providerType', e.target.value);
                       }}
                       onBlur={(e) => validateField('providerType', e.target.value)}
@@ -635,7 +660,7 @@ function RegistroPage() {
                     onChange={handleCommonChange}
                     onBlur={handleBlur}
                     className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-colors ${errors.password ? 'border-red-300 focus:ring-red-200 bg-red-50' : 'border-gray-300 focus:ring-primary'}`}
-                    placeholder="••••••••"
+                    placeholder="********"
                     minLength={6}
                   />
                   <button
@@ -670,7 +695,7 @@ function RegistroPage() {
                     onChange={handleCommonChange}
                     onBlur={handleBlur}
                     className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-colors ${errors.confirmPassword ? 'border-red-300 focus:ring-red-200 bg-red-50' : 'border-gray-300 focus:ring-primary'}`}
-                    placeholder="••••••••"
+                    placeholder="********"
                   />
                   <button
                     type="button"
