@@ -6,6 +6,13 @@ const swaggerSpec = require('./config/swagger');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Rate Limiting
+const {
+  generalLimiter,
+  authLimiter,
+  searchLimiter
+} = require('./middleware/rateLimiter');
+
 // Middlewares
 app.use(cors());
 app.use(express.json());
@@ -34,7 +41,8 @@ const authRoutes = require("./routes/auth");
 const verificationRoutes = require("./routes/verification");
 
 // ==================== USAR RUTAS ====================
-app.use("/api/auth", authRoutes);
+// Auth routes con rate limiting estricto (5 req/15min)
+app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/verification", verificationRoutes);
 
 // ==================== RUTAS B�SICAS ====================
@@ -106,7 +114,7 @@ app.get("/api/db-test", async (req, res) => {
  *                   items:
  *                     $ref: '#/components/schemas/Specialty'
  */
-app.get("/api/specialties", async (req, res) => {
+app.get("/api/specialties", searchLimiter, async (req, res) => {
   try {
     const specialties = await Specialty.findAll({
       attributes: ['id', 'name', 'description', 'category', 'isActive'],
@@ -161,7 +169,7 @@ app.get("/api/specialties", async (req, res) => {
  *                   items:
  *                     $ref: '#/components/schemas/Specialty'
  */
-app.get("/api/specialties/search", async (req, res) => {
+app.get("/api/specialties/search", searchLimiter, async (req, res) => {
   try {
     const { q } = req.query;
     const { Op } = require('sequelize');
@@ -259,7 +267,7 @@ app.get("/api/specialties/search", async (req, res) => {
  *                   items:
  *                     $ref: '#/components/schemas/Doctor'
  */
-app.get("/api/doctors", async (req, res) => {
+app.get("/api/doctors", searchLimiter, async (req, res) => {
   try {
     const { specialty, city, search, page = 1, limit = 20, includeUnverified } = req.query;
     const { Op } = require('sequelize');
@@ -362,7 +370,7 @@ app.get("/api/doctors", async (req, res) => {
  *       404:
  *         description: Médico no encontrado
  */
-app.get("/api/doctors/:id", async (req, res) => {
+app.get("/api/doctors/:id", generalLimiter, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -469,7 +477,7 @@ app.get("/api/doctors/:id", async (req, res) => {
  *                     total_appointments:
  *                       type: integer
  */
-app.get("/api/stats", async (req, res) => {
+app.get("/api/stats", generalLimiter, async (req, res) => {
   try {
     const [
       totalSpecialties,

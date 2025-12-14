@@ -457,6 +457,67 @@ SOCKET_PING_INTERVAL=25000
 VITE_SOCKET_URL=http://localhost:5000
 ```
 
+### Rate Limiting
+
+Proteccion contra abuso de API y ataques DDoS:
+- Multiples estrategias segun tipo de endpoint
+- Storage en Redis (con fallback a memoria)
+- Headers informativos RateLimit-*
+- Whitelist de IPs configurable
+
+**Estrategias por Categoria:**
+
+| Categoria | Limite | Ventana | Endpoints |
+|-----------|--------|---------|-----------|
+| `authLimiter` | 5 req | 15 min | /api/auth/login, /api/auth/register |
+| `searchLimiter` | 30 req | 1 min | /api/doctors, /api/specialties |
+| `generalLimiter` | 100 req | 15 min | GET endpoints generales |
+| `creationLimiter` | 10 req | 1 min | POST appointments, reviews |
+| `adminLimiter` | 200 req | 15 min | Admin endpoints |
+| `socketLimiter` | 100 eventos | 1 min | WebSocket events |
+
+**Respuesta cuando se excede el limite:**
+```json
+{
+  "error": "Rate limit exceeded",
+  "message": "Demasiados intentos. Intente nuevamente en 14 minutos",
+  "code": "RATE_LIMIT_AUTH",
+  "retryAfter": 840,
+  "limit": 5,
+  "remaining": 0
+}
+```
+
+**Uso en Rutas:**
+```javascript
+const { authLimiter, searchLimiter } = require('./middleware/rateLimiter');
+
+// Aplicar a rutas de autenticacion
+app.use('/api/auth', authLimiter, authRoutes);
+
+// Aplicar a rutas de busqueda
+app.get('/api/doctors', searchLimiter, doctorController.search);
+```
+
+**Whitelist de IPs:**
+- Configurar via RATE_LIMIT_WHITELIST env var
+- Paths excluidos: /api/health, /api-docs
+- API keys de servicios confiables
+
+**Variables de Entorno:**
+```bash
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_WHITELIST=127.0.0.1,::1
+RATE_LIMIT_GENERAL_MAX=100
+RATE_LIMIT_GENERAL_WINDOW=900000
+RATE_LIMIT_AUTH_MAX=5
+RATE_LIMIT_AUTH_WINDOW=900000
+```
+
+**Graceful Degradation:**
+- Si Redis no esta disponible, usa almacenamiento en memoria
+- La aplicacion sigue funcionando sin interrupciones
+
 ---
 
 ## Deployment
