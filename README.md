@@ -329,6 +329,51 @@ Request -> Routes -> Middleware -> Controller -> Model -> Database
 - `Specialty` - 102 especialidades medicas de Venezuela
 - `Appointment` - Sistema de citas
 
+### Caching (Redis)
+
+El proyecto implementa una capa de cache con Redis para mejorar performance:
+
+**Arquitectura:**
+```
+Request → Cache Check → [HIT] → Response (cached)
+                      → [MISS] → Database → Cache Set → Response
+```
+
+**TTLs por Categoria:**
+
+| Categoria | TTL | Descripcion |
+|-----------|-----|-------------|
+| `sessions` | 24h | Sesiones JWT |
+| `specialties` | 1h | Lista de especialidades |
+| `doctors` | 5min | Busqueda de medicos |
+| `stats` | 1min | Estadisticas del sistema |
+
+**Graceful Degradation:**
+- Si Redis no esta disponible, el sistema usa cache en memoria
+- La aplicacion sigue funcionando sin interrupciones
+
+**Endpoints de Cache:**
+
+| Endpoint | Descripcion | Acceso |
+|----------|-------------|--------|
+| `GET /api/cache/stats` | Estadisticas del cache | Admin |
+| `POST /api/cache/flush` | Limpiar todo el cache | Admin |
+
+**Variables de Entorno:**
+```bash
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
+REDIS_TTL=300
+```
+
+**Bypass de Cache:**
+```bash
+# Agregar ?nocache=true para saltear cache
+curl http://localhost:5000/api/specialties?nocache=true
+```
+
 ---
 
 ## Deployment
