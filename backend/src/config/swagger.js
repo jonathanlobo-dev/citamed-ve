@@ -53,14 +53,16 @@ CITAMED.VE conecta pacientes, médicos y proveedores de servicios de salud en un
         }
       },
       schemas: {
+        // ==================== SCHEMAS DE ENTIDADES ====================
         User: {
           type: 'object',
           properties: {
             id: { type: 'integer', example: 1 },
-            email: { type: 'string', format: 'email', example: 'usuario@citamed.ve' },
+            email: { type: 'string', format: 'email', example: 'doctor@citamed.ve' },
             firstName: { type: 'string', example: 'Juan' },
             lastName: { type: 'string', example: 'Pérez' },
-            role: { type: 'string', enum: ['patient', 'doctor', 'provider', 'admin'], example: 'patient' },
+            phone: { type: 'string', example: '+584121234567' },
+            role: { type: 'string', enum: ['patient', 'doctor', 'provider', 'admin'], example: 'doctor' },
             isActive: { type: 'boolean', example: true },
             createdAt: { type: 'string', format: 'date-time' }
           }
@@ -69,28 +71,71 @@ CITAMED.VE conecta pacientes, médicos y proveedores de servicios de salud en un
           type: 'object',
           properties: {
             id: { type: 'integer', example: 1 },
-            userId: { type: 'integer', example: 10 },
+            userId: { type: 'integer', example: 5 },
             firstName: { type: 'string', example: 'María' },
             lastName: { type: 'string', example: 'González' },
-            specialtyId: { type: 'integer', example: 1 },
+            email: { type: 'string', example: 'dra.gonzalez@citamed.ve' },
+            specialty: { type: 'string', example: 'Cardiología' },
+            specialtyId: { type: 'integer', example: 15 },
             licenseNumber: { type: 'string', example: 'MPPS-12345' },
-            consultationFee: { type: 'number', example: 30.00 },
+            experienceYears: { type: 'integer', example: 10 },
+            bio: { type: 'string', example: 'Especialista en enfermedades cardiovasculares con 10 años de experiencia' },
             city: { type: 'string', example: 'Caracas' },
             state: { type: 'string', example: 'Distrito Capital' },
+            consultationFee: { type: 'number', example: 50.00 },
+            followUpFee: { type: 'number', example: 30.00 },
             isVerified: { type: 'boolean', example: true },
-            averageRating: { type: 'number', example: 4.5 }
+            profileStatus: { type: 'string', enum: ['active', 'inactive', 'incomplete'], example: 'active' },
+            averageRating: { type: 'number', example: 4.8 },
+            totalReviews: { type: 'integer', example: 156 },
+            telemedicineEnabled: { type: 'boolean', example: true },
+            acceptingNewPatients: { type: 'boolean', example: true },
+            languages: { type: 'array', items: { type: 'string' }, example: ['Español', 'Inglés'] }
+          }
+        },
+        Patient: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer', example: 1 },
+            userId: { type: 'integer', example: 3 },
+            firstName: { type: 'string', example: 'Ana' },
+            lastName: { type: 'string', example: 'Rodríguez' },
+            email: { type: 'string', example: 'ana.rodriguez@example.com' },
+            birthDate: { type: 'string', format: 'date', example: '1990-05-15' },
+            gender: { type: 'string', enum: ['male', 'female', 'other'], example: 'female' },
+            bloodType: { type: 'string', enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'unknown'], example: 'O+' },
+            allergies: { type: 'string', example: 'Penicilina, Aspirina' },
+            emergencyContact: { type: 'string', example: '+584129876543' },
+            emergencyContactName: { type: 'string', example: 'Carlos Rodríguez' }
           }
         },
         Specialty: {
           type: 'object',
           properties: {
-            id: { type: 'integer', example: 1 },
-            name: { type: 'string', example: 'Medicina General' },
-            description: { type: 'string', example: 'Atención médica integral' },
+            id: { type: 'integer', example: 15 },
+            name: { type: 'string', example: 'Cardiología' },
+            description: { type: 'string', example: 'Especialidad médica que se ocupa de las enfermedades del corazón y sistema circulatorio' },
             category: { type: 'string', example: 'especialidad_clinica' },
             isActive: { type: 'boolean', example: true }
           }
         },
+        Appointment: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer', example: 1 },
+            patientId: { type: 'integer', example: 3 },
+            doctorId: { type: 'integer', example: 5 },
+            specialtyId: { type: 'integer', example: 15 },
+            appointmentDate: { type: 'string', format: 'date-time', example: '2025-12-15T10:00:00Z' },
+            endTime: { type: 'string', format: 'date-time', example: '2025-12-15T10:30:00Z' },
+            status: { type: 'string', enum: ['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show'], example: 'confirmed' },
+            type: { type: 'string', enum: ['presencial', 'telemedicina'], example: 'presencial' },
+            reason: { type: 'string', example: 'Consulta de control cardiovascular' },
+            notes: { type: 'string', example: 'Paciente refiere dolor en el pecho ocasional' },
+            createdAt: { type: 'string', format: 'date-time' }
+          }
+        },
+        // ==================== SCHEMAS DE REQUEST ====================
         LoginRequest: {
           type: 'object',
           required: ['email', 'password'],
@@ -99,6 +144,20 @@ CITAMED.VE conecta pacientes, médicos y proveedores de servicios de salud en un
             password: { type: 'string', format: 'password', example: 'MiPassword123!' }
           }
         },
+        RegisterRequest: {
+          type: 'object',
+          required: ['email', 'password', 'role', 'name'],
+          properties: {
+            email: { type: 'string', format: 'email', example: 'nuevo@citamed.ve' },
+            password: { type: 'string', format: 'password', minLength: 6, example: 'Password123!' },
+            name: { type: 'string', example: 'Carlos Rodríguez' },
+            firstName: { type: 'string', example: 'Carlos' },
+            lastName: { type: 'string', example: 'Rodríguez' },
+            role: { type: 'string', enum: ['patient', 'doctor', 'provider'], example: 'patient' },
+            phone: { type: 'string', example: '+584121234567' }
+          }
+        },
+        // ==================== SCHEMAS DE RESPONSE ====================
         LoginResponse: {
           type: 'object',
           properties: {
@@ -108,24 +167,37 @@ CITAMED.VE conecta pacientes, médicos y proveedores de servicios de salud en un
             user: { $ref: '#/components/schemas/User' }
           }
         },
-        RegisterRequest: {
+        SuccessResponse: {
           type: 'object',
-          required: ['email', 'password', 'role'],
           properties: {
-            email: { type: 'string', format: 'email', example: 'nuevo@citamed.ve' },
-            password: { type: 'string', format: 'password', minLength: 6, example: 'Password123!' },
-            firstName: { type: 'string', example: 'Carlos' },
-            lastName: { type: 'string', example: 'Rodríguez' },
-            role: { type: 'string', enum: ['patient', 'doctor', 'provider'], example: 'patient' },
-            phone: { type: 'string', example: '+584121234567' }
+            success: { type: 'boolean', example: true },
+            message: { type: 'string', example: 'Operación exitosa' },
+            data: { type: 'object' }
           }
         },
-        Error: {
+        ErrorResponse: {
           type: 'object',
           properties: {
             success: { type: 'boolean', example: false },
-            message: { type: 'string', example: 'Error en la solicitud' },
-            error: { type: 'string', example: 'Descripción del error' }
+            message: { type: 'string', example: 'Error en la operación' },
+            error: { type: 'string', example: 'Descripción detallada del error' }
+          }
+        },
+        ValidationError: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: false },
+            message: { type: 'string', example: 'Error de validación' },
+            errors: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  field: { type: 'string', example: 'email' },
+                  message: { type: 'string', example: 'Email inválido' }
+                }
+              }
+            }
           }
         },
         PaginatedResponse: {
@@ -134,18 +206,65 @@ CITAMED.VE conecta pacientes, médicos y proveedores de servicios de salud en un
             success: { type: 'boolean', example: true },
             total: { type: 'integer', example: 100 },
             page: { type: 'integer', example: 1 },
-            limit: { type: 'integer', example: 10 },
-            totalPages: { type: 'integer', example: 10 },
+            limit: { type: 'integer', example: 20 },
+            totalPages: { type: 'integer', example: 5 },
             data: { type: 'array', items: {} }
+          }
+        },
+        DoctorListResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: true },
+            total: { type: 'integer', example: 50 },
+            page: { type: 'integer', example: 1 },
+            totalPages: { type: 'integer', example: 3 },
+            showingVerifiedOnly: { type: 'boolean', example: true },
+            data: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/Doctor' }
+            }
+          }
+        },
+        SpecialtyListResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: true },
+            total: { type: 'integer', example: 102 },
+            data: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/Specialty' }
+            }
           }
         }
       },
       responses: {
-        UnauthorizedError: {
-          description: 'Token de acceso faltante o inválido',
+        // ==================== RESPONSES REUTILIZABLES ====================
+        Success: {
+          description: 'Operación exitosa',
           content: {
             'application/json': {
-              schema: { $ref: '#/components/schemas/Error' },
+              schema: { $ref: '#/components/schemas/SuccessResponse' }
+            }
+          }
+        },
+        BadRequest: {
+          description: 'Solicitud inválida - Error de validación',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationError' },
+              example: {
+                success: false,
+                message: 'Error de validación',
+                errors: [{ field: 'email', message: 'Email inválido' }]
+              }
+            }
+          }
+        },
+        Unauthorized: {
+          description: 'No autenticado - Token faltante o inválido',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
               example: {
                 success: false,
                 message: 'No autorizado',
@@ -154,11 +273,24 @@ CITAMED.VE conecta pacientes, médicos y proveedores de servicios de salud en un
             }
           }
         },
-        NotFoundError: {
+        Forbidden: {
+          description: 'Acceso denegado - Sin permisos suficientes',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
+              example: {
+                success: false,
+                message: 'Acceso denegado',
+                error: 'No tienes permisos para realizar esta acción'
+              }
+            }
+          }
+        },
+        NotFound: {
           description: 'Recurso no encontrado',
           content: {
             'application/json': {
-              schema: { $ref: '#/components/schemas/Error' },
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
               example: {
                 success: false,
                 message: 'No encontrado',
@@ -167,15 +299,15 @@ CITAMED.VE conecta pacientes, médicos y proveedores de servicios de salud en un
             }
           }
         },
-        ValidationError: {
-          description: 'Error de validación',
+        ServerError: {
+          description: 'Error interno del servidor',
           content: {
             'application/json': {
-              schema: { $ref: '#/components/schemas/Error' },
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
               example: {
                 success: false,
-                message: 'Error de validación',
-                errors: [{ field: 'email', message: 'Email inválido' }]
+                message: 'Error interno',
+                error: 'Ha ocurrido un error en el servidor'
               }
             }
           }

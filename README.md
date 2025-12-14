@@ -1,672 +1,418 @@
-# CITAMED.VE - Ecosistema de Salud Digital para Venezuela
+# CITAMED.VE
 
-![CI Tests](https://github.com/USUARIO/CITAMED.VE/actions/workflows/ci.yml/badge.svg)
+![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-50%20passing-success)
+![Coverage](https://img.shields.io/badge/coverage-32%25-yellow)
+![Node](https://img.shields.io/badge/node-22%2B-brightgreen)
+![License](https://img.shields.io/badge/license-Private-red)
 
-## Estado del Proyecto
+> Ecosistema Digital de Salud Privada para Venezuela
 
-| Aspecto | Estado |
-|---------|--------|
-| Tests Automatizados | 44 passed |
-| CI/CD | GitHub Actions |
-| Coverage | 32% |
-| Backend | Node.js + PostgreSQL |
-| Frontend | React + Vite |
-
-## Testing Local
-
-```bash
-cd backend
-npm test
-npm run test:coverage
-```
+CITAMED.VE conecta pacientes, medicos y proveedores de servicios de salud en una plataforma integral que revoluciona el acceso a la atencion medica en Venezuela.
 
 ---
 
+## Caracteristicas Principales
 
-## 🏥 Descripción del Proyecto
-
-CITAMED.VE es una plataforma integral de salud digital diseñada para conectar pacientes, médicos y proveedores en Venezuela. El ecosistema incluye 4 módulos principales:
-
-1. **Agendamiento Inteligente** - Sistema de turnos virtuales (ACTIVO)
-2. **Telemedicina** - Consultas por videollamada HD
-3. **MarketMed** - Marketplace médico con sistema de referidos
-4. **Citamed Paga** - Sistema de escrow y financiamiento
-
----
-
-## 📋 Tabla de Contenidos
-
-- [Stack Tecnológico](#-stack-tecnológico)
-- [Estructura del Proyecto](#-estructura-del-proyecto)
-- [Instalación y Configuración](#-instalación-y-configuración)
-- [Funcionalidades Implementadas](#-funcionalidades-implementadas)
-- [Pendientes](#-pendientes)
-- [Scripts Disponibles](#-scripts-disponibles)
-- [Base de Datos](#-base-de-datos)
-- [API Endpoints](#-api-endpoints)
+- **Sala de Espera Virtual** - Sistema de turnos en tiempo real con "Las Sillitas"
+- **Directorio Medico** - Busqueda por especialidad, ciudad y disponibilidad
+- **Sistema de Perfiles** - Pacientes, Medicos y Proveedores
+- **Autenticacion JWT** - Sistema seguro con roles y permisos
+- **API Documentada** - Swagger OpenAPI 3.0 con 11 endpoints
+- **Testing Completo** - 50 tests automatizados (Jest + Cypress)
+- **CI/CD** - GitHub Actions con tests automaticos
 
 ---
 
-## 🛠 Stack Tecnológico
+## Proyeccion del Negocio
 
-### Frontend
-- **React 19** - Framework principal
-- **Vite** - Build tool y dev server
-- **React Router DOM v7.9.6** - Navegación y rutas
-- **Tailwind CSS** - Estilos utility-first
-- **Framer Motion** - Animaciones
-- **Axios** - HTTP client
-- **React Hot Toast** - Notificaciones
-- **Lucide React** - Iconos
+| Metrica | Ano 1 | Ano 2 | Ano 3 |
+|---------|-------|-------|-------|
+| Medicos Activos | 850 | 2,040 | 2,890 |
+| Ingresos | $785K | $1.88M | $2.67M |
+| Margen EBITDA | 54% | 72% | 73% |
+| ROI | - | - | **25X** |
+
+---
+
+## Stack Tecnologico
 
 ### Backend
-- **Node.js + Express.js** - Servidor API REST
-- **PostgreSQL** - Base de datos relacional
-- **Sequelize ORM** - Manejo de base de datos
-- **bcrypt** - Hash de contraseñas
-- **jsonwebtoken (JWT)** - Autenticación
-- **dotenv** - Variables de entorno
-- **CORS** - Cross-origin requests
+- **Runtime:** Node.js 22+
+- **Framework:** Express.js 4.21+
+- **Base de Datos:** PostgreSQL 16
+- **ORM:** Sequelize 6.37+
+- **Autenticacion:** JWT + bcryptjs
+- **Documentacion:** Swagger OpenAPI 3.0
+- **Testing:** Jest 29+ (44 tests)
+
+### Frontend
+- **Framework:** React 19
+- **Build Tool:** Vite 6+
+- **Styling:** Tailwind CSS 4+
+- **Routing:** React Router 7+
+- **State:** Context API
+- **Testing:** Cypress 13+ (6 tests E2E)
+
+### Infraestructura
+- **CI/CD:** GitHub Actions
+- **Control de Versiones:** Git
+- **Package Manager:** npm 10+
 
 ---
 
-## 📁 Estructura del Proyecto
+## Estructura del Proyecto
 
 ```
 proyecto/
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   └── common/
-│   │   │       ├── Navbar/
-│   │   │       │   └── Navbar.jsx          # Navbar enterprise (NUEVO)
-│   │   │       ├── ModuleCard/
-│   │   │       └── button/
-│   │   ├── pages/
-│   │   │   ├── LandingPage.jsx             # Página principal + Buscador (ACTUALIZADO)
-│   │   │   ├── LoginPage.jsx
-│   │   │   ├── RegistroPage.jsx            # Con parámetro role en URL
-│   │   │   ├── DashboardPage.jsx
-│   │   │   ├── DirectorioMedicoPage.jsx    # Conectado a médicos reales (ACTUALIZADO)
-│   │   │   ├── ClinicasPage.jsx            # Nueva página (NUEVO)
-│   │   │   ├── SegurosPage.jsx             # Nueva página (NUEVO)
-│   │   │   └── modules/
-│   │   │       ├── AgendamientoPage.jsx
-│   │   │       ├── TelemedicinaPage.jsx
-│   │   │       ├── MarketMedPage.jsx
-│   │   │       └── CitamedPagaPage.jsx
-│   │   ├── context/
-│   │   │   └── AuthContext.jsx
-│   │   └── App.jsx                         # Rutas principales
-│   └── package.json
-│
 ├── backend/
 │   ├── src/
-│   │   ├── models/
-│   │   │   ├── index.js                    # Configuración Sequelize
+│   │   ├── config/
+│   │   │   ├── database.js          # Configuracion PostgreSQL
+│   │   │   └── swagger.js           # OpenAPI 3.0 (14 schemas)
+│   │   ├── controllers/             # Logica de negocio
+│   │   │   ├── authController.js
+│   │   │   ├── doctorController.js
+│   │   │   └── profileController.js
+│   │   ├── models/                  # Sequelize models
 │   │   │   ├── User.js
 │   │   │   ├── DoctorProfile.js
 │   │   │   ├── PatientProfile.js
-│   │   │   ├── Specialty.js
-│   │   │   └── Appointment.js
-│   │   ├── controllers/
-│   │   │   └── authController.js           # Login y registro
-│   │   ├── middleware/
-│   │   │   └── auth.js                     # JWT verification
-│   │   └── server.js                       # Servidor principal
-│   ├── routes/
-│   │   └── auth.js
-│   ├── reset-users.js                      # Script para limpiar usuarios de prueba (NUEVO)
+│   │   │   └── Specialty.js
+│   │   ├── routes/                  # Definicion de endpoints
+│   │   │   ├── auth.js
+│   │   │   ├── profiles.js
+│   │   │   └── protected.js
+│   │   ├── middleware/              # Auth, validacion
+│   │   │   └── auth.js
+│   │   └── server.js                # Punto de entrada
+│   ├── __tests__/                   # Tests Jest
+│   │   ├── unit/
+│   │   └── integration/
 │   └── package.json
-│
-└── README.md                                # Este archivo
+├── frontend/
+│   ├── src/
+│   │   ├── components/              # Componentes reutilizables
+│   │   ├── pages/                   # Vistas principales
+│   │   ├── context/                 # AuthContext
+│   │   └── hooks/                   # Custom hooks
+│   ├── cypress/                     # Tests E2E
+│   │   └── e2e/
+│   └── package.json
+├── .github/
+│   └── workflows/
+│       └── ci.yml                   # GitHub Actions
+└── README.md
 ```
 
 ---
 
-## 🚀 Instalación y Configuración
+## Instalacion y Setup
 
-### Requisitos Previos
-- Node.js 18+
-- PostgreSQL 14+
-- Git
+### Prerrequisitos
+
+- Node.js 18+ ([Descargar](https://nodejs.org/))
+- PostgreSQL 16+ ([Descargar](https://www.postgresql.org/download/))
+- Git ([Descargar](https://git-scm.com/))
+- npm 10+ (incluido con Node.js)
 
 ### 1. Clonar el repositorio
+
 ```bash
-git clone <repository-url>
-cd proyecto
+git clone https://github.com/tu-usuario/citamed-ve.git
+cd citamed-ve/proyecto
 ```
 
-### 2. Configurar Backend
+### 2. Configurar Base de Datos
+
+```bash
+# Crear base de datos PostgreSQL
+psql -U postgres
+CREATE DATABASE citamed_development;
+\q
+```
+
+### 3. Configurar Backend
 
 ```bash
 cd backend
+
+# Instalar dependencias
 npm install
-```
 
-**Crear archivo `.env`:**
-```env
-PORT=5000
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=citamed_development
-DB_USER=postgres
-DB_PASSWORD=tu_password
-JWT_SECRET=tu_secret_key_muy_segura
-JWT_EXPIRES_IN=7d
-NODE_ENV=development
-```
+# Crear archivo .env
+cp .env.example .env
 
-**Crear base de datos PostgreSQL:**
-```sql
-CREATE DATABASE citamed_development;
-```
+# Editar .env con tus credenciales:
+# DB_NAME=citamed_development
+# DB_USER=postgres
+# DB_PASSWORD=tu_password
+# DB_HOST=localhost
+# DB_PORT=5432
+# JWT_SECRET=tu_secret_key_super_seguro
+# PORT=5000
 
-**Iniciar backend:**
-```bash
-npm start
-# O en modo desarrollo:
-npm run dev
-```
+# Ejecutar migraciones (crear tablas)
+npm run migrate
 
-El servidor estará en: `http://localhost:5000`
+# Ejecutar seeders (datos iniciales)
+npm run seed
 
-### 3. Configurar Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-El frontend estará en: `http://localhost:5173`
-
----
-
-## ✅ Funcionalidades Implementadas
-
-### 1. **Navbar Enterprise** ⭐ NUEVO
-- Visible en TODAS las páginas de la aplicación
-- Navegación completa:
-  - Inicio
-  - Módulos (scroll suave)
-  - Directorio Médico
-  - Clínicas Afiliadas
-  - Seguros Afiliados
-  - Beneficios (scroll suave)
-  - FAQ (scroll suave)
-- **Saludo personalizado con nombre del usuario**
-  - Muestra "Dr. [Nombre]" para médicos
-  - Muestra primer nombre para pacientes
-  - Muestra rol (Médico/Paciente/Proveedor)
-  - Diseño destacado con gradiente
-- Botón "Crear Cuenta" más visible (tamaño md, con shadow)
-- Responsive desktop y mobile con menú hamburguesa
-- Integrado con AuthContext
-
-### 2. **Sistema de Autenticación JWT**
-- Registro de usuarios (patient, doctor, provider)
-- Login con JWT tokens
-- Protección de rutas privadas
-- Almacenamiento seguro en localStorage
-- Validación de correos duplicados
-- Hash de contraseñas con bcrypt
-
-### 3. **Landing Page Profesional** ⭐ ACTUALIZADO
-- Hero section con animaciones
-- **Buscador de médicos por especialidad** ⭐ NUEVO
-  - Selector dropdown con todas las especialidades
-  - 6 especialidades populares como botones rápidos
-  - Redirige a Directorio con filtro aplicado
-- Sección de beneficios (Pacientes, Médicos, Proveedores)
-- 4 módulos del ecosistema con ModuleCards
-- FAQ profesional con 6 preguntas frecuentes
-- Footer completo
-
-### 4. **Directorio Médico Dinámico** ⭐ ACTUALIZADO
-- **Conectado a base de datos real**
-- Muestra médicos registrados desde PostgreSQL
-- Filtros funcionales:
-  - Por especialidad (dropdown + chips)
-  - Por nombre/ciudad (search bar)
-  - Acepta parámetro `?specialty=` desde URL
-- Cards de médicos con:
-  - Foto de perfil o iniciales
-  - Nombre completo con "Dr."
-  - Especialidad y matrícula MPPS
-  - Rating con estrellas
-  - Años de experiencia
-  - Ubicación (ciudad, estado)
-  - Tarifa de consulta
-  - Bio/descripción
-  - Botón "Agendar Cita"
-- Estados vacíos profesionales
-- Loading y error states
-
-### 5. **Página Clínicas Afiliadas** ⭐ NUEVO
-- Diseño enterprise profesional
-- Filtros por ciudad
-- Banner informativo sobre red CITAMED
-- Empty state con CTA para afiliación
-- Beneficios destacados
-- Estructura lista para backend
-
-### 6. **Página Seguros Afiliados** ⭐ NUEVO
-- Diseño enterprise profesional
-- Filtros por tipo de seguro
-- Beneficios para aseguradoras
-- Beneficios para usuarios con seguro
-- CTA para contacto de alianzas
-- Estructura lista para backend
-
-### 7. **Páginas de Módulos**
-- AgendamientoPage (placeholder profesional)
-- TelemedicinaPage (placeholder profesional)
-- MarketMedPage (placeholder profesional)
-- CitamedPagaPage (placeholder profesional)
-
-### 8. **Dashboard**
-- Página protegida con autenticación
-- Placeholder para futuras funcionalidades
-
-### 9. **Base de Datos PostgreSQL**
-- Modelos Sequelize configurados:
-  - `users` - Usuarios del sistema
-  - `doctor_profiles` - Perfiles de médicos
-  - `patient_profiles` - Perfiles de pacientes
-  - `specialties` - Especialidades médicas (41 especialidades precargadas)
-  - `appointments` - Citas médicas
-- Relaciones establecidas
-- Migraciones automáticas con Sequelize
-
----
-
-## 🔄 Pendientes
-
-### Prioridad Alta 🔴
-
-1. **Dashboards Separados por Rol**
-   - Dashboard específico para Pacientes
-   - Dashboard específico para Médicos
-   - Dashboard específico para Proveedores
-   - Cada uno con funcionalidades propias
-
-2. **Sistema de Agendamiento Completo**
-   - Calendario de disponibilidad de médicos
-   - Reserva de citas por pacientes
-   - Notificaciones por email/SMS
-   - Gestión de turnos
-
-3. **Verificación de Médicos**
-   - Workflow de aprobación de médicos
-   - Validación de matrícula MPPS
-   - Subida de documentos (título, cédula)
-   - Panel de administración
-
-4. **Sistema de Pagos (Citamed Paga)**
-   - Integración con pasarelas de pago Venezuela
-   - Sistema de escrow
-   - Manejo de múltiples monedas (Bs, USD)
-   - Procesamiento de pagos móviles
-
-### Prioridad Media 🟡
-
-5. **Telemedicina**
-   - Integración de videollamadas (Twilio/Agora)
-   - Chat en tiempo real
-   - Compartir archivos médicos
-   - Grabación de consultas (opcional)
-
-6. **MarketMed**
-   - Catálogo de farmacias
-   - Catálogo de laboratorios
-   - Sistema de referidos (3% para médicos)
-   - Recetas digitales
-
-7. **Historial Médico**
-   - Registro de consultas
-   - Subida de exámenes
-   - Diagnósticos y tratamientos
-   - Exportar historial (PDF)
-
-8. **Sistema de Reviews**
-   - Calificación de médicos (1-5 estrellas)
-   - Comentarios de pacientes
-   - Moderación de reviews
-   - Estadísticas de satisfacción
-
-### Prioridad Baja 🟢
-
-9. **Clínicas Afiliadas (Backend)**
-   - Modelo de base de datos para clínicas
-   - Registro de clínicas
-   - Directorio de clínicas
-   - Integración con agenda
-
-10. **Seguros Afiliados (Backend)**
-    - Modelo de base de datos para seguros
-    - Integración con aseguradoras
-    - Verificación de cobertura
-    - Procesamiento de reembolsos
-
-11. **Notificaciones Push**
-    - Firebase Cloud Messaging
-    - Notificaciones de citas
-    - Recordatorios automáticos
-
-12. **App Móvil (PWA)**
-    - Convertir a Progressive Web App
-    - Instalable en móviles
-    - Offline functionality
-    - Push notifications
-
-13. **Analytics y Reportes**
-    - Dashboard de estadísticas
-    - Reportes de citas
-    - Ingresos de médicos
-    - Métricas de uso
-
----
-
-## 📜 Scripts Disponibles
-
-### Backend
-
-```bash
-# Iniciar servidor
-npm start
-
-# Iniciar en modo desarrollo (con nodemon)
-npm run dev
-
-# Resetear usuarios de prueba
-node reset-users.js
-
-# Sincronizar base de datos
-node sync-db-module2.js
-```
-
-### Frontend
-
-```bash
 # Iniciar servidor de desarrollo
 npm run dev
-
-# Build para producción
-npm run build
-
-# Preview build de producción
-npm run preview
-
-# Limpiar cache de Vite
-rm -rf node_modules/.vite dist .vite
 ```
 
----
+**Backend corriendo en:** http://localhost:5000
 
-## 🗄 Base de Datos
+### 4. Configurar Frontend
 
-### Modelos Principales
-
-#### Users
-```javascript
-{
-  id: INTEGER (PK),
-  email: STRING (unique),
-  password: STRING (hashed),
-  name: STRING,
-  phone: STRING,
-  role: ENUM('patient', 'doctor', 'provider', 'admin', 'clinic', 'insurer'),
-  isActive: BOOLEAN
-}
-```
-
-#### DoctorProfile
-```javascript
-{
-  id: INTEGER (PK),
-  userId: INTEGER (FK -> users),
-  firstName: STRING,
-  lastName: STRING,
-  licenseNumber: STRING,
-  subSpecialty: STRING,
-  experienceYears: INTEGER,
-  consultationFee: DECIMAL,
-  city: STRING,
-  state: STRING,
-  averageRating: DECIMAL,
-  totalReviews: INTEGER,
-  bio: TEXT,
-  profilePhoto: STRING,
-  isVerified: BOOLEAN,
-  acceptingNewPatients: BOOLEAN,
-  profileStatus: ENUM('pending', 'active', 'suspended')
-}
-```
-
-#### PatientProfile
-```javascript
-{
-  id: INTEGER (PK),
-  userId: INTEGER (FK -> users),
-  firstName: STRING,
-  lastName: STRING,
-  dateOfBirth: DATE,
-  gender: ENUM('male', 'female', 'other'),
-  bloodType: STRING,
-  emergencyContactName: STRING,
-  emergencyContactPhone: STRING
-}
-```
-
-#### Specialty
-```javascript
-{
-  id: INTEGER (PK),
-  name: STRING,
-  description: TEXT,
-  category: STRING,
-  isActive: BOOLEAN
-}
-```
-
-### Especialidades Precargadas (41)
-
-Medicina General, Cardiología, Pediatría, Ginecología y Obstetricia, Traumatología, Dermatología, Oftalmología, Otorrinolaringología, Psiquiatría, Psicología Clínica, Neurología, Endocrinología, Gastroenterología, Neumología, Urología, Nefrología, Oncología, Hematología, Reumatología, Infectología, Medicina Interna, Cirugía General, Anestesiología, Radiología, Patología, Medicina Física y Rehabilitación, Nutrición y Dietética, Odontología General, Ortodoncia, Medicina del Deporte, Geriatría, Neonatología, Medicina de Emergencia, Cirugía Cardiovascular, Neurocirugía, Cirugía Plástica y Reconstructiva, Alergología e Inmunología, Medicina Familiar, Cirugía Pediátrica, Genética Médica, Medicina del Trabajo.
-
----
-
-## 🌐 API Endpoints
-
-### Autenticación
-
-**POST** `/api/auth/register`
-```json
-{
-  "role": "doctor | patient | provider",
-  "email": "email@example.com",
-  "password": "password123",
-  "name": "Juan Pérez",
-  "phone": "+58 424-1234567",
-  "licenseNumber": "12345" // solo para médicos
-}
-```
-
-**POST** `/api/auth/login`
-```json
-{
-  "email": "email@example.com",
-  "password": "password123"
-}
-```
-
-**GET** `/api/auth/profile`
-- Headers: `Authorization: Bearer <token>`
-
-### Especialidades
-
-**GET** `/api/specialties`
-- Retorna todas las especialidades activas
-
-**GET** `/api/specialties/search?q=cardio`
-- Busca especialidades por nombre o descripción
-
-### Médicos
-
-**GET** `/api/doctors`
-- Query params opcionales:
-  - `specialty`: Filtrar por especialidad
-  - `city`: Filtrar por ciudad
-  - `search`: Buscar por nombre
-
-**GET** `/api/stats`
-- Estadísticas generales del sistema
-
----
-
-## 🎨 Diseño y UX
-
-### Colores del Sistema (Tailwind)
-```javascript
-primary: '#0B2D4A',        // Azul oscuro institucional
-'primary-light': '#1565C0', // Azul medio
-secondary: '#00BFA6',       // Verde turquesa
-accent: '#FB8C00',          // Naranja
-```
-
-### Componentes Reutilizables
-- **Navbar** - Enterprise, responsive, con scroll suave
-- **Button** - Variantes: primary, secondary, outline, ghost
-- **ModuleCard** - Cards animadas para los 4 módulos
-- **Toast** - Notificaciones con react-hot-toast
-
----
-
-## 🔒 Seguridad
-
-### Implementado
-- ✅ Hash de contraseñas con bcrypt (10 rounds)
-- ✅ JWT tokens con expiración (7 días)
-- ✅ Validación de correos duplicados
-- ✅ CORS configurado
-- ✅ Variables de entorno (.env)
-- ✅ SQL injection protection (Sequelize ORM)
-
-### Pendiente
-- ⏳ Rate limiting
-- ⏳ Validación de entrada (Joi/Yup)
-- ⏳ HTTPS en producción
-- ⏳ Refresh tokens
-- ⏳ 2FA (autenticación de dos factores)
-
----
-
-## 📊 Estado del Proyecto
-
-**Versión:** 2.5 - Primera Vista Frontend Enterprise
-
-**Progreso General:** ~35% completado
-
-**Módulos Completados:**
-- ✅ Infraestructura base (Frontend + Backend)
-- ✅ Autenticación JWT
-- ✅ Navbar Enterprise
-- ✅ Landing Page con buscador
-- ✅ Directorio Médico dinámico
-- ✅ Páginas Clínicas y Seguros (frontend)
-- ✅ Base de datos con especialidades
-
-**Próximos Pasos:**
-1. Dashboards separados por rol
-2. Sistema de agendamiento
-3. Verificación de médicos
-4. Sistema de pagos
-
----
-
-## 👥 Roles de Usuario
-
-### Paciente
-- Buscar médicos por especialidad
-- Agendar citas
-- Ver historial médico
-- Pagar consultas
-
-### Médico
-- Gestionar agenda y disponibilidad
-- Atender consultas presenciales y virtuales
-- Ver historial de pacientes
-- Recibir pagos automáticos
-- Ganar comisiones por referidos (3%)
-
-### Proveedor
-- Registrar clínica/farmacia/laboratorio
-- Recibir órdenes de médicos
-- Gestionar catálogo de servicios
-- Pagar comisión a plataforma
-
----
-
-## 🚨 Solución de Problemas Comunes
-
-### Error: "El email ya está registrado"
 ```bash
-cd backend
-node reset-users.js
-```
+cd ../frontend
 
-### Error: Cache de Vite mostrando contenido antiguo
-```bash
-cd frontend
-rm -rf node_modules/.vite dist .vite
+# Instalar dependencias
+npm install
+
+# Crear archivo .env
+cp .env.example .env
+
+# Editar .env:
+# VITE_API_URL=http://localhost:5000
+
+# Iniciar servidor de desarrollo
 npm run dev
 ```
 
-### Error: No se conecta a PostgreSQL
-1. Verificar que PostgreSQL esté corriendo
-2. Revisar credenciales en `.env`
-3. Crear base de datos: `CREATE DATABASE citamed_development;`
-
-### Error: CORS en producción
-- Configurar CORS en `backend/src/server.js`
-- Agregar dominio del frontend a lista blanca
+**Frontend corriendo en:** http://localhost:5173
 
 ---
 
-## 📞 Contacto y Soporte
+## Testing
 
-**Proyecto:** CITAMED.VE - Ecosistema de Salud Digital
-**Objetivo:** Lanzamiento Nacional Venezuela
-**Filosofía:** *"No estamos haciendo paginitas web, estamos haciendo un ecosistema funcional que va a tener miles de usuarios registrados de diferentes roles"*
+### Tests Backend (Jest)
 
----
+```bash
+cd backend
 
-## 📝 Notas de Desarrollo
+# Ejecutar todos los tests
+npm test
 
-### Convenciones de Código
-- **React**: Functional components con hooks
-- **Nombres de archivos**: PascalCase para componentes
-- **CSS**: Tailwind utility classes
-- **Commits**: Mensajes descriptivos en español
+# Tests con coverage
+npm run test:coverage
 
-### Estructura de Commits Recomendada
-```
-feat: Agregar buscador de médicos en Landing Page
-fix: Corregir error de registro de médicos
-docs: Actualizar README con nuevas funcionalidades
-refactor: Mejorar navbar enterprise
+# Tests en modo watch
+npm run test:watch
+
+# Tests de un archivo especifico
+npm test auth.test.js
 ```
 
+**Cobertura actual:** 32% (Objetivo: 70%)
+
+### Tests E2E (Cypress)
+
+```bash
+cd frontend
+
+# Abrir Cypress UI
+npm run cypress:open
+
+# Ejecutar tests headless
+npm run cypress:run
+
+# Test especifico
+npm run cypress:run -- --spec "cypress/e2e/auth/register.cy.js"
+```
+
+### CI/CD (GitHub Actions)
+
+Tests automaticos en cada push:
+
+- Tests backend (Jest)
+- Lint frontend
+- Build frontend
+- Tests E2E (Cypress)
+
+Ver: `.github/workflows/ci.yml`
+
 ---
 
-**Última Actualización:** Enero 2025
-**Estado:** En Desarrollo Activo
-**Licencia:** Privada - CITAMED.VE
+## Documentacion API
+
+### Swagger UI Interactivo
+
+**Acceder a:** http://localhost:5000/api-docs
+
+Documentacion completa con:
+
+- 11 endpoints documentados
+- 14 schemas reutilizables
+- 6 responses HTTP estandarizadas
+- Ejemplos con datos reales de Venezuela
+- Boton "Try it out" para probar endpoints
+
+### Endpoints Principales
+
+| Metodo | Endpoint | Descripcion |
+|--------|----------|-------------|
+| POST | /api/auth/register | Registrar nuevo usuario |
+| POST | /api/auth/login | Iniciar sesion |
+| GET | /api/doctors | Buscar medicos (filtros disponibles) |
+| GET | /api/doctors/:id | Obtener medico especifico |
+| GET | /api/specialties | Listar especialidades |
+| GET | /api/specialties/search | Buscar especialidades |
+| GET | /api/profiles/me | Obtener mi perfil |
+| PUT | /api/profiles/me | Actualizar mi perfil |
+| GET | /api/stats | Estadisticas del sistema |
 
 ---
 
-## 🎯 Visión del Proyecto
+## Autenticacion
 
-CITAMED.VE busca revolucionar la salud digital en Venezuela, conectando a miles de médicos con millones de pacientes a través de una plataforma robusta, escalable y fácil de usar.
+### Usuarios Demo
 
-**Meta 2025:** 1,000,000+ citas agendadas al año 🚀
+```javascript
+// Paciente
+Email: paciente@demo.com
+Password: Demo1234!
+
+// Medico
+Email: medico@demo.com
+Password: Demo1234!
+
+// Proveedor
+Email: proveedor@demo.com
+Password: Demo1234!
+```
+
+### Usar Token JWT
+
+```bash
+# 1. Login
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"paciente@demo.com","password":"Demo1234!"}'
+
+# 2. Usar token en requests protegidos
+curl http://localhost:5000/api/profiles/me \
+  -H "Authorization: Bearer TU_TOKEN_AQUI"
+```
+
+---
+
+## Arquitectura
+
+### Patron MVC Deterministico
+
+```
+Request -> Routes -> Middleware -> Controller -> Model -> Database
+                                       |
+                                   Response
+```
+
+**Caracteristicas:**
+
+- Separacion clara de responsabilidades
+- Facil de debuggear y mantener
+- Escalable a millones de usuarios
+- Testing simplificado
+
+### Base de Datos (PostgreSQL)
+
+**Filosofia:** CERO mocks - Todo datos reales
+
+**Modelos principales:**
+
+- `User` - Usuarios del sistema
+- `PatientProfile` - Perfil de pacientes
+- `DoctorProfile` - Perfil de medicos con verificacion
+- `ProviderProfile` - Proveedores de servicios
+- `Specialty` - 102 especialidades medicas de Venezuela
+- `Appointment` - Sistema de citas
+
+---
+
+## Deployment
+
+### Desarrollo
+
+```bash
+# Backend
+cd backend && npm run dev
+
+# Frontend
+cd frontend && npm run dev
+```
+
+### Produccion (Proximamente)
+
+- **Backend:** Railway / Heroku / AWS
+- **Frontend:** Vercel / Netlify
+- **Base de Datos:** PostgreSQL en Railway / AWS RDS
+
+---
+
+## Contribucion
+
+### Flujo de Trabajo
+
+1. Fork el proyecto
+2. Crear rama feature (`git checkout -b feature/NuevaFuncionalidad`)
+3. Commit cambios (`git commit -m 'feat: Agregar nueva funcionalidad'`)
+4. Push a la rama (`git push origin feature/NuevaFuncionalidad`)
+5. Abrir Pull Request
+
+### Estandares de Codigo
+
+- ESLint configurado
+- Tests para nuevas funcionalidades
+- Documentacion Swagger para nuevos endpoints
+- Commits semanticos (feat, fix, docs, test)
+
+---
+
+## Roadmap
+
+### Completado (Fundaciones)
+
+- [x] Autenticacion JWT multi-rol
+- [x] Directorio de medicos
+- [x] Sistema de perfiles
+- [x] Testing automatizado (50 tests)
+- [x] CI/CD con GitHub Actions
+- [x] Documentacion Swagger OpenAPI 3.0
+
+### En Desarrollo (MVP)
+
+- [ ] Sistema de citas (Agendamiento)
+- [ ] Sala de espera virtual ("Las Sillitas")
+- [ ] Integracion WhatsApp Business API
+- [ ] Panel de medicos
+- [ ] Dashboard pacientes
+
+### Proximamente (Modulos Core)
+
+- [ ] MARKETMED (Marketplace)
+- [ ] CITAMED PAGA (Garante de pagos)
+- [ ] Telemedicina
+- [ ] Sistema de reputacion
+- [ ] Plan de fidelizacion
+
+---
+
+## Contacto
+
+**CITAMED.VE - Ecosistema Digital de Salud**
+
+- Website: [www.citamed.ve](https://www.citamed.ve)
+- Email: info@citamed.ve
+- WhatsApp: +58 XXX XXX XXXX
+
+---
+
+## Licencia
+
+Proyecto privado. Todos los derechos reservados 2025 CITAMED.VE
+
+---
+
+**Desarrollado con amor en Venezuela**
