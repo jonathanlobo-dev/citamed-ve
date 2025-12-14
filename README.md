@@ -333,7 +333,7 @@ Request -> Routes -> Middleware -> Controller -> Model -> Database
 
 ## Deployment
 
-### Desarrollo
+### Desarrollo Local
 
 ```bash
 # Backend
@@ -343,11 +343,106 @@ cd backend && npm run dev
 cd frontend && npm run dev
 ```
 
-### Produccion (Proximamente)
+### Docker (Recomendado)
 
-- **Backend:** Railway / Heroku / AWS
-- **Frontend:** Vercel / Netlify
-- **Base de Datos:** PostgreSQL en Railway / AWS RDS
+```bash
+# Configurar variables de entorno
+cp .env.docker.example .env
+# Editar .env con tus valores
+
+# Levantar todos los servicios
+docker-compose up -d
+
+# Ver logs
+docker-compose logs -f
+
+# Detener servicios
+docker-compose down
+```
+
+### CI/CD Pipeline (GitHub Actions)
+
+El proyecto incluye un pipeline completo de CI/CD en `.github/workflows/deploy.yml`.
+
+#### Flujo de Deploy
+
+```
+push develop → build → staging (auto) → smoke tests → rollback si falla
+manual trigger → build → production (con aprobación)
+```
+
+#### Jobs del Pipeline
+
+| Job | Descripcion | Trigger |
+|-----|-------------|---------|
+| `build-backend` | Construye imagen Docker backend | Auto |
+| `build-frontend` | Construye imagen Docker frontend | Auto |
+| `deploy-staging` | Deploy automatico a staging | Push a develop |
+| `smoke-tests` | Health checks post-deploy | Auto |
+| `rollback` | Revierte si smoke tests fallan | Auto si falla |
+| `deploy-production` | Deploy manual a produccion | workflow_dispatch |
+
+#### Configurar GitHub Secrets
+
+En tu repositorio: **Settings → Secrets and variables → Actions**
+
+| Secret | Descripcion | Ejemplo |
+|--------|-------------|---------|
+| `STAGING_HOST` | IP/hostname servidor staging | `staging.citamed.ve` |
+| `STAGING_URL` | URL completa staging | `https://staging.citamed.ve` |
+| `PRODUCTION_HOST` | IP/hostname servidor produccion | `citamed.ve` |
+| `PRODUCTION_URL` | URL completa produccion | `https://citamed.ve` |
+| `DEPLOY_USER` | Usuario SSH para deploy | `deploy` |
+| `DEPLOY_KEY` | Clave SSH privada | `-----BEGIN OPENSSH...` |
+| `VITE_API_URL` | URL del backend API | `https://api.citamed.ve` |
+
+#### Deploy Manual a Produccion
+
+1. Ir a **Actions** en GitHub
+2. Seleccionar **Deploy Pipeline**
+3. Click **Run workflow**
+4. Seleccionar `environment: production`
+5. Opcional: especificar `image_tag` (default: latest)
+6. Click **Run workflow**
+
+#### Rollback Manual
+
+Si el rollback automatico falla:
+
+```bash
+# SSH al servidor
+ssh deploy@citamed.ve
+
+# Ir al directorio
+cd /opt/citamed
+
+# Restaurar imagenes anteriores
+docker tag ghcr.io/usuario/citamed/backend:rollback ghcr.io/usuario/citamed/backend:current
+docker tag ghcr.io/usuario/citamed/frontend:rollback ghcr.io/usuario/citamed/frontend:current
+
+# Reiniciar servicios
+docker-compose down
+docker-compose up -d
+```
+
+#### Troubleshooting
+
+| Problema | Solucion |
+|----------|----------|
+| Build falla | Verificar Dockerfile y dependencias |
+| Push a ghcr.io falla | Verificar permisos del GITHUB_TOKEN |
+| SSH connection refused | Verificar DEPLOY_KEY y firewall |
+| Smoke tests fallan | Revisar logs: `docker-compose logs` |
+| Rollback no funciona | Verificar que exista imagen :rollback |
+
+### Infraestructura Recomendada
+
+| Componente | Opcion Recomendada | Alternativas |
+|------------|-------------------|--------------|
+| Backend | Railway / AWS ECS | Heroku, DigitalOcean |
+| Frontend | Vercel / Netlify | CloudFlare Pages |
+| Base de Datos | Railway PostgreSQL | AWS RDS, Supabase |
+| Registry | GitHub Container Registry | Docker Hub |
 
 ---
 

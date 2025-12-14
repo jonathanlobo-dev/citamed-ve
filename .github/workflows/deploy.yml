@@ -1,0 +1,366 @@
+# ============================================
+# CITAMED.VE - CI/CD Deploy Pipeline
+# ============================================
+# Workflow para build, push y deploy automático
+# - Build: Construye imágenes Docker
+# - Push: Sube a GitHub Container Registry (ghcr.io)
+# - Staging: Deploy automático en push a develop
+# - Production: Deploy manual con aprobación
+# ============================================
+
+name: Deploy Pipeline
+
+on:
+  # Auto deploy staging on develop push
+  push:
+    branches: [develop]
+  # Manual deploy production
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      image_tag:
+        description: 'Image tag to deploy (default: latest)'
+        required: false
+        default: 'latest'
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend
+  FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/frontend
+
+jobs:
+  # ==========================================
+  # JOB 1: Build Backend Image
+  # ==========================================
+  build-backend:
+    name: Build Backend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.BACKEND_IMAGE }}
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=git-
+
+      - name: Build and push Backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Echo build info
+        run: |
+          echo "✅ Backend image built and pushed"
+          echo "Tags: ${{ steps.meta.outputs.tags }}"
+
+  # ==========================================
+  # JOB 2: Build Frontend Image
+  # ==========================================
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.FRONTEND_IMAGE }}
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=git-
+
+      - name: Build and push Frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VITE_API_URL=${{ secrets.VITE_API_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Echo build info
+        run: |
+          echo "✅ Frontend image built and pushed"
+          echo "Tags: ${{ steps.meta.outputs.tags }}"
+
+  # ==========================================
+  # JOB 3: Deploy to Staging (Auto)
+  # ==========================================
+  deploy-staging:
+    name: Deploy Staging
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    environment:
+      name: staging
+      url: ${{ secrets.STAGING_URL }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Staging Server
+        env:
+          HOST: ${{ secrets.STAGING_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          IMAGE_TAG: ${{ github.event.inputs.image_tag || 'latest' }}
+        run: |
+          echo "🚀 Deploying to Staging..."
+          ssh $USER@$HOST << 'ENDSSH'
+            cd /opt/citamed
+
+            # Pull latest images
+            docker pull ${{ env.BACKEND_IMAGE }}:$IMAGE_TAG
+            docker pull ${{ env.FRONTEND_IMAGE }}:$IMAGE_TAG
+
+            # Backup current deployment
+            docker tag ${{ env.BACKEND_IMAGE }}:current ${{ env.BACKEND_IMAGE }}:rollback 2>/dev/null || true
+            docker tag ${{ env.FRONTEND_IMAGE }}:current ${{ env.FRONTEND_IMAGE }}:rollback 2>/dev/null || true
+
+            # Tag new images as current
+            docker tag ${{ env.BACKEND_IMAGE }}:$IMAGE_TAG ${{ env.BACKEND_IMAGE }}:current
+            docker tag ${{ env.FRONTEND_IMAGE }}:$IMAGE_TAG ${{ env.FRONTEND_IMAGE }}:current
+
+            # Restart services
+            docker-compose down
+            docker-compose up -d
+
+            echo "✅ Staging deployment completed"
+          ENDSSH
+
+      - name: Echo deploy info
+        run: |
+          echo "✅ Deployed to Staging"
+          echo "Environment: staging"
+          echo "Image tag: ${{ github.event.inputs.image_tag || 'latest' }}"
+
+  # ==========================================
+  # JOB 4: Smoke Tests
+  # ==========================================
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    timeout-minutes: 5
+
+    outputs:
+      status: ${{ steps.tests.outputs.status }}
+
+    steps:
+      - name: Wait for services to start
+        run: sleep 30
+
+      - name: Run smoke tests
+        id: tests
+        env:
+          STAGING_URL: ${{ secrets.STAGING_URL }}
+        run: |
+          echo "🧪 Running smoke tests..."
+
+          # Test 1: Backend health check
+          echo "Testing backend health..."
+          BACKEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" $STAGING_URL:5000/api/health --max-time 60)
+          if [ "$BACKEND_STATUS" != "200" ]; then
+            echo "❌ Backend health check failed (HTTP $BACKEND_STATUS)"
+            echo "status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          echo "✅ Backend health check passed"
+
+          # Test 2: Frontend health check
+          echo "Testing frontend..."
+          FRONTEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" $STAGING_URL --max-time 60)
+          if [ "$FRONTEND_STATUS" != "200" ]; then
+            echo "❌ Frontend health check failed (HTTP $FRONTEND_STATUS)"
+            echo "status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          echo "✅ Frontend health check passed"
+
+          # Test 3: API responds correctly
+          echo "Testing API response..."
+          API_RESPONSE=$(curl -s $STAGING_URL:5000/api/health --max-time 60)
+          if [[ ! "$API_RESPONSE" == *"OK"* ]]; then
+            echo "❌ API response check failed"
+            echo "status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          echo "✅ API response check passed"
+
+          echo "status=success" >> $GITHUB_OUTPUT
+          echo "✅ All smoke tests passed!"
+
+  # ==========================================
+  # JOB 5: Rollback (if smoke tests fail)
+  # ==========================================
+  rollback:
+    name: Rollback
+    runs-on: ubuntu-latest
+    needs: [smoke-tests]
+    if: failure()
+
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Rollback to previous version
+        env:
+          HOST: ${{ secrets.STAGING_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          echo "⚠️ Smoke tests failed! Rolling back..."
+          ssh $USER@$HOST << 'ENDSSH'
+            cd /opt/citamed
+
+            # Restore rollback images
+            docker tag ${{ env.BACKEND_IMAGE }}:rollback ${{ env.BACKEND_IMAGE }}:current 2>/dev/null || true
+            docker tag ${{ env.FRONTEND_IMAGE }}:rollback ${{ env.FRONTEND_IMAGE }}:current 2>/dev/null || true
+
+            # Restart services with previous images
+            docker-compose down
+            docker-compose up -d
+
+            echo "✅ Rollback completed"
+          ENDSSH
+
+      - name: Notify rollback
+        run: |
+          echo "⚠️ ROLLBACK EXECUTED"
+          echo "Smoke tests failed, reverted to previous deployment"
+
+  # ==========================================
+  # JOB 6: Deploy to Production (Manual)
+  # ==========================================
+  deploy-production:
+    name: Deploy Production
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
+    environment:
+      name: production
+      url: ${{ secrets.PRODUCTION_URL }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Production Server
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          IMAGE_TAG: ${{ github.event.inputs.image_tag || 'latest' }}
+        run: |
+          echo "🚀 Deploying to Production..."
+          ssh $USER@$HOST << 'ENDSSH'
+            cd /opt/citamed
+
+            # Pull specified images
+            docker pull ${{ env.BACKEND_IMAGE }}:$IMAGE_TAG
+            docker pull ${{ env.FRONTEND_IMAGE }}:$IMAGE_TAG
+
+            # Backup current deployment
+            docker tag ${{ env.BACKEND_IMAGE }}:current ${{ env.BACKEND_IMAGE }}:rollback 2>/dev/null || true
+            docker tag ${{ env.FRONTEND_IMAGE }}:current ${{ env.FRONTEND_IMAGE }}:rollback 2>/dev/null || true
+
+            # Tag new images as current
+            docker tag ${{ env.BACKEND_IMAGE }}:$IMAGE_TAG ${{ env.BACKEND_IMAGE }}:current
+            docker tag ${{ env.FRONTEND_IMAGE }}:$IMAGE_TAG ${{ env.FRONTEND_IMAGE }}:current
+
+            # Restart services
+            docker-compose down
+            docker-compose up -d
+
+            echo "✅ Production deployment completed"
+          ENDSSH
+
+      - name: Echo deploy info
+        run: |
+          echo "✅ Deployed to Production"
+          echo "Environment: production"
+          echo "Image tag: ${{ github.event.inputs.image_tag || 'latest' }}"
