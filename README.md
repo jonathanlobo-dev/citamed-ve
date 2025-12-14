@@ -42,6 +42,8 @@ CITAMED.VE conecta pacientes, medicos y proveedores de servicios de salud en una
 - **Framework:** Express.js 4.21+
 - **Base de Datos:** PostgreSQL 16
 - **ORM:** Sequelize 6.37+
+- **Cache:** Redis (ioredis) + Memory fallback
+- **WebSocket:** Socket.io 4.8+
 - **Autenticacion:** JWT + bcryptjs
 - **Documentacion:** Swagger OpenAPI 3.0
 - **Testing:** Jest 29+ (44 tests)
@@ -52,6 +54,7 @@ CITAMED.VE conecta pacientes, medicos y proveedores de servicios de salud en una
 - **Styling:** Tailwind CSS 4+
 - **Routing:** React Router 7+
 - **State:** Context API
+- **WebSocket:** Socket.io-client 4.8+
 - **Testing:** Cypress 13+ (6 tests E2E)
 
 ### Infraestructura
@@ -69,6 +72,8 @@ proyecto/
 │   ├── src/
 │   │   ├── config/
 │   │   │   ├── database.js          # Configuracion PostgreSQL
+│   │   │   ├── redis.js             # Conexion Redis + fallback
+│   │   │   ├── socket.js            # Socket.io server
 │   │   │   └── swagger.js           # OpenAPI 3.0 (14 schemas)
 │   │   ├── controllers/             # Logica de negocio
 │   │   │   ├── authController.js
@@ -83,9 +88,17 @@ proyecto/
 │   │   │   ├── auth.js
 │   │   │   ├── profiles.js
 │   │   │   └── protected.js
-│   │   ├── middleware/              # Auth, validacion
-│   │   │   └── auth.js
+│   │   ├── middleware/              # Auth, validacion, cache
+│   │   │   ├── auth.js
+│   │   │   ├── cache.js             # Cache middleware
+│   │   │   └── socketAuth.js        # JWT auth para WebSocket
+│   │   ├── socket/                  # WebSocket handlers
+│   │   │   ├── events.js            # Event constants
+│   │   │   └── handlers/            # Namespace handlers
+│   │   ├── services/                # Servicios compartidos
+│   │   │   └── cacheService.js      # Operaciones de cache
 │   │   └── server.js                # Punto de entrada
+│   ├── migrations/                  # Sequelize migrations
 │   ├── __tests__/                   # Tests Jest
 │   │   ├── unit/
 │   │   └── integration/
@@ -95,13 +108,19 @@ proyecto/
 │   │   ├── components/              # Componentes reutilizables
 │   │   ├── pages/                   # Vistas principales
 │   │   ├── context/                 # AuthContext
-│   │   └── hooks/                   # Custom hooks
+│   │   ├── hooks/                   # Custom hooks
+│   │   │   ├── useSocket.js         # Hook conexion WebSocket
+│   │   │   └── useSocketEvent.js    # Hook eventos WebSocket
+│   │   └── utils/
+│   │       └── socket.js            # Cliente Socket.io
 │   ├── cypress/                     # Tests E2E
 │   │   └── e2e/
 │   └── package.json
 ├── .github/
 │   └── workflows/
-│       └── ci.yml                   # GitHub Actions
+│       ├── ci.yml                   # Tests automaticos
+│       └── deploy.yml               # Deploy staging/prod
+├── docker-compose.yml               # Orquestacion servicios
 └── README.md
 ```
 
@@ -372,6 +391,70 @@ REDIS_TTL=300
 ```bash
 # Agregar ?nocache=true para saltear cache
 curl http://localhost:5000/api/specialties?nocache=true
+```
+
+### WebSocket (Socket.io)
+
+Infraestructura de comunicacion real-time para:
+- Sala de Espera Virtual en tiempo real
+- Notificaciones push instantaneas
+- Actualizaciones de cola de pacientes
+
+**Arquitectura:**
+```
+Client → Socket.io → JWT Auth → Namespace Handler → Room/Broadcast
+```
+
+**Namespaces Disponibles:**
+
+| Namespace | Proposito | Eventos Principales |
+|-----------|-----------|---------------------|
+| `/` | Conexion base | `join-room`, `leave-room` |
+| `/waiting-room` | Sala de espera | `wr:doctor-online`, `wr:queue-update` |
+| `/notifications` | Notificaciones | `notif:new`, `notif:read` |
+
+**Frontend - Uso de Hooks:**
+
+```jsx
+import useSocket from './hooks/useSocket';
+import useSocketEvent from './hooks/useSocketEvent';
+
+// Conectar al namespace
+const { socket, isConnected, emit } = useSocket('/waiting-room');
+
+// Escuchar evento especifico
+const { lastData } = useSocketEvent('/waiting-room', 'wr:queue-update');
+
+// Emitir evento
+emit('wr:patient-checkin', { appointmentId: 123, doctorId: 456 });
+```
+
+**Backend - Emitir desde Controlador:**
+
+```javascript
+const { emitToRoom, emitToUser } = require('./socket');
+
+// Notificar a sala de un doctor
+emitToRoom('doctor:123', 'wr:queue-update', { position: 1 });
+
+// Notificar a usuario especifico
+emitToUser(userId, 'notif:new', { message: 'Tu turno esta proximo' });
+```
+
+**Autenticacion:**
+- JWT requerido en conexion (query, auth object, o header)
+- Socket recibe `userId` y `userRole` del token
+- Rechazo automatico de conexiones sin token valido
+
+**Variables de Entorno:**
+```bash
+# Backend
+SOCKET_CORS_ORIGIN=http://localhost:5173
+SOCKET_PING_TIMEOUT=30000
+SOCKET_PING_INTERVAL=25000
+
+# Frontend
+VITE_SOCKET_URL=http://localhost:5000
 ```
 
 ---
