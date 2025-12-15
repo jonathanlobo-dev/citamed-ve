@@ -5,6 +5,12 @@ const swaggerSpec = require('./config/swagger');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Logging & Monitoring
+const { logger, logServerStart, logDatabaseConnection } = require('./config/logger');
+const { morganLogger } = require('./middleware/morganLogger');
+const { performanceMiddleware, memoryTracker } = require('./middleware/performanceMetrics');
+const { errorLoggerMiddleware, uncaughtErrorLogger, setupProcessErrorHandlers } = require('./middleware/errorLogger');
+
 // Security Middleware
 const { securityHeaders } = require('./config/helmet.config');
 const { corsOptions } = require('./config/cors.config');
@@ -18,6 +24,9 @@ const {
   authLimiter,
   searchLimiter
 } = require('./middleware/rateLimiter');
+
+// Setup process error handlers
+setupProcessErrorHandlers();
 
 // ==================== SECURITY MIDDLEWARE (ORDEN IMPORTANTE) ====================
 // 1. Deshabilitar X-Powered-By
@@ -36,7 +45,17 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // 5. Sanitización de inputs
 sanitizerStack.forEach(middleware => app.use(middleware));
 
-console.log('[Security] Security middleware stack applied');
+// ==================== LOGGING & MONITORING MIDDLEWARE ====================
+// 6. HTTP Request logging (Morgan + Winston)
+app.use(morganLogger);
+
+// 7. Performance metrics tracking
+app.use(performanceMiddleware);
+
+// 8. Memory usage tracking (cada 1000 requests)
+app.use(memoryTracker);
+
+logger.info('Security and monitoring middleware stack applied');
 
 // ==================== SWAGGER DOCUMENTATION ====================
 app.get('/api-docs.json', (req, res) => {
@@ -60,11 +79,13 @@ const { sequelize, Specialty, User, DoctorProfile, PatientProfile, Appointment }
 // ==================== IMPORTAR RUTAS ====================
 const authRoutes = require("./routes/auth");
 const verificationRoutes = require("./routes/verification");
+const metricsRoutes = require("./routes/metrics");
 
 // ==================== USAR RUTAS ====================
 // Auth routes con rate limiting estricto (5 req/15min)
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/verification", verificationRoutes);
+app.use("/api/metrics", metricsRoutes);
 
 // ==================== RUTAS B�SICAS ====================
 app.get("/", (req, res) => {
@@ -84,12 +105,27 @@ app.get("/", (req, res) => {
   });
 });
 
-app.get("/api/health", (req, res) => {
-  res.json({
-    status: "OK",
-    message: "?? CITAMED.VE - Servidor funcionando",
-    timestamp: new Date().toISOString()
-  });
+// Health endpoint mejorado - usa /api/metrics/health para versión completa
+app.get("/api/health", async (req, res) => {
+  const startTime = Date.now();
+  try {
+    // Quick DB check
+    await sequelize.authenticate();
+    res.json({
+      status: "healthy",
+      message: "CITAMED.VE - Servidor funcionando",
+      timestamp: new Date().toISOString(),
+      responseTime: `${Date.now() - startTime}ms`,
+      uptime: Math.floor(process.uptime()),
+      version: process.env.npm_package_version || '1.0.0'
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: "unhealthy",
+      message: "Database connection failed",
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 app.get("/api/db-test", async (req, res) => {
@@ -534,49 +570,53 @@ app.get("/api/stats", generalLimiter, async (req, res) => {
   }
 });
 
-// ==================== INICIALIZACI�N ====================
+// ==================== ERROR HANDLING MIDDLEWARE ====================
+// Error logger (debe estar después de todas las rutas)
+app.use(errorLoggerMiddleware);
+
+// Final error handler
+app.use(uncaughtErrorLogger);
+
+// ==================== INICIALIZACION ====================
 async function startServer() {
-  console.log('?? Iniciando CITAMED.VE...');
-  
+  logger.info('Starting CITAMED.VE server...');
+
   try {
-    console.log('?? Conectando a PostgreSQL...');
+    logger.info('Connecting to PostgreSQL...');
     await sequelize.authenticate();
-    console.log('? Conectado a PostgreSQL');
+    logDatabaseConnection('connected', { database: process.env.DB_NAME });
 
-    console.log('?? Verificando sincronizaci�n...');
-    // await sequelize.sync({ force: false, alter: true });
-    console.log('? Tablas verificadas (sync skipped temporarily)');
-
-    console.log('?? Contando registros...');
+    // Count active specialties
     const count = await Specialty.count({ where: { isActive: true } });
-    console.log(`? ${count} especialidades activas`);
+    logger.info(`Database ready: ${count} active specialties`);
 
     app.listen(PORT, () => {
+      logServerStart(PORT, process.env.NODE_ENV || 'development');
+
+      // Console output for development visibility
       console.log('');
       console.log('========================================');
-      console.log('?? CITAMED.VE - BACKEND FUNCIONANDO');
+      console.log('CITAMED.VE - BACKEND FUNCIONANDO');
       console.log('========================================');
-      console.log(`?? Servidor: http://localhost:${PORT}`);
-      console.log(`?? Base de datos: ${process.env.DB_NAME}`);
+      console.log(`Servidor: http://localhost:${PORT}`);
+      console.log(`Base de datos: ${process.env.DB_NAME}`);
+      console.log(`Entorno: ${process.env.NODE_ENV || 'development'}`);
       console.log('');
-      console.log('?? Endpoints disponibles:');
-      console.log('   ?? Auth:');
-      console.log(`      POST http://localhost:${PORT}/api/auth/register`);
-      console.log(`      POST http://localhost:${PORT}/api/auth/login`);
-      console.log(`      GET  http://localhost:${PORT}/api/auth/profile`);
+      console.log('Endpoints:');
+      console.log(`  Health: GET http://localhost:${PORT}/api/health`);
+      console.log(`  Metrics: GET http://localhost:${PORT}/api/metrics/health`);
+      console.log(`  Docs: http://localhost:${PORT}/api-docs`);
       console.log('');
-      console.log('   ?? Data:');
-      console.log(`      GET http://localhost:${PORT}/api/specialties`);
-      console.log(`      GET http://localhost:${PORT}/api/specialties/search?q=cardio`);
-      console.log(`      GET http://localhost:${PORT}/api/stats`);
-      console.log('');
-      console.log('? Listo para conectar con React Frontend');
+      console.log('Logs: backend/logs/');
       console.log('========================================');
       console.log('');
     });
   } catch (error) {
-    console.error('? Error iniciando servidor:', error.message);
-    console.error('Stack:', error.stack);
+    logger.error('Failed to start server', {
+      message: error.message,
+      stack: error.stack
+    });
+    logDatabaseConnection('failed', { error: error.message });
     process.exit(1);
   }
 }

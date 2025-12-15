@@ -579,6 +579,74 @@ npm audit fix
 
 **Documentacion completa:** `backend/docs/SECURITY_AUDIT.md`
 
+### Monitoring & Logging
+
+Sistema completo de monitoreo y logging estructurado para observabilidad en produccion:
+
+**Winston Logger:**
+- Logs estructurados en formato JSON
+- Rotacion diaria automatica de archivos
+- Niveles: error, warn, info, http, debug
+- Console colorizado en desarrollo
+
+**Morgan HTTP Logging:**
+- Request logging integrado con Winston
+- Skip automatico de health checks
+- Formato JSON para parsing automatizado
+
+**Metricas de Performance:**
+- Response time tracking por endpoint
+- Deteccion automatica de requests lentos (>1s)
+- Memory usage snapshots
+- Query timing de base de datos
+
+**Archivos de Log:**
+```
+backend/logs/
+├── error.log      # Solo errores (max 5MB, 5 files)
+├── combined.log   # Todos los niveles (max 10MB, 5 files)
+└── http-YYYY-MM-DD.log  # HTTP requests (14 dias)
+```
+
+**Endpoints de Metricas:**
+
+| Endpoint | Descripcion | Acceso |
+|----------|-------------|--------|
+| `GET /api/health` | Health check basico | Publico |
+| `GET /api/metrics/health` | Health check detallado | Publico |
+| `GET /api/metrics` | Dashboard completo | Admin |
+| `GET /api/metrics/requests` | Metricas de requests | Admin |
+| `GET /api/metrics/errors` | Metricas de errores | Admin |
+| `GET /api/metrics/database` | Queries lentas | Admin |
+
+**Ejemplo de Health Check:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2024-12-14T10:30:00.000Z",
+  "responseTime": "15ms",
+  "version": "1.0.0",
+  "checks": {
+    "database": { "status": "healthy", "latency": "12ms" },
+    "memory": { "status": "healthy", "heapUsed": "85MB" }
+  },
+  "uptime": 3600
+}
+```
+
+**Variables de Entorno:**
+```bash
+LOG_LEVEL=debug              # error, warn, info, http, debug
+SLOW_REQUEST_THRESHOLD=1000  # Umbral para alertas (ms)
+SLOW_QUERY_THRESHOLD=200     # Umbral para queries lentas (ms)
+```
+
+**Process Error Handling:**
+- Captura de uncaught exceptions
+- Captura de unhandled rejections
+- Graceful shutdown en SIGTERM
+- Flush de logs antes de exit
+
 ---
 
 ## Deployment
