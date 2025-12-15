@@ -518,6 +518,67 @@ RATE_LIMIT_AUTH_WINDOW=900000
 - Si Redis no esta disponible, usa almacenamiento en memoria
 - La aplicacion sigue funcionando sin interrupciones
 
+### Security Hardening
+
+Implementacion de medidas de seguridad enterprise (OWASP Top 10):
+
+**Security Headers (Helmet.js):**
+
+| Header | Proteccion |
+|--------|------------|
+| Content-Security-Policy | XSS, Injection |
+| X-Frame-Options | Clickjacking |
+| X-Content-Type-Options | MIME sniffing |
+| Strict-Transport-Security | MITM (produccion) |
+| Referrer-Policy | Information leakage |
+
+**Input Sanitization:**
+- NoSQL Injection protection (express-mongo-sanitize)
+- XSS sanitization (custom implementation)
+- HTTP Parameter Pollution protection (hpp)
+- Content-Type validation
+- Payload size limits
+
+**Input Validation (express-validator):**
+```javascript
+// Ejemplo de validacion en rutas
+const { registerValidator, validationErrorHandler } = require('./validators');
+
+router.post('/register', registerValidator, validationErrorHandler, controller.register);
+```
+
+**Validators Disponibles:**
+- `authValidator.js` - Login, Register, Password reset
+- `doctorValidator.js` - Busqueda, Perfil
+- `appointmentValidator.js` - Crear, Actualizar, Cancelar
+
+**CORS Configuration:**
+```javascript
+// Development
+allowedOrigins: ['http://localhost:5173']
+
+// Production
+allowedOrigins: ['https://citamed.ve']
+```
+
+**Variables de Entorno:**
+```bash
+ENFORCE_HTTPS=false
+ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+MAX_PAYLOAD_SIZE=10485760
+```
+
+**npm audit:**
+```bash
+# Verificar vulnerabilidades
+npm audit
+
+# Corregir automaticamente
+npm audit fix
+```
+
+**Documentacion completa:** `backend/docs/SECURITY_AUDIT.md`
+
 ---
 
 ## Deployment

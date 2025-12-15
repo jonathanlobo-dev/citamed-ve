@@ -1,6 +1,11 @@
 ﻿const express = require("express");
 const router = express.Router();
 const authController = require("../controllers/authController");
+const {
+  registerValidator,
+  loginValidator,
+  validationErrorHandler
+} = require('../validators');
 
 /**
  * @swagger
@@ -25,7 +30,7 @@ const authController = require("../controllers/authController");
  *       401:
  *         description: Credenciales inválidas
  */
-router.post("/login", authController.login);
+router.post("/login", loginValidator, validationErrorHandler, authController.login);
 
 /**
  * @swagger
@@ -56,6 +61,6 @@ router.post("/login", authController.login);
  *       400:
  *         description: Error de validación
  */
-router.post("/register", authController.register);
+router.post("/register", registerValidator, validationErrorHandler, authController.register);
 
 module.exports = router;

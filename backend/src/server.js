@@ -1,10 +1,16 @@
 require("dotenv").config();
 const express = require("express");
-const cors = require("cors");
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Security Middleware
+const { securityHeaders } = require('./config/helmet.config');
+const { corsOptions } = require('./config/cors.config');
+const cors = require('cors');
+const { sanitizerStack } = require('./middleware/sanitizer');
+const { secureErrorHandler } = require('./middleware/security');
 
 // Rate Limiting
 const {
@@ -13,9 +19,24 @@ const {
   searchLimiter
 } = require('./middleware/rateLimiter');
 
-// Middlewares
-app.use(cors());
-app.use(express.json());
+// ==================== SECURITY MIDDLEWARE (ORDEN IMPORTANTE) ====================
+// 1. Deshabilitar X-Powered-By
+app.disable('x-powered-by');
+
+// 2. Security Headers (Helmet)
+securityHeaders.forEach(middleware => app.use(middleware));
+
+// 3. CORS
+app.use(cors(corsOptions));
+
+// 4. Body parsing con límites
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// 5. Sanitización de inputs
+sanitizerStack.forEach(middleware => app.use(middleware));
+
+console.log('[Security] Security middleware stack applied');
 
 // ==================== SWAGGER DOCUMENTATION ====================
 app.get('/api-docs.json', (req, res) => {
