@@ -9,7 +9,15 @@
 
 const metricsStore = require('../utils/metricsStore');
 const { getSlowQueries, getQueryStats } = require('../config/sequelizeLogger');
-const { sequelize } = require('../models');
+
+// Lazy import to avoid circular dependency
+let sequelize = null;
+const getSequelize = () => {
+  if (!sequelize) {
+    sequelize = require('../models').sequelize;
+  }
+  return sequelize;
+};
 
 /**
  * GET /api/metrics
@@ -74,7 +82,7 @@ const getHealthCheck = async (req, res) => {
 
     try {
       const dbStart = Date.now();
-      await sequelize.authenticate();
+      await getSequelize().authenticate();
       dbLatency = Date.now() - dbStart;
 
       if (dbLatency > 100) {
