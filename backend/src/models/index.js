@@ -54,6 +54,10 @@ try {
   db.PatientProfile = PatientProfileModel(sequelize);
   console.log('  ✅ PatientProfile cargado');
 
+  const ProviderProfileModel = require('./ProviderProfile');
+  db.ProviderProfile = ProviderProfileModel(sequelize);
+  console.log('  ✅ ProviderProfile cargado');
+
   const AppointmentModel = require('./Appointment');
   db.Appointment = AppointmentModel(sequelize);
   console.log('  ✅ Appointment cargado');
@@ -92,6 +96,18 @@ try {
     as: 'user'
   });
   console.log('  ✅ User <-> PatientProfile');
+
+  // USER <-> PROVIDER PROFILE (1:1)
+  db.User.hasOne(db.ProviderProfile, {
+    foreignKey: 'userId',
+    as: 'providerProfile',
+    onDelete: 'CASCADE'
+  });
+  db.ProviderProfile.belongsTo(db.User, {
+    foreignKey: 'userId',
+    as: 'user'
+  });
+  console.log('  ✅ User <-> ProviderProfile');
 
   // SPECIALTY <-> DOCTOR PROFILE (1:N)
   db.Specialty.hasMany(db.DoctorProfile, {

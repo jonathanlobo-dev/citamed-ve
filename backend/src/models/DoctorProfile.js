@@ -61,6 +61,12 @@ module.exports = (sequelize) => {
       unique: true,
       comment: 'Número de matrícula profesional'
     },
+    mppsNumber: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      unique: true,
+      comment: 'Número MPPS - Ministerio del Poder Popular para la Salud (Venezuela)'
+    },
     medicalSchool: {
       type: DataTypes.STRING(200),
       allowNull: true,
@@ -133,6 +139,40 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       defaultValue: 30,
       comment: 'Duración de consulta en minutos'
+    },
+    priceTeleconsultation: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      comment: 'Precio de teleconsulta en USD'
+    },
+    priceHomeVisit: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      comment: 'Precio de visita a domicilio en USD'
+    },
+    acceptedInsurances: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: 'Lista de seguros médicos aceptados (texto libre)'
+    },
+
+    // ========================================
+    // HORARIOS SIMPLIFICADOS
+    // ========================================
+    availableDays: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      defaultValue: [],
+      comment: 'Días disponibles [monday, tuesday, wednesday, ...]'
+    },
+    startTime: {
+      type: DataTypes.TIME,
+      allowNull: true,
+      comment: 'Hora de inicio de atención'
+    },
+    endTime: {
+      type: DataTypes.TIME,
+      allowNull: true,
+      comment: 'Hora de fin de atención'
     },
 
     // ========================================

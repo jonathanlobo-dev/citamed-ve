@@ -15,6 +15,41 @@ const {
   PATTERNS
 } = require('./authValidator');
 
+// Patient registration validators (multi-step)
+const {
+  patientStep1Validator,
+  patientStep2Validator,
+  patientStep3Validator,
+  patientStep4Validator,
+  patientRegisterValidator,
+  BLOOD_TYPES,
+  GENDERS
+} = require('./patientValidator');
+
+// Doctor registration validators (multi-step)
+const {
+  doctorStep1Validator,
+  doctorStep2Validator,
+  doctorStep3Validator,
+  doctorStep4Validator,
+  doctorStep5Validator,
+  doctorStep6Validator,
+  doctorRegisterValidator,
+  WEEKDAYS
+} = require('./doctorRegisterValidator');
+
+// Provider registration validators (multi-step)
+const {
+  providerStep1Validator,
+  providerStep2Validator,
+  providerStep3Validator,
+  providerStep4Validator,
+  providerStep5Validator,
+  providerRegisterValidator,
+  PROVIDER_TYPES,
+  RIF_PATTERN
+} = require('./providerValidator');
+
 // Doctor validators
 const {
   searchDoctorsValidator,
@@ -56,6 +91,30 @@ module.exports = {
   resetPasswordValidator,
   changePasswordValidator,
 
+  // Patient Registration (multi-step)
+  patientStep1Validator,
+  patientStep2Validator,
+  patientStep3Validator,
+  patientStep4Validator,
+  patientRegisterValidator,
+
+  // Doctor Registration (multi-step)
+  doctorStep1Validator,
+  doctorStep2Validator,
+  doctorStep3Validator,
+  doctorStep4Validator,
+  doctorStep5Validator,
+  doctorStep6Validator,
+  doctorRegisterValidator,
+
+  // Provider Registration (multi-step)
+  providerStep1Validator,
+  providerStep2Validator,
+  providerStep3Validator,
+  providerStep4Validator,
+  providerStep5Validator,
+  providerRegisterValidator,
+
   // Doctor
   searchDoctorsValidator,
   getDoctorByIdValidator,
@@ -80,6 +139,11 @@ module.exports = {
   // Constants
   ALLOWED_ROLES,
   PATTERNS,
+  BLOOD_TYPES,
+  GENDERS,
+  WEEKDAYS,
+  PROVIDER_TYPES,
+  RIF_PATTERN,
   VENEZUELAN_CITIES,
   VENEZUELAN_STATES,
   SUPPORTED_LANGUAGES,

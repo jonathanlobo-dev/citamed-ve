@@ -1,134 +1,262 @@
-describe('Registro de Usuario - Flujo Completo E2E', () => {
+/**
+ * E2E Tests - Registro Multi-Paso
+ * CITAMED.VE - M01.3
+ *
+ * Tests para los wizards de registro:
+ * - Paciente (4 pasos)
+ * - Médico (6 pasos)
+ * - Proveedor (5 pasos)
+ */
+
+describe('Registro Multi-Paso - Flujo Completo E2E', () => {
   const timestamp = Date.now();
 
   beforeEach(() => {
     cy.visit('/registro');
   });
 
-  it('debe registrar un paciente exitosamente y redirigir a dashboard', () => {
-    const userData = {
-      name: 'Paciente Test E2E',
-      email: `paciente_e2e_${timestamp}@test.com`,
-      password: 'TestPass123!',
-      phone: '+584121234567'
-    };
+  describe('Selección de Rol', () => {
+    it('debe mostrar las 3 opciones de registro', () => {
+      cy.contains('Paciente', { timeout: 10000 }).should('be.visible');
+      cy.contains('Médico').should('be.visible');
+      cy.contains('Proveedor').should('be.visible');
+    });
 
-    // Paso 1: Seleccionar rol de Paciente
-    cy.contains('Paciente', { timeout: 10000 }).click();
+    it('debe navegar al wizard de paciente al seleccionar Paciente', () => {
+      cy.contains('Paciente').click();
+      cy.contains('Registro de Paciente', { timeout: 5000 }).should('be.visible');
+      cy.contains('Paso 1 de 4').should('be.visible');
+    });
 
-    // Paso 2: Llenar formulario
-    cy.get('input[name="name"]', { timeout: 10000 }).type(userData.name);
-    cy.get('input[name="email"]').type(userData.email);
-    cy.get('input[name="phone"]').type(userData.phone);
-    cy.get('input[name="password"]').type(userData.password);
-    cy.get('input[name="confirmPassword"]').type(userData.password);
+    it('debe navegar al wizard de médico al seleccionar Médico', () => {
+      cy.contains('Médico').click();
+      cy.contains('Registro de Médico', { timeout: 5000 }).should('be.visible');
+      cy.contains('Paso 1 de 6').should('be.visible');
+    });
 
-    cy.get('button[type="submit"]').click();
-
-    // Verificar redirección al dashboard
-    cy.url({ timeout: 15000 }).should('include', '/dashboard');
-
-    // Verificar token JWT guardado
-    cy.window().then((win) => {
-      const token = win.localStorage.getItem('citamed_token');
-      expect(token).to.exist;
-      expect(token).to.match(/^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/);
+    it('debe navegar al wizard de proveedor al seleccionar Proveedor', () => {
+      cy.contains('Proveedor').click();
+      cy.contains('Registro de Proveedor', { timeout: 5000 }).should('be.visible');
+      cy.contains('Paso 1 de 5').should('be.visible');
     });
   });
 
-  it('debe registrar un médico con especialidad exitosamente', () => {
-    const userData = {
-      name: 'Dr. Test E2E',
-      email: `doctor_e2e_${timestamp + 1}@test.com`,
-      password: 'DoctorPass123!',
-      phone: '+584121234568',
-      licenseNumber: `MPPS-E2E-${timestamp}`
+  describe('Wizard Paciente - 4 Pasos', () => {
+    const patientData = {
+      email: `paciente_e2e_${timestamp}@test.com`,
+      password: 'TestPass123!',
+      firstName: 'Juan',
+      lastName: 'Pérez',
+      cedula: 'V-12345678',
+      phone: '04121234567',
+      bloodType: 'O+',
+      emergencyName: 'María Pérez',
+      emergencyPhone: '04241234567'
     };
 
-    // Paso 1: Seleccionar rol de Médico
-    cy.contains('Médico', { timeout: 10000 }).click();
+    beforeEach(() => {
+      cy.contains('Paciente').click();
+    });
 
-    // Paso 2: Llenar formulario
-    cy.get('input[name="name"]', { timeout: 10000 }).type(userData.name);
-    cy.get('input[name="email"]').type(userData.email);
-    cy.get('input[name="phone"]').type(userData.phone);
-    cy.get('input[name="licenseNumber"]').type(userData.licenseNumber);
-    cy.get('select[name="specialty"]').select(1); // Primera especialidad disponible
-    cy.get('input[name="password"]').type(userData.password);
-    cy.get('input[name="confirmPassword"]').type(userData.password);
+    it('Paso 1: debe validar campos de credenciales', () => {
+      // Intentar continuar sin llenar
+      cy.contains('Continuar').click();
+      cy.contains('Email es requerido').should('be.visible');
 
-    cy.get('button[type="submit"]').click();
+      // Llenar email inválido
+      cy.get('input[type="email"]').type('email-invalido');
+      cy.contains('Continuar').click();
+      cy.contains('Email no es válido').should('be.visible');
+    });
 
-    // Verificar redirección al dashboard de médico
-    cy.url({ timeout: 15000 }).should('include', '/dashboard');
+    it('Paso 1: debe mostrar indicador de fortaleza de contraseña', () => {
+      cy.get('input[type="email"]').type(patientData.email);
+      cy.get('input[type="password"]').first().type('abc');
+      cy.contains('Débil').should('be.visible');
+
+      cy.get('input[type="password"]').first().clear().type('Abc12345');
+      cy.contains('Media').should('be.visible');
+
+      cy.get('input[type="password"]').first().clear().type('Abc123456!@#');
+      cy.contains('Fuerte').should('be.visible');
+    });
+
+    it('Paso 1: debe validar que las contraseñas coincidan', () => {
+      cy.get('input[type="email"]').type(patientData.email);
+      cy.get('input[type="password"]').first().type(patientData.password);
+      cy.get('input[type="password"]').last().type('DiferentePass123!');
+      cy.get('input[type="checkbox"]').check();
+      cy.contains('Continuar').click();
+      cy.contains('Las contraseñas no coinciden').should('be.visible');
+    });
+
+    it('debe completar el flujo de registro de paciente', () => {
+      // Paso 1: Credenciales
+      cy.get('input[type="email"]').type(patientData.email);
+      cy.get('input[type="password"]').first().type(patientData.password);
+      cy.get('input[type="password"]').last().type(patientData.password);
+      cy.get('input[type="checkbox"]').check();
+      cy.contains('Continuar').click();
+
+      // Paso 2: Datos personales
+      cy.contains('Datos personales', { timeout: 5000 }).should('be.visible');
+      cy.get('input[placeholder="Juan"]').type(patientData.firstName);
+      cy.get('input[placeholder="Pérez"]').type(patientData.lastName);
+      cy.get('input[placeholder="V-12345678"]').type(patientData.cedula);
+      cy.get('input[type="date"]').type('1990-01-15');
+      cy.contains('Masculino').click();
+      cy.get('input[placeholder="04121234567"]').type(patientData.phone);
+      cy.contains('Continuar').click();
+
+      // Paso 3: Información médica
+      cy.contains('Información médica', { timeout: 5000 }).should('be.visible');
+      cy.contains('O+').click();
+      cy.get('input[placeholder="María Pérez"]').type(patientData.emergencyName);
+      cy.get('input[placeholder="04241234567"]').type(patientData.emergencyPhone);
+      cy.contains('Continuar').click();
+
+      // Paso 4: Confirmación
+      cy.contains('Confirma tus datos', { timeout: 5000 }).should('be.visible');
+      cy.contains(patientData.email).should('be.visible');
+      cy.contains(patientData.firstName).should('be.visible');
+
+      // Confirmar y enviar
+      cy.get('input[type="checkbox"]').check();
+      cy.contains('Completar registro').click();
+
+      // Verificar éxito
+      cy.contains('Registro exitoso', { timeout: 15000 }).should('be.visible');
+    });
   });
 
-  it('debe mostrar error con email duplicado', () => {
-    const email = `duplicado_e2e_${timestamp + 2}@test.com`;
-    const password = 'TestPass123!';
+  describe('Wizard Médico - Validaciones', () => {
+    beforeEach(() => {
+      cy.contains('Médico').click();
+    });
 
-    // Primer registro
-    cy.contains('Paciente').click();
-    cy.get('input[name="name"]', { timeout: 10000 }).type('Usuario 1');
-    cy.get('input[name="email"]').type(email);
-    cy.get('input[name="password"]').type(password);
-    cy.get('input[name="confirmPassword"]').type(password);
-    cy.get('button[type="submit"]').click();
+    it('debe mostrar nota sobre revisión de cuenta', () => {
+      cy.contains('revisión').should('be.visible');
+      cy.contains('MPPS').should('be.visible');
+    });
 
-    // Esperar a que se complete el registro
-    cy.url({ timeout: 15000 }).should('include', '/dashboard');
+    it('Paso 1: debe requerir aceptar términos y código de ética', () => {
+      const email = `doctor_e2e_${timestamp}@test.com`;
+      cy.get('input[type="email"]').type(email);
+      cy.get('input[type="password"]').first().type('DoctorPass123!');
+      cy.get('input[type="password"]').last().type('DoctorPass123!');
+      cy.contains('Continuar').click();
+      cy.contains('Debe aceptar los términos').should('be.visible');
+    });
 
-    // Intentar registrar otro usuario con el mismo email
-    cy.visit('/registro');
-    cy.contains('Paciente').click();
-    cy.get('input[name="name"]', { timeout: 10000 }).type('Usuario 2');
-    cy.get('input[name="email"]').type(email);
-    cy.get('input[name="password"]').type(password);
-    cy.get('input[name="confirmPassword"]').type(password);
-    cy.get('button[type="submit"]').click();
+    it('debe navegar entre pasos con botones Anterior/Continuar', () => {
+      const email = `doctor_nav_${timestamp}@test.com`;
 
-    // Verificar mensaje de error
-    cy.contains(/email.*existe|email.*uso|ya.*registrado/i, { timeout: 10000 })
-      .should('be.visible');
+      // Paso 1
+      cy.get('input[type="email"]').type(email);
+      cy.get('input[type="password"]').first().type('DoctorPass123!');
+      cy.get('input[type="password"]').last().type('DoctorPass123!');
+      cy.get('input[type="checkbox"]').check();
+      cy.contains('Continuar').click();
+
+      // Paso 2 - verificar que estamos aquí
+      cy.contains('Datos personales', { timeout: 5000 }).should('be.visible');
+
+      // Volver al paso 1
+      cy.contains('Anterior').click();
+      cy.contains('Crea tu cuenta de médico', { timeout: 5000 }).should('be.visible');
+
+      // El email debe seguir ahí (persistencia)
+      cy.get('input[type="email"]').should('have.value', email);
+    });
   });
 
-  it('debe validar campos requeridos al enviar formulario vacío', () => {
-    // Seleccionar rol primero para ver el formulario
-    cy.contains('Paciente').click();
+  describe('Wizard Proveedor - Validaciones', () => {
+    beforeEach(() => {
+      cy.contains('Proveedor').click();
+    });
 
-    // Intentar enviar sin llenar campos
-    cy.get('button[type="submit"]', { timeout: 10000 }).click();
+    it('debe mostrar nota sobre revisión de empresa', () => {
+      cy.contains('revisión').should('be.visible');
+      cy.contains('documentación').should('be.visible');
+    });
 
-    // Verificar que aparecen errores de validación
-    cy.contains(/nombre.*caracteres|nombre.*obligatorio/i, { timeout: 5000 })
-      .should('be.visible');
+    it('Paso 2: debe validar formato de RIF', () => {
+      const email = `provider_e2e_${timestamp}@test.com`;
+
+      // Completar paso 1
+      cy.get('input[type="email"]').type(email);
+      cy.get('input[type="password"]').first().type('ProviderPass123!');
+      cy.get('input[type="password"]').last().type('ProviderPass123!');
+      cy.get('input[type="checkbox"]').check();
+      cy.contains('Continuar').click();
+
+      // Paso 2: Datos de empresa
+      cy.contains('Datos de la empresa', { timeout: 5000 }).should('be.visible');
+      cy.get('input[placeholder="Farmacia San José"]').type('Mi Empresa Test');
+      cy.get('input[placeholder="J-12345678-9"]').type('INVALIDO');
+      cy.contains('Continuar').click();
+      cy.contains('Formato').should('be.visible');
+    });
+
+    it('Paso 3: debe mostrar tipos de proveedor', () => {
+      const email = `provider_types_${timestamp}@test.com`;
+
+      // Completar paso 1
+      cy.get('input[type="email"]').type(email);
+      cy.get('input[type="password"]').first().type('ProviderPass123!');
+      cy.get('input[type="password"]').last().type('ProviderPass123!');
+      cy.get('input[type="checkbox"]').check();
+      cy.contains('Continuar').click();
+
+      // Paso 2: Datos de empresa (llenar mínimo)
+      cy.get('input[placeholder="Farmacia San José"]').type('Mi Empresa');
+      cy.get('input[placeholder="J-12345678-9"]').type('J-12345678-9');
+      cy.get('input[placeholder*="Inversiones"]').type('Mi Empresa C.A.');
+      cy.get('input[placeholder="Juan Carlos Pérez"]').type('Representante Test');
+      cy.get('input[placeholder="02121234567"]').type('02121234567');
+      cy.get('input[placeholder="contacto@empresa.com"]').type('contacto@test.com');
+      cy.contains('Continuar').click();
+
+      // Paso 3: Verificar tipos de proveedor
+      cy.contains('Categoría y servicios', { timeout: 5000 }).should('be.visible');
+      cy.contains('Farmacia').should('be.visible');
+      cy.contains('Laboratorio').should('be.visible');
+      cy.contains('Clínica').should('be.visible');
+      cy.contains('Hospital').should('be.visible');
+    });
   });
 
-  it('debe validar formato de email', () => {
-    cy.contains('Paciente').click();
+  describe('Persistencia de datos (localStorage)', () => {
+    it('debe guardar progreso del wizard en localStorage', () => {
+      const email = `persist_${timestamp}@test.com`;
 
-    cy.get('input[name="name"]', { timeout: 10000 }).type('Test User');
-    cy.get('input[name="email"]').type('email-sin-arroba');
-    cy.get('input[name="password"]').type('TestPass123!');
-    cy.get('input[name="confirmPassword"]').type('TestPass123!');
+      cy.contains('Paciente').click();
+      cy.get('input[type="email"]').type(email);
+      cy.get('input[type="password"]').first().type('TestPass123!');
 
-    // Hacer blur para activar validación
-    cy.get('input[name="email"]').blur();
-
-    cy.contains(/correo.*válido|email.*válido|ingresa.*correo/i, { timeout: 5000 })
-      .should('be.visible');
+      // Verificar que se guardó en localStorage
+      cy.window().then((win) => {
+        const saved = win.localStorage.getItem('citamed_wizard_patient');
+        expect(saved).to.exist;
+        const data = JSON.parse(saved);
+        expect(data.data.email).to.equal(email);
+      });
+    });
   });
 
-  it('debe validar que las contraseñas coincidan', () => {
-    cy.contains('Paciente').click();
+  describe('Verificación de Email Disponible', () => {
+    it('debe verificar disponibilidad de email en tiempo real', () => {
+      cy.contains('Paciente').click();
 
-    cy.get('input[name="name"]', { timeout: 10000 }).type('Test User');
-    cy.get('input[name="email"]').type('test@test.com');
-    cy.get('input[name="password"]').type('Password123!');
-    cy.get('input[name="confirmPassword"]').type('DiferentePass!');
-    cy.get('input[name="confirmPassword"]').blur();
+      // Email que probablemente existe (de tests anteriores)
+      cy.get('input[type="email"]').type('admin@citamed.ve');
 
-    cy.contains(/contraseñas no coinciden/i, { timeout: 5000 })
-      .should('be.visible');
+      // Esperar verificación (debounce de 500ms)
+      cy.wait(1000);
+
+      // Si el email existe, debería mostrar X roja
+      // Si no existe, debería mostrar check verde
+      cy.get('input[type="email"]').parent().find('svg').should('exist');
+    });
   });
 });

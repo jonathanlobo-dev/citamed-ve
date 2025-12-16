@@ -1,6 +1,8 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { User, DoctorProfile, PatientProfile, sequelize } = require('../models/index');
+const { validationResult } = require('express-validator');
+const { User, DoctorProfile, PatientProfile, ProviderProfile, sequelize } = require('../models/index');
+const authService = require('../services/authService');
 
 const authController = {
   register: async (req, res) => {
@@ -224,6 +226,8 @@ const authController = {
         profile = await DoctorProfile.findOne({ where: { userId: user.id } });
       } else if (user.role === 'patient') {
         profile = await PatientProfile.findOne({ where: { userId: user.id } });
+      } else if (user.role === 'provider') {
+        profile = await ProviderProfile.findOne({ where: { userId: user.id } });
       }
 
       res.json({
@@ -240,6 +244,271 @@ const authController = {
         success: false,
         message: 'Error al obtener perfil',
         error: error.message
+      });
+    }
+  },
+
+  /**
+   * Verificar si un email ya está registrado
+   * GET /api/auth/check-email?email=test@example.com
+   */
+  checkEmail: async (req, res) => {
+    try {
+      const { email } = req.query;
+
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email es requerido'
+        });
+      }
+
+      const exists = await authService.emailExists(email);
+
+      res.json({
+        success: true,
+        data: {
+          exists,
+          available: !exists
+        }
+      });
+
+    } catch (error) {
+      console.error('Error en checkEmail:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al verificar email'
+      });
+    }
+  },
+
+  /**
+   * Verificar si una cédula ya está registrada
+   * GET /api/auth/check-cedula?cedula=V-12345678
+   */
+  checkCedula: async (req, res) => {
+    try {
+      const { cedula } = req.query;
+
+      if (!cedula) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cédula es requerida'
+        });
+      }
+
+      const exists = await authService.cedulaExists(cedula);
+
+      res.json({
+        success: true,
+        data: {
+          exists,
+          available: !exists
+        }
+      });
+
+    } catch (error) {
+      console.error('Error en checkCedula:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al verificar cédula'
+      });
+    }
+  },
+
+  /**
+   * Registro de paciente (Multi-paso)
+   * POST /api/auth/register/patient
+   */
+  registerPatient: async (req, res) => {
+    try {
+      // Validar errores de express-validator
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Errores de validación',
+          errors: errors.array().map(e => ({
+            field: e.path,
+            message: e.msg
+          }))
+        });
+      }
+
+      const result = await authService.createPatient(req.body);
+
+      res.status(201).json({
+        success: true,
+        message: 'Paciente registrado exitosamente',
+        data: result
+      });
+
+    } catch (error) {
+      console.error('Error en registerPatient:', error);
+
+      // Manejar errores específicos
+      if (error.message === 'EMAIL_EXISTS') {
+        return res.status(400).json({
+          success: false,
+          message: 'El email ya está registrado',
+          errors: [{ field: 'email', message: 'El email ya está registrado' }]
+        });
+      }
+
+      if (error.message === 'CEDULA_EXISTS') {
+        return res.status(400).json({
+          success: false,
+          message: 'La cédula ya está registrada',
+          errors: [{ field: 'identificationNumber', message: 'La cédula ya está registrada' }]
+        });
+      }
+
+      // Error de validación de Sequelize
+      if (error.name === 'SequelizeValidationError') {
+        return res.status(400).json({
+          success: false,
+          message: 'Error de validación',
+          errors: error.errors.map(e => ({
+            field: e.path,
+            message: e.message
+          }))
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Error al registrar paciente',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  },
+
+  /**
+   * Registro de médico (Multi-paso)
+   * POST /api/auth/register/doctor
+   */
+  registerDoctor: async (req, res) => {
+    try {
+      // Validar errores de express-validator
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Errores de validación',
+          errors: errors.array().map(e => ({
+            field: e.path,
+            message: e.msg
+          }))
+        });
+      }
+
+      const result = await authService.createDoctor(req.body);
+
+      res.status(201).json({
+        success: true,
+        message: 'Médico registrado exitosamente. Tu cuenta está pendiente de aprobación.',
+        data: result
+      });
+
+    } catch (error) {
+      console.error('Error en registerDoctor:', error);
+
+      if (error.message === 'EMAIL_EXISTS') {
+        return res.status(400).json({
+          success: false,
+          message: 'El email ya está registrado',
+          errors: [{ field: 'email', message: 'El email ya está registrado' }]
+        });
+      }
+
+      if (error.message === 'MPPS_EXISTS') {
+        return res.status(400).json({
+          success: false,
+          message: 'El número MPPS ya está registrado',
+          errors: [{ field: 'mppsNumber', message: 'El número MPPS ya está registrado' }]
+        });
+      }
+
+      if (error.name === 'SequelizeValidationError') {
+        return res.status(400).json({
+          success: false,
+          message: 'Error de validación',
+          errors: error.errors.map(e => ({
+            field: e.path,
+            message: e.message
+          }))
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Error al registrar médico',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  },
+
+  /**
+   * Registro de proveedor (Multi-paso)
+   * POST /api/auth/register/provider
+   */
+  registerProvider: async (req, res) => {
+    try {
+      // Validar errores de express-validator
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Errores de validación',
+          errors: errors.array().map(e => ({
+            field: e.path,
+            message: e.msg
+          }))
+        });
+      }
+
+      const result = await authService.createProvider(req.body);
+
+      res.status(201).json({
+        success: true,
+        message: 'Proveedor registrado exitosamente. Tu cuenta está pendiente de aprobación.',
+        data: result
+      });
+
+    } catch (error) {
+      console.error('Error en registerProvider:', error);
+
+      if (error.message === 'EMAIL_EXISTS') {
+        return res.status(400).json({
+          success: false,
+          message: 'El email ya está registrado',
+          errors: [{ field: 'email', message: 'El email ya está registrado' }]
+        });
+      }
+
+      if (error.message === 'RIF_EXISTS') {
+        return res.status(400).json({
+          success: false,
+          message: 'El RIF ya está registrado',
+          errors: [{ field: 'rif', message: 'El RIF ya está registrado' }]
+        });
+      }
+
+      if (error.name === 'SequelizeValidationError') {
+        return res.status(400).json({
+          success: false,
+          message: 'Error de validación',
+          errors: error.errors.map(e => ({
+            field: e.path,
+            message: e.message
+          }))
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Error al registrar proveedor',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
