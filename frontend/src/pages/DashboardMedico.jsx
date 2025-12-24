@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
@@ -14,13 +15,23 @@ import {
   MessageSquare,
   Settings,
   BarChart3,
-  Stethoscope
+  Stethoscope,
+  CheckCircle,
+  AlertCircle,
+  Star
 } from 'lucide-react';
 import Navbar from '../components/common/Navbar/Navbar';
+import useDoctorProfile from '../hooks/useDoctorProfile';
 
 function DashboardMedico() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { profile, completeness, fetchMyProfile, fetchCompleteness } = useDoctorProfile();
+
+  useEffect(() => {
+    fetchMyProfile();
+    fetchCompleteness();
+  }, [fetchMyProfile, fetchCompleteness]);
 
   const modules = [
     {
@@ -98,11 +109,12 @@ function DashboardMedico() {
       badge: 'Seguro'
     },
     {
-      title: 'Mis Datos',
+      title: 'Mi Perfil Médico',
       icon: Stethoscope,
-      description: 'Perfil profesional, especialidades y certificaciones',
-      path: '/medico/perfil',
-      color: 'from-slate-500 to-slate-600'
+      description: 'Gestiona tu perfil profesional, especialidades y credenciales',
+      path: '/medico/perfil/editar',
+      color: 'from-teal-500 to-teal-600',
+      badge: 'Importante'
     },
     {
       title: 'Reportes',
@@ -145,67 +157,86 @@ function DashboardMedico() {
 
         {/* Stats Cards - Quick Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          {/* Perfil Completo - Dato Real */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.1 }}
-            className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg"
+            className="bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl p-6 text-white shadow-lg cursor-pointer hover:shadow-xl transition-shadow"
+            onClick={() => navigate('/medico/perfil/editar')}
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm font-medium">Hoy</p>
-                <p className="text-3xl font-bold">0</p>
-                <p className="text-blue-100 text-xs">Pacientes</p>
+                <p className="text-teal-100 text-sm font-medium">Perfil</p>
+                <p className="text-3xl font-bold">{completeness?.percentage || 0}%</p>
+                <p className="text-teal-100 text-xs">Completo</p>
               </div>
-              <Users className="w-12 h-12 text-blue-200 opacity-50" />
+              {completeness?.percentage === 100 ? (
+                <CheckCircle className="w-12 h-12 text-teal-200" />
+              ) : (
+                <AlertCircle className="w-12 h-12 text-teal-200 opacity-50" />
+              )}
             </div>
           </motion.div>
 
+          {/* Rating - Dato Real */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg"
+            className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl p-6 text-white shadow-lg"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-sm font-medium">En Espera</p>
-                <p className="text-3xl font-bold">0</p>
-                <p className="text-purple-100 text-xs">Pacientes</p>
+                <p className="text-amber-100 text-sm font-medium">Rating</p>
+                <p className="text-3xl font-bold">
+                  {profile?.averageRating ? parseFloat(profile.averageRating).toFixed(1) : '—'}
+                </p>
+                <p className="text-amber-100 text-xs">
+                  {profile?.totalReviews || 0} reseñas
+                </p>
               </div>
-              <Clock className="w-12 h-12 text-purple-200 opacity-50" />
+              <Star className="w-12 h-12 text-amber-200" />
             </div>
           </motion.div>
 
+          {/* Citas - Próximamente */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.3 }}
-            className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg"
+            className="bg-gradient-to-br from-gray-400 to-gray-500 rounded-xl p-6 text-white shadow-lg relative overflow-hidden"
           >
-            <div className="flex items-center justify-between">
+            <div className="absolute top-2 right-2 bg-white/20 text-xs px-2 py-0.5 rounded-full">
+              Próximamente
+            </div>
+            <div className="flex items-center justify-between opacity-70">
               <div>
-                <p className="text-green-100 text-sm font-medium">Esta Semana</p>
-                <p className="text-3xl font-bold">0</p>
-                <p className="text-green-100 text-xs">Consultas</p>
+                <p className="text-gray-100 text-sm font-medium">Citas Hoy</p>
+                <p className="text-3xl font-bold">—</p>
+                <p className="text-gray-100 text-xs">Pacientes</p>
               </div>
-              <Calendar className="w-12 h-12 text-green-200 opacity-50" />
+              <Calendar className="w-12 h-12 text-gray-200 opacity-50" />
             </div>
           </motion.div>
 
+          {/* Ingresos - Próximamente */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.4 }}
-            className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg"
+            className="bg-gradient-to-br from-gray-400 to-gray-500 rounded-xl p-6 text-white shadow-lg relative overflow-hidden"
           >
-            <div className="flex items-center justify-between">
+            <div className="absolute top-2 right-2 bg-white/20 text-xs px-2 py-0.5 rounded-full">
+              Próximamente
+            </div>
+            <div className="flex items-center justify-between opacity-70">
               <div>
-                <p className="text-orange-100 text-sm font-medium">Ingresos</p>
-                <p className="text-3xl font-bold">$0</p>
-                <p className="text-orange-100 text-xs">Este mes</p>
+                <p className="text-gray-100 text-sm font-medium">Ingresos</p>
+                <p className="text-3xl font-bold">—</p>
+                <p className="text-gray-100 text-xs">Este mes</p>
               </div>
-              <DollarSign className="w-12 h-12 text-orange-200 opacity-50" />
+              <DollarSign className="w-12 h-12 text-gray-200 opacity-50" />
             </div>
           </motion.div>
         </div>

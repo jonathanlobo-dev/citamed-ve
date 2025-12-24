@@ -66,6 +66,47 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true,
     },
+    // Verificación de email (Sub-Partida 2.3)
+    emailVerified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'email_verified'
+    },
+    emailVerifiedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'email_verified_at'
+    },
+    // Verificación de teléfono (Sub-Partida 2.3)
+    phoneVerified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'phone_verified'
+    },
+    phoneVerifiedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'phone_verified_at'
+    },
+    // Two-Factor Authentication (Sub-Partida 2.4.1)
+    twoFactorEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    twoFactorSecret: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'Encrypted TOTP secret (AES-256-CBC)'
+    },
+    twoFactorBackupCodes: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: 'JSON array of SHA256 hashed backup codes'
+    },
+    twoFactorActivatedAt: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
     // Recuperación de contraseña
     resetPasswordToken: {
       type: DataTypes.STRING,
@@ -79,6 +120,14 @@ module.exports = (sequelize) => {
     lastLogin: {
       type: DataTypes.DATE,
       allowNull: true,
+    },
+    // RBAC - Permisos personalizados (Sub-Partida 2.5.1)
+    customPermissions: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+      comment: 'Override de permisos individuales: { granted: [...], revoked: [...] }',
+      field: 'custom_permissions'
     },
   }, {
     tableName: 'users',
@@ -117,6 +166,8 @@ module.exports = (sequelize) => {
     delete values.password;
     delete values.verificationToken;
     delete values.resetPasswordToken;
+    delete values.twoFactorSecret;
+    delete values.twoFactorBackupCodes;
     return values;
   };
 

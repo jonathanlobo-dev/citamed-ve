@@ -25,6 +25,9 @@ const {
   searchLimiter
 } = require('./middleware/rateLimiter');
 
+// Session Cleanup Job
+const { setupSessionCleanup } = require('./jobs/sessionCleanup');
+
 // Setup process error handlers
 setupProcessErrorHandlers();
 
@@ -41,6 +44,10 @@ app.use(cors(corsOptions));
 // 4. Body parsing con límites
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// 4.5 Servir archivos estáticos (uploads)
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // 5. Sanitización de inputs
 sanitizerStack.forEach(middleware => app.use(middleware));
@@ -78,8 +85,19 @@ const { sequelize, Specialty, User, DoctorProfile, PatientProfile, Appointment }
 
 // ==================== IMPORTAR RUTAS ====================
 const authRoutes = require("./routes/auth");
-const verificationRoutes = require("./routes/verification");
+const verificationRoutes = require("./routes/identityVerification");
 const metricsRoutes = require("./routes/metrics");
+const auditRoutes = require("./routes/audit");
+const sessionRoutes = require("./routes/sessions");
+const twoFactorRoutes = require("./routes/twoFactor");
+const rbacRoutes = require("./routes/rbac");
+const passwordRecoveryRoutes = require("./routes/passwordRecovery");
+const profileRoutes = require("./routes/profiles");
+const doctorRoutes = require("./routes/doctors");
+const patientRoutes = require("./routes/patients");
+const kycVerificationRoutes = require("./routes/kycVerification");
+const reviewsRoutes = require("./routes/reviews");
+const searchRoutes = require("./routes/search");
 
 // ==================== USAR RUTAS ====================
 // Auth routes con rate limiting estricto (5 req/15min)
@@ -87,7 +105,25 @@ app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/verification", verificationRoutes);
 app.use("/api/metrics", metricsRoutes);
 
-// ==================== RUTAS B�SICAS ====================
+// Security & Admin routes
+app.use("/api/audit", auditRoutes);
+app.use("/api/sessions", sessionRoutes);
+app.use("/api/2fa", twoFactorRoutes);
+app.use("/api/rbac", rbacRoutes);
+app.use("/api/password", passwordRecoveryRoutes);
+
+// Profile & Resource routes
+app.use("/api/profiles", profileRoutes);
+app.use("/api/doctor-profile", doctorRoutes);
+app.use("/api/doctors", doctorRoutes);  // Also mount at /api/doctors for frontend compatibility
+app.use("/api/patient-profile", patientRoutes);
+app.use("/api/kyc", kycVerificationRoutes);
+app.use("/api/reviews", reviewsRoutes);
+
+// Search routes con rate limiting moderado
+app.use("/api/search", searchLimiter, searchRoutes);
+
+// ==================== RUTAS BÁSICAS ====================
 app.get("/", (req, res) => {
   res.json({
     message: '?? CITAMED.VE - API REST',
@@ -265,242 +301,8 @@ app.get("/api/specialties/search", searchLimiter, async (req, res) => {
   }
 });
 
-// ==================== DIRECTORIO MÉDICO ====================
-/**
- * @swagger
- * /api/doctors:
- *   get:
- *     tags: [Doctors]
- *     summary: Buscar médicos con filtros
- *     description: Retorna listado de médicos verificados y activos. En desarrollo se puede usar includeUnverified=true
- *     parameters:
- *       - in: query
- *         name: specialty
- *         schema:
- *           type: string
- *         description: Filtrar por especialidad
- *         example: Cardiología
- *       - in: query
- *         name: city
- *         schema:
- *           type: string
- *         description: Filtrar por ciudad
- *         example: Caracas
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *         description: Buscar por nombre del médico
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Número de página
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 20
- *         description: Resultados por página
- *     responses:
- *       200:
- *         description: Lista paginada de médicos
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 total:
- *                   type: integer
- *                 page:
- *                   type: integer
- *                 totalPages:
- *                   type: integer
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Doctor'
- */
-app.get("/api/doctors", searchLimiter, async (req, res) => {
-  try {
-    const { specialty, city, search, page = 1, limit = 20, includeUnverified } = req.query;
-    const { Op } = require('sequelize');
-    const offset = (page - 1) * limit;
-
-    // PRODUCCI�N: Por defecto solo m�dicos verificados y activos
-    let whereClause = {
-      acceptingNewPatients: true,
-      isVerified: true,
-      profileStatus: 'active'
-    };
-
-    // Solo para desarrollo/testing: incluir no verificados
-    if (includeUnverified === 'true' && process.env.NODE_ENV !== 'production') {
-      whereClause = { acceptingNewPatients: true };
-    }
-
-    // Filtros de b�squeda
-    if (specialty) {
-      whereClause.subSpecialty = { [Op.iLike]: `%${specialty}%` };
-    }
-
-    if (city) {
-      whereClause.city = { [Op.iLike]: `%${city}%` };
-    }
-
-    if (search) {
-      whereClause[Op.or] = [
-        { firstName: { [Op.iLike]: `%${search}%` } },
-        { lastName: { [Op.iLike]: `%${search}%` } }
-      ];
-    }
-
-    const { count, rows: doctors } = await DoctorProfile.findAndCountAll({
-      where: whereClause,
-      attributes: [
-        'id', 'userId', 'firstName', 'lastName', 'profilePhoto', 'subSpecialty',
-        'experienceYears', 'consultationFee', 'city', 'state',
-        'averageRating', 'totalReviews', 'bio', 'licenseNumber',
-        'isVerified', 'profileStatus', 'telemedicineEnabled',
-        'languages', 'consultationDuration'
-      ],
-      order: [
-        ['isVerified', 'DESC'],      // Verificados primero
-        ['averageRating', 'DESC'],   // Mejor calificaci�n
-        ['totalReviews', 'DESC']     // M�s reviews
-      ],
-      limit: parseInt(limit),
-      offset: parseInt(offset)
-    });
-
-    res.json({
-      success: true,
-      total: count,
-      page: parseInt(page),
-      totalPages: Math.ceil(count / limit),
-      showingVerifiedOnly: whereClause.isVerified === true,
-      data: doctors.map(doc => ({
-        ...doc.toJSON(),
-        displayName: `Dr. ${doc.firstName} ${doc.lastName}`,
-        verificationBadge: doc.isVerified ? 'verified' : 'pending'
-      }))
-    });
-  } catch (error) {
-    console.error('Error obteniendo m�dicos:', error);
-    res.status(500).json({
-      success: false,
-      message: "Error al obtener m�dicos",
-      error: error.message
-    });
-  }
-});
-
-/**
- * @swagger
- * /api/doctors/{id}:
- *   get:
- *     tags: [Doctors]
- *     summary: Obtener perfil de un médico específico
- *     description: Retorna información detallada del médico. Info sensible solo visible si está verificado
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: ID del médico
- *     responses:
- *       200:
- *         description: Perfil del médico
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   $ref: '#/components/schemas/Doctor'
- *       404:
- *         description: Médico no encontrado
- */
-app.get("/api/doctors/:id", generalLimiter, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const doctor = await DoctorProfile.findByPk(id, {
-      include: [{
-        model: User,
-        as: 'user',
-        attributes: ['email', 'createdAt']
-      }, {
-        model: Specialty,
-        as: 'specialty',
-        attributes: ['id', 'name', 'category']
-      }]
-    });
-
-    if (!doctor) {
-      return res.status(404).json({
-        success: false,
-        message: 'M�dico no encontrado'
-      });
-    }
-
-    // Solo mostrar informaci�n completa si est� verificado
-    const publicProfile = {
-      id: doctor.id,
-      displayName: `Dr. ${doctor.firstName} ${doctor.lastName}`,
-      firstName: doctor.firstName,
-      lastName: doctor.lastName,
-      profilePhoto: doctor.profilePhoto,
-      specialty: doctor.specialty,
-      subSpecialty: doctor.subSpecialty,
-      bio: doctor.bio,
-      experienceYears: doctor.experienceYears,
-      consultationFee: doctor.consultationFee,
-      followUpFee: doctor.followUpFee,
-      consultationDuration: doctor.consultationDuration,
-      city: doctor.city,
-      state: doctor.state,
-      languages: doctor.languages,
-      telemedicineEnabled: doctor.telemedicineEnabled,
-      homeVisitsEnabled: doctor.homeVisitsEnabled,
-      averageRating: doctor.averageRating,
-      totalReviews: doctor.totalReviews,
-      totalPatients: doctor.totalPatients,
-      isVerified: doctor.isVerified,
-      verificationBadge: doctor.isVerified ? 'verified' : 'pending',
-      acceptingNewPatients: doctor.acceptingNewPatients,
-      workingHours: doctor.workingHours,
-      acceptsInsurance: doctor.acceptsInsurance,
-      insuranceProviders: doctor.insuranceProviders,
-      // Solo mostrar info sensible si est� verificado
-      ...(doctor.isVerified && {
-        licenseNumber: doctor.licenseNumber,
-        medicalSchool: doctor.medicalSchool,
-        graduationYear: doctor.graduationYear,
-        certifications: doctor.certifications,
-        hospitalAffiliations: doctor.hospitalAffiliations
-      })
-    };
-
-    res.json({
-      success: true,
-      data: publicProfile
-    });
-  } catch (error) {
-    console.error('Error obteniendo m�dico:', error);
-    res.status(500).json({
-      success: false,
-      message: "Error al obtener m�dico",
-      error: error.message
-    });
-  }
-});
+// NOTA: Las rutas de /api/doctors han sido movidas a routes/doctors.js
+// para evitar conflictos con rutas como /api/doctors/me
 
 /**
  * @swagger
@@ -592,6 +394,10 @@ async function startServer() {
 
     app.listen(PORT, () => {
       logServerStart(PORT, process.env.NODE_ENV || 'development');
+
+      // Initialize scheduled jobs
+      setupSessionCleanup();
+      logger.info('Scheduled jobs initialized');
 
       // Console output for development visibility
       console.log('');

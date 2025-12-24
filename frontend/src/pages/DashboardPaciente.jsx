@@ -10,7 +10,8 @@ import {
   ShoppingCart,
   DollarSign,
   Video,
-  User
+  User,
+  Search
 } from 'lucide-react';
 import Navbar from '../components/common/Navbar/Navbar';
 
@@ -19,6 +20,13 @@ function DashboardPaciente() {
   const { user } = useAuth();
 
   const modules = [
+    {
+      title: 'Buscar Médicos',
+      icon: Search,
+      description: 'Encuentra especialistas y consulta sus perfiles',
+      path: '/directorio',
+      color: 'from-teal-500 to-teal-600'
+    },
     {
       title: 'Agendar Nueva Cita',
       icon: Calendar,

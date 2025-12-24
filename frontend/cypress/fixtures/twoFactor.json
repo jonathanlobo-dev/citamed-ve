@@ -1,0 +1,90 @@
+{
+  "loginRequires2FA": {
+    "success": true,
+    "requires2FA": true,
+    "userId": 1,
+    "message": "Se requiere verificación de dos factores"
+  },
+  "login2FASuccess": {
+    "success": true,
+    "data": {
+      "token": "mock-jwt-token-for-testing",
+      "user": {
+        "id": 1,
+        "email": "test2fa@citamed.ve",
+        "role": "patient",
+        "name": "Test User"
+      },
+      "profile": {
+        "firstName": "Test",
+        "lastName": "User"
+      }
+    }
+  },
+  "login2FAError": {
+    "success": false,
+    "message": "Código de verificación inválido"
+  },
+  "generateSecret": {
+    "success": true,
+    "data": {
+      "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+      "manualEntryKey": "JBSWY3DPEHPK3PXP",
+      "secret": "JBSWY3DPEHPK3PXP"
+    }
+  },
+  "enable2FASuccess": {
+    "success": true,
+    "data": {
+      "backupCodes": [
+        "A1B2C3D4",
+        "E5F6G7H8",
+        "I9J0K1L2",
+        "M3N4O5P6",
+        "Q7R8S9T0",
+        "U1V2W3X4",
+        "Y5Z6A7B8",
+        "C9D0E1F2",
+        "G3H4I5J6",
+        "K7L8M9N0"
+      ]
+    }
+  },
+  "status2FAEnabled": {
+    "success": true,
+    "data": {
+      "enabled": true,
+      "activatedAt": "2025-12-21T20:00:00.000Z",
+      "backupCodesRemaining": 10
+    }
+  },
+  "status2FADisabled": {
+    "success": true,
+    "data": {
+      "enabled": false,
+      "activatedAt": null,
+      "backupCodesRemaining": 0
+    }
+  },
+  "disable2FASuccess": {
+    "success": true,
+    "message": "2FA desactivado exitosamente"
+  },
+  "regenerateBackupCodesSuccess": {
+    "success": true,
+    "data": {
+      "backupCodes": [
+        "X1Y2Z3A4",
+        "B5C6D7E8",
+        "F9G0H1I2",
+        "J3K4L5M6",
+        "N7O8P9Q0",
+        "R1S2T3U4",
+        "V5W6X7Y8",
+        "Z9A0B1C2",
+        "D3E4F5G6",
+        "H7I8J9K0"
+      ]
+    }
+  }
+}

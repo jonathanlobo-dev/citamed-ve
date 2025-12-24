@@ -44,6 +44,16 @@ export function AuthProvider({ children }) {
       const response = await axios.post(`${API_URL}/auth/login`, credentials);
 
       if (response.data.success) {
+        // Verificar si requiere 2FA
+        if (response.data.requires2FA) {
+          return {
+            success: true,
+            requires2FA: true,
+            userId: response.data.userId,
+            message: response.data.message
+          };
+        }
+
         const { token, user: userData, profile } = response.data.data;
 
         // Guardar token y usuario
@@ -65,7 +75,44 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout = () => {
+  // Login con verificación 2FA (segundo paso)
+  const loginWith2FA = async (userId, token) => {
+    try {
+      const response = await axios.post(`${API_URL}/auth/login/2fa`, { userId, token });
+
+      if (response.data.success) {
+        const { token: authToken, user: userData, profile } = response.data.data;
+
+        // Guardar token y usuario
+        localStorage.setItem('citamed_token', authToken);
+        const userWithProfile = { ...userData, profile };
+        localStorage.setItem('citamed_user', JSON.stringify(userWithProfile));
+        setUser(userWithProfile);
+
+        toast.success('Sesión iniciada correctamente');
+        return { success: true, user: userWithProfile };
+      } else {
+        return { success: false, message: response.data.message || 'Código inválido' };
+      }
+    } catch (error) {
+      const message = error.response?.data?.message || 'Código de verificación inválido';
+      return { success: false, message };
+    }
+  };
+
+  const logout = async () => {
+    // Intentar cerrar sesión en el servidor
+    try {
+      const token = localStorage.getItem('citamed_token');
+      if (token) {
+        await axios.post(`${API_URL}/auth/logout`);
+      }
+    } catch (error) {
+      // Continuar con logout local aunque falle el servidor
+      console.error('Error al cerrar sesión en servidor:', error);
+    }
+
+    // Limpiar estado local
     setUser(null);
     localStorage.removeItem('citamed_user');
     localStorage.removeItem('citamed_token');
@@ -110,13 +157,49 @@ export function AuthProvider({ children }) {
         return '/medico/dashboard';
       case 'provider':
         return '/proveedor/dashboard';
+      case 'admin':
+        return '/admin/audit';
       default:
         return '/';
     }
   };
 
+  // Refrescar datos del usuario desde el servidor
+  const refreshUser = async () => {
+    try {
+      const token = localStorage.getItem('citamed_token');
+      if (!token) return null;
+
+      const response = await axios.get(`${API_URL}/auth/profile`);
+
+      if (response.data.success) {
+        const { user: userData, profile } = response.data.data;
+        const userWithProfile = { ...userData, profile };
+        localStorage.setItem('citamed_user', JSON.stringify(userWithProfile));
+        setUser(userWithProfile);
+        return userWithProfile;
+      }
+    } catch (error) {
+      console.error('Error refreshing user:', error);
+      // Si el token es inválido, hacer logout
+      if (error.response?.status === 401) {
+        logout();
+      }
+    }
+    return null;
+  };
+
+  // Actualizar usuario localmente (sin llamar al servidor)
+  const updateUser = (updates) => {
+    if (user) {
+      const updatedUser = { ...user, ...updates };
+      localStorage.setItem('citamed_user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, register, getUserRole, getDashboardPath }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWith2FA, logout, register, getUserRole, getDashboardPath, refreshUser, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

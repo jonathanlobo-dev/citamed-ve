@@ -6,7 +6,8 @@ import {
   ShoppingCart,
   TrendingUp,
   Users,
-  Settings
+  Settings,
+  Building2
 } from 'lucide-react';
 import Navbar from '../components/common/Navbar/Navbar';
 
@@ -15,6 +16,14 @@ function DashboardProveedor() {
   const { user } = useAuth();
 
   const modules = [
+    {
+      title: 'Mi Empresa',
+      icon: Building2,
+      description: 'Perfil completo de tu empresa y datos',
+      path: '/proveedor/mi-empresa',
+      color: 'from-teal-500 to-teal-600',
+      badge: 'Nuevo'
+    },
     {
       title: 'Mi Catálogo',
       icon: Package,

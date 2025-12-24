@@ -3,6 +3,8 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const { User, DoctorProfile, PatientProfile, ProviderProfile, sequelize } = require('../models/index');
 const authService = require('../services/authService');
+const sessionService = require('../services/sessionService');
+const { logger } = require('../config/logger');
 
 const authController = {
   register: async (req, res) => {
@@ -144,7 +146,9 @@ const authController = {
 
   login: async (req, res) => {
     try {
-      const { email, password } = req.body;
+      // Trim inputs to remove accidental whitespace
+      const email = (req.body.email || '').trim();
+      const password = (req.body.password || '').trim();
 
       if (!email || !password) {
         return res.status(400).json({
@@ -165,17 +169,47 @@ const authController = {
       const isPasswordValid = await bcrypt.compare(password, user.password);
 
       if (!isPasswordValid) {
+        // Registrar intento fallido
+        await sessionService.recordLoginAttempt(
+          user.id,
+          false,
+          req,
+          'Contraseña incorrecta',
+          'password'
+        );
+
         return res.status(401).json({
           success: false,
           message: 'Credenciales inválidas'
         });
       }
 
+      // Si 2FA está activado, retornar que se requiere verificación
+      if (user.twoFactorEnabled) {
+        return res.json({
+          success: true,
+          requires2FA: true,
+          userId: user.id,
+          message: 'Se requiere verificación de dos factores'
+        });
+      }
+
+      // 2FA no activo - login normal
       const token = jwt.sign(
         { id: user.id, email: user.email, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
       );
+
+      // Crear sesión y registrar login exitoso
+      try {
+        await sessionService.createSession(user.id, token, req);
+        await sessionService.enforceSessionLimit(user.id);
+        await sessionService.recordLoginAttempt(user.id, true, req, null, 'password');
+      } catch (sessionError) {
+        logger.error('Error creando sesión:', sessionError);
+        // Continuar aunque falle el tracking de sesión
+      }
 
       let profile = null;
       if (user.role === 'doctor') {
@@ -199,7 +233,8 @@ const authController = {
             lastName: user.lastName,
             name: fullName,
             phone: user.phone,
-            role: user.role
+            role: user.role,
+            twoFactorEnabled: user.twoFactorEnabled
           },
           profile
         }
@@ -210,6 +245,114 @@ const authController = {
       res.status(500).json({
         success: false,
         message: 'Error al iniciar sesión',
+        error: error.message
+      });
+    }
+  },
+
+  /**
+   * Login con 2FA - Segundo paso del login
+   * POST /api/auth/login/2fa
+   */
+  loginWith2FA: async (req, res) => {
+    try {
+      const { userId, token: twoFactorToken } = req.body;
+
+      if (!userId || !twoFactorToken) {
+        return res.status(400).json({
+          success: false,
+          message: 'userId y token son obligatorios'
+        });
+      }
+
+      const user = await User.findByPk(userId);
+
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Usuario no encontrado'
+        });
+      }
+
+      if (!user.twoFactorEnabled) {
+        return res.status(400).json({
+          success: false,
+          message: '2FA no está activado para este usuario'
+        });
+      }
+
+      // Verificar código 2FA
+      const twoFactorService = require('../services/twoFactorService');
+      const ipAddress = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+                       req.headers['x-real-ip'] ||
+                       req.ip || 'unknown';
+      const userAgent = req.headers['user-agent'] || null;
+
+      const verification = await twoFactorService.verifyTwoFactorToken(
+        userId,
+        twoFactorToken,
+        ipAddress,
+        userAgent
+      );
+
+      if (!verification.success) {
+        return res.status(401).json({
+          success: false,
+          message: 'Código de verificación inválido'
+        });
+      }
+
+      // 2FA verificado - generar token JWT
+      const jwtToken = jwt.sign(
+        { id: user.id, email: user.email, role: user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      );
+
+      // Crear sesión y registrar login exitoso
+      try {
+        await sessionService.createSession(user.id, jwtToken, req);
+        await sessionService.enforceSessionLimit(user.id);
+        await sessionService.recordLoginAttempt(user.id, true, req, null, '2fa');
+      } catch (sessionError) {
+        logger.error('Error creando sesión 2FA:', sessionError);
+        // Continuar aunque falle el tracking de sesión
+      }
+
+      let profile = null;
+      if (user.role === 'doctor') {
+        profile = await DoctorProfile.findOne({ where: { userId: user.id } });
+      } else if (user.role === 'patient') {
+        profile = await PatientProfile.findOne({ where: { userId: user.id } });
+      }
+
+      const fullName = user.lastName ? `${user.firstName} ${user.lastName}` : (user.firstName || user.email);
+
+      res.json({
+        success: true,
+        message: 'Login exitoso',
+        data: {
+          token: jwtToken,
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            name: fullName,
+            phone: user.phone,
+            role: user.role,
+            twoFactorEnabled: user.twoFactorEnabled
+          },
+          profile,
+          verificationMethod: verification.method
+        }
+      });
+
+    } catch (error) {
+      console.error('Error en loginWith2FA:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al verificar código 2FA',
         error: error.message
       });
     }
@@ -509,6 +652,41 @@ const authController = {
         success: false,
         message: 'Error al registrar proveedor',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  },
+
+  /**
+   * Cerrar sesión actual
+   * POST /api/auth/logout
+   */
+  logout: async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(400).json({
+          success: false,
+          message: 'Token no proporcionado'
+        });
+      }
+
+      const token = authHeader.substring(7);
+      const result = await sessionService.logout(token);
+
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+
+      res.json({
+        success: true,
+        message: 'Sesión cerrada correctamente'
+      });
+
+    } catch (error) {
+      console.error('Error en logout:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al cerrar sesión'
       });
     }
   }

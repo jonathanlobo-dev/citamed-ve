@@ -1,0 +1,267 @@
+{
+  "myPermissions": {
+    "success": true,
+    "data": {
+      "permissions": [
+        "appointments.create",
+        "appointments.read.own",
+        "appointments.cancel",
+        "users.read.own",
+        "users.update.own",
+        "sessions.read.own",
+        "sessions.revoke.own",
+        "doctors.read",
+        "2fa.enable",
+        "2fa.disable"
+      ],
+      "role": "patient",
+      "count": 10
+    }
+  },
+  "adminPermissions": {
+    "success": true,
+    "data": {
+      "permissions": [
+        "appointments.create",
+        "appointments.read",
+        "appointments.read.own",
+        "appointments.update",
+        "appointments.update.own",
+        "appointments.delete",
+        "appointments.cancel",
+        "users.read.own",
+        "users.update.own",
+        "users.read.all",
+        "users.update.all",
+        "users.delete",
+        "sessions.read.own",
+        "sessions.revoke.own",
+        "sessions.read.all",
+        "sessions.revoke.all",
+        "doctors.read",
+        "doctors.verify",
+        "doctors.approve",
+        "providers.read",
+        "providers.verify",
+        "providers.approve",
+        "2fa.enable",
+        "2fa.disable",
+        "2fa.manage.all",
+        "admin.dashboard",
+        "admin.analytics",
+        "admin.settings",
+        "admin.audit",
+        "rbac.read",
+        "rbac.manage"
+      ],
+      "role": "admin",
+      "count": 31
+    }
+  },
+  "allPermissions": {
+    "success": true,
+    "data": {
+      "permissions": [
+        {
+          "id": "perm-001",
+          "name": "appointments.create",
+          "resource": "appointments",
+          "action": "create",
+          "description": "Crear nuevas citas médicas"
+        },
+        {
+          "id": "perm-002",
+          "name": "appointments.read",
+          "resource": "appointments",
+          "action": "read",
+          "description": "Ver citas médicas"
+        },
+        {
+          "id": "perm-003",
+          "name": "appointments.read.own",
+          "resource": "appointments",
+          "action": "read.own",
+          "description": "Ver solo citas propias"
+        },
+        {
+          "id": "perm-004",
+          "name": "users.read.own",
+          "resource": "users",
+          "action": "read.own",
+          "description": "Ver perfil propio"
+        },
+        {
+          "id": "perm-005",
+          "name": "users.update.own",
+          "resource": "users",
+          "action": "update.own",
+          "description": "Actualizar perfil propio"
+        },
+        {
+          "id": "perm-006",
+          "name": "rbac.read",
+          "resource": "rbac",
+          "action": "read",
+          "description": "Ver permisos y roles"
+        },
+        {
+          "id": "perm-007",
+          "name": "rbac.manage",
+          "resource": "rbac",
+          "action": "manage",
+          "description": "Gestionar permisos y roles"
+        }
+      ],
+      "count": 7
+    }
+  },
+  "permissionsGrouped": {
+    "success": true,
+    "data": {
+      "permissions": {
+        "appointments": [
+          {
+            "id": "perm-001",
+            "name": "appointments.create",
+            "resource": "appointments",
+            "action": "create",
+            "description": "Crear nuevas citas médicas"
+          },
+          {
+            "id": "perm-002",
+            "name": "appointments.read",
+            "resource": "appointments",
+            "action": "read",
+            "description": "Ver citas médicas"
+          },
+          {
+            "id": "perm-003",
+            "name": "appointments.read.own",
+            "resource": "appointments",
+            "action": "read.own",
+            "description": "Ver solo citas propias"
+          }
+        ],
+        "users": [
+          {
+            "id": "perm-004",
+            "name": "users.read.own",
+            "resource": "users",
+            "action": "read.own",
+            "description": "Ver perfil propio"
+          },
+          {
+            "id": "perm-005",
+            "name": "users.update.own",
+            "resource": "users",
+            "action": "update.own",
+            "description": "Actualizar perfil propio"
+          }
+        ],
+        "rbac": [
+          {
+            "id": "perm-006",
+            "name": "rbac.read",
+            "resource": "rbac",
+            "action": "read",
+            "description": "Ver permisos y roles"
+          },
+          {
+            "id": "perm-007",
+            "name": "rbac.manage",
+            "resource": "rbac",
+            "action": "manage",
+            "description": "Gestionar permisos y roles"
+          }
+        ]
+      },
+      "resources": ["appointments", "users", "rbac"]
+    }
+  },
+  "rolePermissions": {
+    "patient": {
+      "success": true,
+      "data": {
+        "role": "patient",
+        "permissions": [
+          { "id": "perm-001", "name": "appointments.create" },
+          { "id": "perm-003", "name": "appointments.read.own" },
+          { "id": "perm-004", "name": "users.read.own" },
+          { "id": "perm-005", "name": "users.update.own" }
+        ],
+        "count": 4
+      }
+    },
+    "doctor": {
+      "success": true,
+      "data": {
+        "role": "doctor",
+        "permissions": [
+          { "id": "perm-002", "name": "appointments.read" },
+          { "id": "perm-004", "name": "users.read.own" },
+          { "id": "perm-005", "name": "users.update.own" }
+        ],
+        "count": 3
+      }
+    },
+    "admin": {
+      "success": true,
+      "data": {
+        "role": "admin",
+        "permissions": [
+          { "id": "perm-001", "name": "appointments.create" },
+          { "id": "perm-002", "name": "appointments.read" },
+          { "id": "perm-003", "name": "appointments.read.own" },
+          { "id": "perm-004", "name": "users.read.own" },
+          { "id": "perm-005", "name": "users.update.own" },
+          { "id": "perm-006", "name": "rbac.read" },
+          { "id": "perm-007", "name": "rbac.manage" }
+        ],
+        "count": 7
+      }
+    }
+  },
+  "checkPermissionTrue": {
+    "success": true,
+    "data": {
+      "permission": "appointments.create",
+      "hasPermission": true
+    }
+  },
+  "checkPermissionFalse": {
+    "success": true,
+    "data": {
+      "permission": "admin.dashboard",
+      "hasPermission": false
+    }
+  },
+  "grantSuccess": {
+    "success": true,
+    "message": "Permiso 'appointments.delete' otorgado al usuario 1"
+  },
+  "revokeSuccess": {
+    "success": true,
+    "message": "Permiso 'appointments.delete' revocado del usuario 1"
+  },
+  "assignToRoleSuccess": {
+    "success": true,
+    "message": "Permiso 'appointments.delete' asignado al rol 'patient'",
+    "data": {
+      "rolePermission": {
+        "id": "rp-001",
+        "role": "patient",
+        "permissionId": "perm-008"
+      }
+    }
+  },
+  "removeFromRoleSuccess": {
+    "success": true,
+    "message": "Permiso 'appointments.delete' removido del rol 'patient'"
+  },
+  "forbiddenError": {
+    "success": false,
+    "message": "No tienes permiso para realizar esta acción",
+    "error": "FORBIDDEN",
+    "requiredPermission": "admin.dashboard"
+  }
+}

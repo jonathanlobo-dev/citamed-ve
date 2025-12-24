@@ -17,6 +17,7 @@ const express = require("express");
 const router = express.Router();
 const authController = require("../controllers/authController");
 const { authMiddleware } = require("../middleware/auth");
+const { auditLog } = require("../middleware/auditMiddleware");
 const {
   registerValidator,
   loginValidator,
@@ -53,7 +54,46 @@ const {
  *       401:
  *         description: Credenciales inválidas
  */
-router.post("/login", loginValidator, validationErrorHandler, authController.login);
+router.post("/login",
+  loginValidator,
+  validationErrorHandler,
+  auditLog({ action: 'auth.login.attempt', resource: 'auth', severity: 'info' }),
+  authController.login
+);
+
+/**
+ * @swagger
+ * /api/auth/login/2fa:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Login con verificación 2FA
+ *     description: Segundo paso del login cuando el usuario tiene 2FA activado
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - token
+ *             properties:
+ *               userId:
+ *                 type: integer
+ *                 description: ID del usuario (recibido del primer paso)
+ *               token:
+ *                 type: string
+ *                 description: Código de 6 dígitos de la app o backup code de 8 caracteres
+ *     responses:
+ *       200:
+ *         description: Login exitoso con 2FA
+ *       401:
+ *         description: Código 2FA inválido
+ */
+router.post("/login/2fa",
+  auditLog({ action: 'auth.login.2fa', resource: 'auth', severity: 'info' }),
+  authController.loginWith2FA
+);
 
 /**
  * @swagger
@@ -84,7 +124,12 @@ router.post("/login", loginValidator, validationErrorHandler, authController.log
  *       400:
  *         description: Error de validación
  */
-router.post("/register", registerValidator, validationErrorHandler, authController.register);
+router.post("/register",
+  registerValidator,
+  validationErrorHandler,
+  auditLog({ action: 'user.created', resource: 'user', severity: 'info' }),
+  authController.register
+);
 
 /**
  * @swagger
@@ -191,7 +236,11 @@ router.post("/register", registerValidator, validationErrorHandler, authControll
  *       400:
  *         description: Error de validación
  */
-router.post("/register/patient", patientRegisterValidator, authController.registerPatient);
+router.post("/register/patient",
+  patientRegisterValidator,
+  auditLog({ action: 'user.created', resource: 'user', severity: 'info', includeBody: false }),
+  authController.registerPatient
+);
 
 /**
  * @swagger
@@ -267,7 +316,11 @@ router.post("/register/patient", patientRegisterValidator, authController.regist
  *       400:
  *         description: Error de validación
  */
-router.post("/register/doctor", doctorRegisterValidator, authController.registerDoctor);
+router.post("/register/doctor",
+  doctorRegisterValidator,
+  auditLog({ action: 'user.created', resource: 'user', severity: 'info', includeBody: false }),
+  authController.registerDoctor
+);
 
 /**
  * @swagger
@@ -335,7 +388,11 @@ router.post("/register/doctor", doctorRegisterValidator, authController.register
  *       400:
  *         description: Error de validación
  */
-router.post("/register/provider", providerRegisterValidator, authController.registerProvider);
+router.post("/register/provider",
+  providerRegisterValidator,
+  auditLog({ action: 'user.created', resource: 'user', severity: 'info', includeBody: false }),
+  authController.registerProvider
+);
 
 /**
  * @swagger
@@ -403,5 +460,28 @@ router.get("/check-cedula", authController.checkCedula);
  *         description: No autenticado
  */
 router.get("/profile", authMiddleware, authController.getProfile);
+
+/**
+ * @swagger
+ * /api/auth/logout:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Cerrar sesión actual
+ *     description: Invalida la sesión actual del usuario
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Sesión cerrada exitosamente
+ *       400:
+ *         description: Token no proporcionado
+ *       401:
+ *         description: No autenticado
+ */
+router.post("/logout",
+  authMiddleware,
+  auditLog({ action: 'auth.logout', resource: 'session', severity: 'info' }),
+  authController.logout
+);
 
 module.exports = router;

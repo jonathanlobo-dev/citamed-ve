@@ -1,0 +1,316 @@
+{
+  "getLogs": {
+    "success": true,
+    "data": {
+      "logs": [
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440001",
+          "userId": 1,
+          "action": "auth.login.success",
+          "resource": "auth",
+          "resourceId": null,
+          "severity": "info",
+          "ipAddress": "192.168.1.100",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "changesBefore": null,
+          "changesAfter": null,
+          "metadata": {
+            "method": "POST",
+            "path": "/api/auth/login"
+          },
+          "createdAt": "2025-12-22T10:30:00.000Z",
+          "user": {
+            "id": 1,
+            "email": "admin@citamed.ve",
+            "name": "Admin CITAMED"
+          }
+        },
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440002",
+          "userId": 2,
+          "action": "auth.login.failed",
+          "resource": "auth",
+          "resourceId": null,
+          "severity": "warning",
+          "ipAddress": "192.168.1.50",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "changesBefore": null,
+          "changesAfter": null,
+          "metadata": {
+            "reason": "INVALID_PASSWORD",
+            "email": "usuario@email.com"
+          },
+          "createdAt": "2025-12-22T10:25:00.000Z",
+          "user": null
+        },
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440003",
+          "userId": 1,
+          "action": "user.updated",
+          "resource": "user",
+          "resourceId": "5",
+          "severity": "info",
+          "ipAddress": "192.168.1.100",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "changesBefore": {
+            "name": "Juan Pérez",
+            "email": "juan@email.com",
+            "status": "active"
+          },
+          "changesAfter": {
+            "name": "Juan Carlos Pérez",
+            "email": "juan@email.com",
+            "status": "active"
+          },
+          "metadata": {},
+          "createdAt": "2025-12-22T10:20:00.000Z",
+          "user": {
+            "id": 1,
+            "email": "admin@citamed.ve",
+            "name": "Admin CITAMED"
+          }
+        },
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440004",
+          "userId": 1,
+          "action": "auth.2fa.enabled",
+          "resource": "user",
+          "resourceId": "3",
+          "severity": "warning",
+          "ipAddress": "192.168.1.100",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "changesBefore": {
+            "twoFactorEnabled": false
+          },
+          "changesAfter": {
+            "twoFactorEnabled": true
+          },
+          "metadata": {},
+          "createdAt": "2025-12-22T10:15:00.000Z",
+          "user": {
+            "id": 1,
+            "email": "admin@citamed.ve",
+            "name": "Admin CITAMED"
+          }
+        },
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440005",
+          "userId": 2,
+          "action": "security.brute_force",
+          "resource": "auth",
+          "resourceId": null,
+          "severity": "critical",
+          "ipAddress": "10.0.0.55",
+          "userAgent": "curl/7.68.0",
+          "changesBefore": null,
+          "changesAfter": null,
+          "metadata": {
+            "attempts": 15,
+            "blocked": true
+          },
+          "createdAt": "2025-12-22T10:10:00.000Z",
+          "user": null
+        }
+      ],
+      "total": 150,
+      "page": 1,
+      "limit": 50,
+      "totalPages": 3
+    }
+  },
+  "getLogById": {
+    "success": true,
+    "data": {
+      "id": "550e8400-e29b-41d4-a716-446655440003",
+      "userId": 1,
+      "action": "user.updated",
+      "resource": "user",
+      "resourceId": "5",
+      "severity": "info",
+      "ipAddress": "192.168.1.100",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "changesBefore": {
+        "name": "Juan Pérez",
+        "email": "juan@email.com",
+        "status": "active"
+      },
+      "changesAfter": {
+        "name": "Juan Carlos Pérez",
+        "email": "juan@email.com",
+        "status": "active"
+      },
+      "metadata": {
+        "method": "PUT",
+        "path": "/api/users/5"
+      },
+      "createdAt": "2025-12-22T10:20:00.000Z",
+      "user": {
+        "id": 1,
+        "email": "admin@citamed.ve",
+        "name": "Admin CITAMED"
+      }
+    }
+  },
+  "getResourceHistory": {
+    "success": true,
+    "data": {
+      "resource": "user",
+      "resourceId": "5",
+      "history": [
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440010",
+          "action": "user.created",
+          "severity": "info",
+          "changesBefore": null,
+          "changesAfter": {
+            "name": "Juan Pérez",
+            "email": "juan@email.com",
+            "role": "patient"
+          },
+          "createdAt": "2025-12-20T08:00:00.000Z"
+        },
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440003",
+          "action": "user.updated",
+          "severity": "info",
+          "changesBefore": {
+            "name": "Juan Pérez"
+          },
+          "changesAfter": {
+            "name": "Juan Carlos Pérez"
+          },
+          "createdAt": "2025-12-22T10:20:00.000Z"
+        }
+      ],
+      "count": 2
+    }
+  },
+  "getSecurityAlerts": {
+    "success": true,
+    "data": {
+      "alerts": [
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440005",
+          "userId": null,
+          "action": "security.brute_force",
+          "resource": "auth",
+          "severity": "critical",
+          "ipAddress": "10.0.0.55",
+          "metadata": {
+            "attempts": 15,
+            "blocked": true
+          },
+          "createdAt": "2025-12-22T10:10:00.000Z"
+        },
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440006",
+          "userId": 3,
+          "action": "auth.login.failed",
+          "resource": "auth",
+          "severity": "warning",
+          "ipAddress": "192.168.1.50",
+          "metadata": {
+            "reason": "ACCOUNT_LOCKED"
+          },
+          "createdAt": "2025-12-22T09:45:00.000Z",
+          "user": {
+            "email": "usuario@email.com"
+          }
+        }
+      ],
+      "count": 2,
+      "since": "24h"
+    }
+  },
+  "getStats": {
+    "success": true,
+    "data": {
+      "total": 1250,
+      "uniqueUsers": 45,
+      "bySeverity": [
+        { "severity": "info", "count": "980" },
+        { "severity": "warning", "count": "200" },
+        { "severity": "error", "count": "50" },
+        { "severity": "critical", "count": "20" }
+      ],
+      "byAction": [
+        { "action": "auth.login.success", "count": "450" },
+        { "action": "auth.login.attempt", "count": "380" },
+        { "action": "user.updated", "count": "150" },
+        { "action": "session.created", "count": "120" },
+        { "action": "auth.logout", "count": "100" }
+      ],
+      "byResource": [
+        { "resource": "auth", "count": "830" },
+        { "resource": "user", "count": "250" },
+        { "resource": "session", "count": "120" },
+        { "resource": "profile", "count": "50" }
+      ],
+      "byUser": [
+        { "userId": 1, "count": "350", "user": { "email": "admin@citamed.ve", "name": "Admin" } },
+        { "userId": 2, "count": "200", "user": { "email": "doctor@citamed.ve", "name": "Dr. López" } },
+        { "userId": 3, "count": "150", "user": { "email": "paciente@email.com", "name": "Juan Pérez" } }
+      ]
+    }
+  },
+  "getAvailableActions": {
+    "success": true,
+    "data": {
+      "actions": [
+        "auth.login.attempt",
+        "auth.login.success",
+        "auth.login.failed",
+        "auth.login.2fa",
+        "auth.logout",
+        "auth.2fa.enabled",
+        "auth.2fa.disabled",
+        "user.created",
+        "user.updated",
+        "user.deleted",
+        "session.created",
+        "session.revoked",
+        "session.revoked_all",
+        "security.brute_force",
+        "security.suspicious_activity"
+      ]
+    }
+  },
+  "exportLogs": {
+    "success": true,
+    "data": {
+      "filename": "audit_export_2025-12-22_103000.csv",
+      "downloadUrl": "/api/audit/download/audit_export_2025-12-22_103000.csv",
+      "recordCount": 150,
+      "expiresAt": "2025-12-22T11:30:00.000Z"
+    }
+  },
+  "adminProfile": {
+    "success": true,
+    "data": {
+      "user": {
+        "id": 1,
+        "email": "admin@citamed.ve",
+        "name": "Admin CITAMED",
+        "role": "admin"
+      },
+      "profile": {}
+    }
+  },
+  "patientProfile": {
+    "success": true,
+    "data": {
+      "user": {
+        "id": 3,
+        "email": "paciente@email.com",
+        "name": "Juan Pérez",
+        "role": "patient"
+      },
+      "profile": {}
+    }
+  },
+  "forbiddenError": {
+    "success": false,
+    "message": "No tienes permiso para acceder a este recurso",
+    "error": "FORBIDDEN"
+  }
+}

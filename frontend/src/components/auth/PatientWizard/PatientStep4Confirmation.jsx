@@ -297,17 +297,9 @@ function PatientStep4Confirmation({
                      disabled:opacity-50 disabled:cursor-not-allowed
                      transition-colors duration-200 flex items-center justify-center gap-2"
         >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Registrando...
-            </>
-          ) : (
-            <>
-              <Check className="h-5 w-5" />
-              Completar registro
-            </>
-          )}
+          {isSubmitting && <Loader2 className="h-5 w-5 animate-spin" />}
+          {!isSubmitting && <Check className="h-5 w-5" />}
+          <span>{isSubmitting ? 'Registrando...' : 'Completar registro'}</span>
         </button>
       </div>
     </motion.div>

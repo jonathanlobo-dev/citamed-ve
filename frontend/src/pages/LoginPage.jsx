@@ -1,14 +1,15 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useCallback } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowLeft, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import Button from '../components/common/button/button';
+import TwoFactorLoginModal from '../components/auth/TwoFactorLoginModal';
 import toast from 'react-hot-toast';
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { login, getDashboardPath } = useAuth();
+  const { login, loginWith2FA, getDashboardPath } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -16,6 +17,12 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
+
+  // Estado para 2FA
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [tempUserId, setTempUserId] = useState(null);
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
+  const [twoFactorError, setTwoFactorError] = useState(null);
 
   const validateField = (name, value) => {
     const newErrors = { ...errors };
@@ -78,6 +85,14 @@ function LoginPage() {
       });
 
       if (result.success) {
+        // Verificar si requiere 2FA
+        if (result.requires2FA) {
+          setTempUserId(result.userId);
+          setRequires2FA(true);
+          setLoading(false);
+          return;
+        }
+
         const userRole = result.user.role;
         const dashboardPath = getDashboardPath(userRole);
         toast.success('¡Bienvenido de vuelta!');
@@ -98,6 +113,41 @@ function LoginPage() {
       setLoading(false);
     }
   };
+
+  // Manejar verificación 2FA
+  const handle2FAVerify = useCallback(async (code) => {
+    setTwoFactorLoading(true);
+    setTwoFactorError(null);
+
+    try {
+      const result = await loginWith2FA(tempUserId, code);
+
+      if (result.success) {
+        setRequires2FA(false);
+        setTempUserId(null);
+        const userRole = result.user.role;
+        const dashboardPath = getDashboardPath(userRole);
+        toast.success('¡Bienvenido de vuelta!');
+        setTimeout(() => {
+          navigate(dashboardPath);
+        }, 1000);
+      } else {
+        setTwoFactorError(result.message || 'Código inválido');
+      }
+    } catch (error) {
+      console.error('Error en 2FA:', error);
+      setTwoFactorError('Error al verificar código');
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  }, [tempUserId, loginWith2FA, getDashboardPath, navigate]);
+
+  // Cerrar modal 2FA
+  const handle2FAClose = useCallback(() => {
+    setRequires2FA(false);
+    setTempUserId(null);
+    setTwoFactorError(null);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary via-primary-light to-secondary flex items-center justify-center px-4">
@@ -200,6 +250,14 @@ function LoginPage() {
                   {errors.password}
                 </motion.p>
               )}
+              <div className="mt-2 text-right">
+                <Link
+                  to="/forgot-password"
+                  className="text-sm text-primary hover:underline"
+                >
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
             </div>
 
             <Button
@@ -225,6 +283,15 @@ function LoginPage() {
           </div>
         </div>
       </motion.div>
+
+      {/* Modal de verificación 2FA */}
+      <TwoFactorLoginModal
+        isOpen={requires2FA}
+        onClose={handle2FAClose}
+        onVerify={handle2FAVerify}
+        loading={twoFactorLoading}
+        error={twoFactorError}
+      />
     </div>
   );
 }

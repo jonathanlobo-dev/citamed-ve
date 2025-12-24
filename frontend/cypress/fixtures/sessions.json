@@ -1,0 +1,174 @@
+{
+  "activeSessions": {
+    "success": true,
+    "sessions": [
+      {
+        "id": "session-1-uuid",
+        "deviceType": "desktop",
+        "deviceName": "Chrome 120 en Windows 10",
+        "browser": "Chrome",
+        "os": "Windows",
+        "ipAddress": "192.168.1.100",
+        "location": "Caracas, Venezuela",
+        "lastActivity": "2025-12-21T12:00:00.000Z",
+        "lastActivityFormatted": "Ahora mismo",
+        "createdAt": "2025-12-21T10:00:00.000Z",
+        "isCurrent": true,
+        "expiresAt": "2025-12-28T10:00:00.000Z"
+      },
+      {
+        "id": "session-2-uuid",
+        "deviceType": "mobile",
+        "deviceName": "Safari en iPhone",
+        "browser": "Safari",
+        "os": "iOS",
+        "ipAddress": "192.168.1.101",
+        "location": "Caracas, Venezuela",
+        "lastActivity": "2025-12-21T08:00:00.000Z",
+        "lastActivityFormatted": "Hace 4 horas",
+        "createdAt": "2025-12-20T15:00:00.000Z",
+        "isCurrent": false,
+        "expiresAt": "2025-12-27T15:00:00.000Z"
+      },
+      {
+        "id": "session-3-uuid",
+        "deviceType": "tablet",
+        "deviceName": "Chrome en Android Tablet",
+        "browser": "Chrome",
+        "os": "Android",
+        "ipAddress": "10.0.0.50",
+        "location": "Valencia, Venezuela",
+        "lastActivity": "2025-12-20T22:00:00.000Z",
+        "lastActivityFormatted": "Hace 1 día",
+        "createdAt": "2025-12-19T10:00:00.000Z",
+        "isCurrent": false,
+        "expiresAt": "2025-12-26T10:00:00.000Z"
+      }
+    ],
+    "count": 3
+  },
+  "singleSession": {
+    "success": true,
+    "sessions": [
+      {
+        "id": "session-1-uuid",
+        "deviceType": "desktop",
+        "deviceName": "Chrome 120 en Windows 10",
+        "browser": "Chrome",
+        "os": "Windows",
+        "ipAddress": "192.168.1.100",
+        "location": "Caracas, Venezuela",
+        "lastActivity": "2025-12-21T12:00:00.000Z",
+        "lastActivityFormatted": "Ahora mismo",
+        "createdAt": "2025-12-21T10:00:00.000Z",
+        "isCurrent": true,
+        "expiresAt": "2025-12-28T10:00:00.000Z"
+      }
+    ],
+    "count": 1
+  },
+  "loginHistory": {
+    "success": true,
+    "history": [
+      {
+        "id": "history-1-uuid",
+        "success": true,
+        "deviceType": "desktop",
+        "deviceName": "Chrome 120 en Windows 10",
+        "browser": "Chrome",
+        "os": "Windows",
+        "ipAddress": "192.168.1.100",
+        "location": "Caracas, Venezuela",
+        "loginAt": "2025-12-21T10:00:00.000Z",
+        "loginAtFormatted": "Hoy a las 10:00",
+        "authMethod": "password"
+      },
+      {
+        "id": "history-2-uuid",
+        "success": true,
+        "deviceType": "mobile",
+        "deviceName": "Safari en iPhone",
+        "browser": "Safari",
+        "os": "iOS",
+        "ipAddress": "192.168.1.101",
+        "location": "Caracas, Venezuela",
+        "loginAt": "2025-12-20T15:00:00.000Z",
+        "loginAtFormatted": "Ayer a las 15:00",
+        "authMethod": "2fa"
+      },
+      {
+        "id": "history-3-uuid",
+        "success": false,
+        "failureReason": "Contraseña incorrecta",
+        "deviceType": "desktop",
+        "deviceName": "Firefox en Linux",
+        "browser": "Firefox",
+        "os": "Linux",
+        "ipAddress": "200.44.32.15",
+        "location": "Maracaibo, Venezuela",
+        "loginAt": "2025-12-19T20:30:00.000Z",
+        "loginAtFormatted": "Hace 2 días",
+        "authMethod": "password"
+      }
+    ],
+    "total": 3,
+    "hasMore": false
+  },
+  "loginHistoryWithMore": {
+    "success": true,
+    "history": [
+      {
+        "id": "history-1-uuid",
+        "success": true,
+        "deviceType": "desktop",
+        "deviceName": "Chrome 120 en Windows 10",
+        "ipAddress": "192.168.1.100",
+        "location": "Caracas, Venezuela",
+        "loginAt": "2025-12-21T10:00:00.000Z",
+        "authMethod": "password"
+      }
+    ],
+    "total": 25,
+    "hasMore": true
+  },
+  "noSuspicious": {
+    "success": true,
+    "suspiciousSessions": [],
+    "count": 0,
+    "message": "No se detectaron sesiones sospechosas"
+  },
+  "suspiciousSessions": {
+    "success": true,
+    "suspiciousSessions": [
+      {
+        "id": "session-suspicious-uuid",
+        "deviceType": "desktop",
+        "deviceName": "Edge en Windows 11",
+        "ipAddress": "45.67.89.123",
+        "location": "Bogotá, Colombia",
+        "lastActivity": "2025-12-21T06:00:00.000Z",
+        "reason": "Nueva IP detectada"
+      }
+    ],
+    "count": 1,
+    "message": "Se detectaron sesiones desde ubicaciones inusuales. Si no las reconoces, ciérralas."
+  },
+  "revokeSuccess": {
+    "success": true,
+    "message": "Sesión cerrada correctamente"
+  },
+  "revokeAllSuccess": {
+    "success": true,
+    "revokedCount": 2,
+    "message": "2 sesión(es) cerrada(s)"
+  },
+  "loginStats": {
+    "success": true,
+    "stats": {
+      "successfulLogins": 15,
+      "failedAttempts": 2,
+      "uniqueLocations": 3,
+      "period": "30 days"
+    }
+  }
+}

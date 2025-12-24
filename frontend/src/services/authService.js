@@ -15,12 +15,24 @@ import api from './api';
  */
 const authService = {
   /**
-   * Login de usuario
+   * Login de usuario (paso 1)
    * @param {Object} credentials - { email, password }
    * @returns {Promise} Respuesta del servidor
+   * Puede retornar { requires2FA: true, userId } si el usuario tiene 2FA
    */
   login: async (credentials) => {
     const response = await api.post('/auth/login', credentials);
+    return response.data;
+  },
+
+  /**
+   * Login con verificación 2FA (paso 2)
+   * @param {number} userId - ID del usuario
+   * @param {string} token - Código TOTP o backup code
+   * @returns {Promise} Respuesta del servidor con token JWT
+   */
+  loginWith2FA: async (userId, token) => {
+    const response = await api.post('/auth/login/2fa', { userId, token });
     return response.data;
   },
 

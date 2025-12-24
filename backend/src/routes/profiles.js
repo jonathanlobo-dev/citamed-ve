@@ -1,7 +1,8 @@
-﻿const express = require("express");
+const express = require("express");
 const router = express.Router();
 const profileController = require("../controllers/profileController");
 const { authenticateToken } = require("../middleware/auth");
+const { requirePermission } = require("../middleware/rbacMiddleware");
 
 router.use(authenticateToken);
 
@@ -19,7 +20,7 @@ router.use(authenticateToken);
  *       401:
  *         description: No autorizado
  */
-router.get("/me", profileController.getMyProfile);
+router.get("/me", requirePermission("users.read.own"), profileController.getMyProfile);
 
 /**
  * @swagger
@@ -48,6 +49,6 @@ router.get("/me", profileController.getMyProfile);
  *       401:
  *         description: No autorizado
  */
-router.put("/me", profileController.updateMyProfile);
+router.put("/me", requirePermission("users.update.own"), profileController.updateMyProfile);
 
 module.exports = router;

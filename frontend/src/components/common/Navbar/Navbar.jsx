@@ -1,14 +1,66 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import Button from '../button/button';
-import { LogOut, User, Calendar, Menu, X, Home, Grid, Stethoscope, Building2, Shield, HelpCircle } from 'lucide-react';
+import { LogOut, User, Calendar, Menu, X, Home, Grid, Stethoscope, Building2, Shield, HelpCircle, Search, MapPin, Star } from 'lucide-react';
+import searchService from '../../../services/searchService';
 
 function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState(null);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchRef = useRef(null);
+
+  // Cerrar dropdown al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSearchDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Búsqueda con debounce
+  useEffect(() => {
+    if (searchQuery.length < 2) {
+      setSearchResults(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const result = await searchService.quickSearch(searchQuery, 5);
+        if (result.success) {
+          setSearchResults(result.data);
+          setShowSearchDropdown(true);
+        }
+      } catch (error) {
+        console.error('Search error:', error);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/directorio?q=${encodeURIComponent(searchQuery.trim())}`);
+      setShowSearchDropdown(false);
+      setSearchQuery('');
+      setMobileMenuOpen(false);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -58,13 +110,131 @@ function Navbar() {
             </h1>
           </div>
 
-          {/* DESKTOP MENU */}
-          <div className="hidden lg:flex items-center gap-6">
+          {/* SEARCH BAR - CENTRO */}
+          <div className="hidden md:flex flex-1 max-w-xl mx-8" ref={searchRef}>
+            <form onSubmit={handleSearchSubmit} className="relative w-full">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => searchResults && setShowSearchDropdown(true)}
+                  placeholder="Buscar médicos, especialidades, ciudades..."
+                  className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary focus:bg-white transition-all"
+                />
+                {searchLoading && (
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
+              </div>
+
+              {/* Dropdown de resultados */}
+              {showSearchDropdown && searchResults && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50">
+                  {/* Médicos */}
+                  {searchResults.doctors?.length > 0 && (
+                    <div className="p-3">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-2">Médicos</p>
+                      {searchResults.doctors.map((doctor) => (
+                        <button
+                          key={doctor.doctor_id}
+                          onClick={() => {
+                            navigate(`/doctor/${doctor.doctor_id}`);
+                            setShowSearchDropdown(false);
+                            setSearchQuery('');
+                          }}
+                          className="w-full flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors text-left"
+                        >
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-sm">
+                            {doctor.full_name?.charAt(0) || 'D'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 truncate">Dr(a). {doctor.full_name}</p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {doctor.specialties_text?.[0] || 'Medicina General'}
+                              {doctor.city && ` • ${doctor.city}`}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Especialidades */}
+                  {searchResults.specialties?.length > 0 && (
+                    <div className="p-3 border-t border-gray-100">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-2">Especialidades</p>
+                      <div className="flex flex-wrap gap-2 px-2">
+                        {searchResults.specialties.map((spec) => (
+                          <button
+                            key={spec.id}
+                            onClick={() => {
+                              navigate(`/directorio?specialty=${encodeURIComponent(spec.name)}`);
+                              setShowSearchDropdown(false);
+                              setSearchQuery('');
+                            }}
+                            className="px-3 py-1.5 bg-primary/10 text-primary rounded-full text-sm font-medium hover:bg-primary/20 transition-colors"
+                          >
+                            {spec.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ciudades */}
+                  {searchResults.cities?.length > 0 && (
+                    <div className="p-3 border-t border-gray-100">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-2">Ubicaciones</p>
+                      {searchResults.cities.map((city, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            navigate(`/directorio?city=${encodeURIComponent(city.city)}`);
+                            setShowSearchDropdown(false);
+                            setSearchQuery('');
+                          }}
+                          className="w-full flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors text-left"
+                        >
+                          <MapPin className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-700">{city.city}, {city.state}</span>
+                          <span className="text-xs text-gray-400 ml-auto">{city.doctor_count} médicos</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Sin resultados */}
+                  {!searchResults.doctors?.length && !searchResults.specialties?.length && !searchResults.cities?.length && (
+                    <div className="p-6 text-center text-gray-500">
+                      <Search className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                      <p>No se encontraron resultados</p>
+                    </div>
+                  )}
+
+                  {/* Ver todos */}
+                  <div className="p-3 bg-gray-50 border-t border-gray-100">
+                    <button
+                      onClick={handleSearchSubmit}
+                      className="w-full py-2 text-center text-primary font-medium hover:underline"
+                    >
+                      Ver todos los resultados →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </form>
+          </div>
+
+          {/* DESKTOP NAV ITEMS */}
+          <div className="hidden lg:flex items-center gap-1">
             {navItems.map((item) => (
               <button
                 key={item.label}
                 onClick={item.action}
-                className="flex items-center gap-2 text-gray-700 hover:text-primary transition-colors font-medium text-sm"
+                className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-primary hover:bg-gray-50 rounded-lg transition-colors font-medium text-sm"
               >
                 {item.icon}
                 {item.label}
@@ -143,6 +313,20 @@ function Navbar() {
         {mobileMenuOpen && (
           <div className="lg:hidden pb-4 border-t border-gray-200 mt-2">
             <div className="flex flex-col gap-2 pt-4">
+              {/* MOBILE SEARCH BAR */}
+              <div className="px-4 pb-4">
+                <form onSubmit={handleSearchSubmit} className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Buscar médicos, especialidades..."
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary focus:bg-white transition-all"
+                  />
+                </form>
+              </div>
+
               {navItems.map((item) => (
                 <button
                   key={item.label}

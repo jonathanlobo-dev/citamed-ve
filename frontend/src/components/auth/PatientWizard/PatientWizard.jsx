@@ -111,12 +111,12 @@ function PatientWizard() {
         gender: formData.gender,
         phone: formData.phone,
         // Paso 3
-        allergies: formData.allergies || null,
-        chronicConditions: formData.chronicConditions || null,
-        bloodType: formData.bloodType,
+        allergies: formData.allergies || '',
+        chronicConditions: formData.chronicConditions || '',
+        bloodType: formData.bloodType || 'unknown',
         emergencyContactName: formData.emergencyContactName,
         emergencyContactPhone: formData.emergencyContactPhone,
-        emergencyContactRelation: formData.emergencyContactRelation || null
+        emergencyContactRelationship: formData.emergencyContactRelation || 'other'
       };
 
       // Llamar al API
@@ -132,16 +132,21 @@ function PatientWizard() {
         // Si el API devuelve token, hacer login automático
         if (response.data?.token) {
           login(response.data.token, response.data.user);
-          // Redirigir después de 2 segundos
+          const userId = response.data.user?.id;
+          const userEmail = response.data.user?.email || formData.email;
+          const hasPhone = !!formData.phone;
+
+          // Redirigir a verificación de email
           setTimeout(() => {
-            navigate('/dashboard');
+            const verifyUrl = `/verificar/email?userId=${userId}&email=${encodeURIComponent(userEmail)}${hasPhone ? '&verifyPhone=true' : ''}`;
+            navigate(verifyUrl);
           }, 2000);
         } else {
-          // Redirigir a login después de 3 segundos
+          // Si no hay token, redirigir a login
           setTimeout(() => {
             navigate('/login', {
               state: {
-                message: 'Registro exitoso. Por favor inicia sesión.',
+                message: 'Registro exitoso. Por favor inicia sesión para verificar tu cuenta.',
                 email: formData.email
               }
             });
@@ -187,7 +192,7 @@ function PatientWizard() {
           Tu cuenta ha sido creada correctamente.
         </p>
         <p className="text-sm text-gray-500">
-          Serás redirigido automáticamente...
+          Ahora verificaremos tu correo electrónico...
         </p>
       </motion.div>
     );
