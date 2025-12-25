@@ -7,8 +7,8 @@ const { DataTypes } = require('sequelize');
 module.exports = (sequelize) => {
   const Appointment = sequelize.define('Appointment', {
     id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
       primaryKey: true,
     },
 
@@ -16,7 +16,7 @@ module.exports = (sequelize) => {
     // RELACIONES
     // ========================================
     patientId: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: 'users',
@@ -25,7 +25,7 @@ module.exports = (sequelize) => {
       comment: 'ID del paciente (User)'
     },
     doctorId: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: 'users',
@@ -34,7 +34,7 @@ module.exports = (sequelize) => {
       comment: 'ID del doctor (User)'
     },
     doctorProfileId: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: true,
       references: {
         model: 'doctor_profiles',
@@ -42,7 +42,7 @@ module.exports = (sequelize) => {
       }
     },
     specialtyId: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: true,
       references: {
         model: 'specialties',
@@ -55,7 +55,7 @@ module.exports = (sequelize) => {
     // ========================================
     appointmentNumber: {
       type: DataTypes.STRING(50),
-      allowNull: false,
+      allowNull: true,  // Se genera en beforeCreate hook
       unique: true,
       comment: 'Número único de cita (ej: CITA-2024-00001)'
     },

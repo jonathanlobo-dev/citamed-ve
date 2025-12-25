@@ -159,6 +159,15 @@ try {
   db.ClinicImage = ClinicImageModel(sequelize);
   console.log('  ✅ ClinicImage cargado');
 
+  // M03 - Agendamiento Inteligente + Sala de Espera Virtual
+  const WaitingQueueModel = require('./WaitingQueue');
+  db.WaitingQueue = WaitingQueueModel(sequelize);
+  console.log('  ✅ WaitingQueue cargado');
+
+  const AvailabilityOverrideModel = require('./AvailabilityOverride');
+  db.AvailabilityOverride = AvailabilityOverrideModel(sequelize);
+  console.log('  ✅ AvailabilityOverride cargado');
+
   console.log('✅ Todos los modelos cargados exitosamente\n');
 } catch (error) {
   console.error('❌ Error cargando modelos:', error.message);
@@ -661,6 +670,55 @@ try {
     as: 'location'
   });
   console.log('  ✅ ClinicLocation <-> ClinicImage');
+
+  // ═══════════════════════════════════════════════════════════════
+  // M03 - Agendamiento Inteligente + Sala de Espera Virtual
+  // ═══════════════════════════════════════════════════════════════
+
+  // WAITING_QUEUE <-> APPOINTMENT (1:1)
+  db.WaitingQueue.belongsTo(db.Appointment, {
+    foreignKey: 'appointmentId',
+    as: 'appointment'
+  });
+  db.Appointment.hasOne(db.WaitingQueue, {
+    foreignKey: 'appointmentId',
+    as: 'queueEntry'
+  });
+  console.log('  ✅ WaitingQueue <-> Appointment');
+
+  // WAITING_QUEUE <-> USER (Doctor) (N:1)
+  db.WaitingQueue.belongsTo(db.User, {
+    foreignKey: 'doctorId',
+    as: 'doctor'
+  });
+  db.User.hasMany(db.WaitingQueue, {
+    foreignKey: 'doctorId',
+    as: 'doctorQueueEntries'
+  });
+  console.log('  ✅ WaitingQueue <-> User (Doctor)');
+
+  // WAITING_QUEUE <-> USER (Patient) (N:1)
+  db.WaitingQueue.belongsTo(db.User, {
+    foreignKey: 'patientId',
+    as: 'patient'
+  });
+  db.User.hasMany(db.WaitingQueue, {
+    foreignKey: 'patientId',
+    as: 'patientQueueEntries'
+  });
+  console.log('  ✅ WaitingQueue <-> User (Patient)');
+
+  // AVAILABILITY_OVERRIDE <-> DOCTOR_PROFILE (N:1)
+  db.AvailabilityOverride.belongsTo(db.DoctorProfile, {
+    foreignKey: 'doctorProfileId',
+    as: 'doctorProfile'
+  });
+  db.DoctorProfile.hasMany(db.AvailabilityOverride, {
+    foreignKey: 'doctorProfileId',
+    as: 'availabilityOverrides',
+    onDelete: 'CASCADE'
+  });
+  console.log('  ✅ AvailabilityOverride <-> DoctorProfile');
 
   console.log('✅ Asociaciones establecidas correctamente\n');
 } catch (error) {

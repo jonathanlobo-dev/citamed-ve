@@ -18,6 +18,9 @@ const kycVerificationRoutes = require('./kycVerification');
 const reviewsRoutes = require('./reviews');
 const searchRoutes = require('./search');
 const clinicsRoutes = require('./clinics');
+const appointmentsRoutes = require('./appointments');
+const waitingRoomRoutes = require('./waitingRoom');
+const availabilityRoutes = require('./availability');
 
 // Configurar rutas
 router.use('/auth', authRoutes);
@@ -36,6 +39,9 @@ router.use('/kyc', kycVerificationRoutes);
 router.use('/reviews', reviewsRoutes);
 router.use('/search', searchRoutes);
 router.use('/clinics', clinicsRoutes);
+router.use('/appointments', appointmentsRoutes);
+router.use('/waiting-room', waitingRoomRoutes);
+router.use('/availability', availabilityRoutes);
 
 // Ruta de prueba de base de datos
 router.get('/db-test', async (req, res) => {
