@@ -17,9 +17,26 @@ const waitingRoomHandler = require('../socket/handlers/waitingRoom');
 const notificationsHandler = require('../socket/handlers/notifications');
 
 // Configuración desde variables de entorno
+const isProduction = process.env.NODE_ENV === 'production';
+
+// En desarrollo, permitir cualquier localhost
+const getCorsOrigin = () => {
+  if (isProduction) {
+    return process.env.SOCKET_CORS_ORIGIN || 'https://citamed.ve';
+  }
+  // En desarrollo, aceptar cualquier localhost/127.0.0.1
+  return (origin, callback) => {
+    if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  };
+};
+
 const socketConfig = {
   cors: {
-    origin: process.env.SOCKET_CORS_ORIGIN || 'http://localhost:5173',
+    origin: getCorsOrigin(),
     methods: ['GET', 'POST'],
     credentials: true
   },
@@ -53,7 +70,7 @@ const initializeSocket = (httpServer) => {
   io = new Server(httpServer, socketConfig);
 
   console.log('[Socket.io] Initializing server...');
-  console.log(`[Socket.io] CORS origin: ${socketConfig.cors.origin}`);
+  console.log(`[Socket.io] CORS: ${isProduction ? 'production mode' : 'development mode (all localhost allowed)'}`);
 
   // ==========================================
   // MAIN NAMESPACE (/)

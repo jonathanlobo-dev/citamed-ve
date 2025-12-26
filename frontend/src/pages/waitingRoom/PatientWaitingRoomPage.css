@@ -1,0 +1,1031 @@
+/**
+ * PatientWaitingRoomPage CSS - CITAMED.VE
+ * Diseño Enterprise - Sala de Espera Virtual Completa
+ */
+
+/* ========================================
+   BASE & LAYOUT
+======================================== */
+
+.waiting-room-page {
+  min-height: 100vh;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+}
+
+.waiting-room-page.enterprise {
+  background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%);
+}
+
+/* Loading State */
+.waiting-room-page.loading {
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.loading-pulse {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  animation: pulse-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-loading {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.7; }
+}
+
+.loading-container p {
+  color: #64748b;
+  font-size: 1rem;
+}
+
+/* Error State */
+.waiting-room-page.error-state {
+  align-items: center;
+  justify-content: center;
+}
+
+.error-container {
+  text-align: center;
+  padding: 48px;
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  max-width: 400px;
+}
+
+.error-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 20px;
+  background: #fef2f2;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ef4444;
+}
+
+.error-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.error-container h2 {
+  margin: 0 0 8px;
+  color: #1e293b;
+}
+
+.error-container p {
+  margin: 0 0 24px;
+  color: #64748b;
+}
+
+/* ========================================
+   HEADER
+======================================== */
+
+.wr-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.btn-back {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.btn-back:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.btn-back svg {
+  width: 24px;
+  height: 24px;
+}
+
+.header-info h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.separator {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.doctor-name {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.header-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.nav-link {
+  padding: 8px 16px;
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.nav-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.btn-logout {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(239, 68, 68, 0.2);
+  border: none;
+  border-radius: 8px;
+  color: #fca5a5;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-logout:hover {
+  background: rgba(239, 68, 68, 0.4);
+  color: white;
+}
+
+.connection-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 100px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.connection-badge.online {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+
+.connection-badge.offline {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+.connection-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.connection-badge.online .connection-dot {
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+  animation: pulse-dot 2s infinite;
+}
+
+.connection-badge.offline .connection-dot {
+  background: #ef4444;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ========================================
+   ERROR BANNER
+======================================== */
+
+.error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #fef2f2;
+  border-bottom: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 0.875rem;
+}
+
+.error-banner svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ========================================
+   MAIN CONTENT
+======================================== */
+
+.wr-content {
+  flex: 1;
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Pre Check-in View - Ahora con 3 secciones */
+.pre-checkin {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.pre-checkin .checkin-card {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.pre-checkin .virtual-chairs-container {
+  width: 100%;
+}
+
+.pre-checkin .location-tracker {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.checkin-hint {
+  margin-top: 12px;
+  font-size: 0.8125rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.checkin-card {
+  background: white;
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* Queue Confirmed - Ya estás en la cola */
+.checkin-card.queue-confirmed {
+  border: 2px solid #10b981;
+  background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%);
+}
+
+.card-header.success {
+  color: #047857;
+}
+
+.card-header.success h2 {
+  color: #047857;
+}
+
+.card-icon.confirmed {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+}
+
+.card-icon.confirmed svg {
+  color: #059669;
+}
+
+/* Position Banner - Destacar la posición */
+.my-position-banner {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  margin-bottom: 24px;
+  color: white;
+}
+
+.my-position-banner .position-number {
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.my-position-banner .position-label {
+  font-size: 0.9375rem;
+  opacity: 0.9;
+  margin-top: 4px;
+}
+
+.my-position-banner .ahead-info {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  font-size: 0.875rem;
+  opacity: 0.85;
+}
+
+/* Status styled */
+.detail-value.status-scheduled {
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+/* Arrival button variant */
+.btn-checkin.arrival {
+  background: linear-gradient(135deg, #059669, #047857);
+}
+
+.btn-checkin.arrival:hover {
+  background: linear-gradient(135deg, #047857, #065f46);
+}
+
+.card-header.warning .card-icon {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+}
+
+.card-header.warning .card-icon svg {
+  color: #d97706;
+}
+
+.card-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.card-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 20px;
+  background: linear-gradient(135deg, #dbeafe, #e0e7ff);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3b82f6;
+}
+
+.card-icon svg {
+  width: 36px;
+  height: 36px;
+}
+
+.card-header h2 {
+  margin: 0 0 8px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.card-header p {
+  margin: 0;
+  color: #64748b;
+}
+
+.appointment-details {
+  background: #f8fafc;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.detail-value {
+  font-size: 1rem;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.detail-value.highlight {
+  color: #3b82f6;
+  font-size: 1.25rem;
+}
+
+.btn-checkin {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px 32px;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-checkin:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(59, 130, 246, 0.35);
+}
+
+.btn-checkin svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Not Today Notice - Modo Monitoreo */
+.not-today-notice {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 16px;
+  margin-top: 8px;
+}
+
+.not-today-notice .calendar-icon {
+  width: 48px;
+  height: 48px;
+  color: #d97706;
+  flex-shrink: 0;
+}
+
+.not-today-notice .notice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.not-today-notice .notice-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #92400e;
+}
+
+.not-today-notice .notice-subtitle {
+  font-size: 0.875rem;
+  color: #a16207;
+}
+
+.checkin-hint.monitoring-mode {
+  background: linear-gradient(135deg, #dbeafe, #e0e7ff);
+  padding: 12px 20px;
+  border-radius: 12px;
+  color: #3730a3;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* ========================================
+   IN QUEUE VIEW
+======================================== */
+
+.in-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Top Row: Semáforo + Stats */
+.top-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 24px;
+}
+
+/* Doctor Stats Panel */
+.doctor-stats-panel {
+  background: white;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.doctor-stats-panel h3 {
+  margin: 0 0 20px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.doctor-stats-panel .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 16px;
+}
+
+.stat-icon {
+  font-size: 1.5rem;
+}
+
+.stat-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+/* Doctor Timing Status */
+.doctor-timing {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+.doctor-timing.on-time {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.doctor-timing.delayed {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.doctor-timing.ahead {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.timing-icon {
+  font-size: 1.25rem;
+}
+
+/* Doctor Online Status */
+.doctor-online-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.doctor-online-status.online {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.doctor-online-status.offline {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.doctor-online-status .status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.doctor-online-status.online .status-dot {
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+  animation: pulse-dot 2s infinite;
+}
+
+.doctor-online-status.offline .status-dot {
+  background: #ef4444;
+}
+
+/* Bottom Row */
+.bottom-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+/* Appointment Panel */
+.appointment-panel {
+  background: white;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.appointment-panel h3 {
+  margin: 0 0 20px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.panel-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: #f8fafc;
+  border-radius: 12px;
+}
+
+.info-row svg {
+  width: 24px;
+  height: 24px;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.info-row > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.row-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.row-value {
+  font-size: 1rem;
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.arrived-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  background: #dcfce7;
+  color: #166534;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.arrived-indicator svg {
+  width: 20px;
+  height: 20px;
+  color: #166534;
+}
+
+/* ========================================
+   QUEUE STATUS INDICATOR - Sistema de 3 Fases
+======================================== */
+
+.queue-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.queue-status-indicator.status-scheduled {
+  background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+  color: #5b21b6;
+  border: 2px solid #8b5cf6;
+}
+
+.queue-status-indicator.status-en_route {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+  border: 2px solid #f59e0b;
+  animation: pulse-indicator 2s ease-in-out infinite;
+}
+
+@keyframes pulse-indicator {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+  50% { box-shadow: 0 0 12px 4px rgba(245, 158, 11, 0.2); }
+}
+
+.queue-status-indicator.status-waiting {
+  background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+  color: #475569;
+  border: 2px solid #94a3b8;
+}
+
+.queue-status-indicator.status-checked_in {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  color: #166534;
+  border: 2px solid #22c55e;
+}
+
+.queue-status-indicator.status-called {
+  background: linear-gradient(135deg, #fef08a, #fde047);
+  color: #854d0e;
+  border: 2px solid #eab308;
+  animation: blink-indicator 0.8s ease-in-out infinite;
+}
+
+@keyframes blink-indicator {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}
+
+.queue-status-indicator.status-in_consultation {
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  color: #1e40af;
+  border: 2px solid #3b82f6;
+}
+
+/* ========================================
+   ARRIVAL BUTTON - Confirmar Llegada
+======================================== */
+
+.btn-arrival {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+.btn-arrival:hover {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(34, 197, 94, 0.4);
+}
+
+.btn-arrival:active {
+  transform: translateY(0);
+}
+
+.btn-arrival svg {
+  flex-shrink: 0;
+}
+
+.panel-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.btn-cancel {
+  width: 100%;
+  padding: 14px 20px;
+  background: #f1f5f9;
+  color: #64748b;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* ========================================
+   BREATHING SECTION
+======================================== */
+
+.breathing-section {
+  margin-top: 16px;
+}
+
+.breathing-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  border: 2px dashed #86efac;
+  border-radius: 16px;
+  color: #166534;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.breathing-toggle:hover {
+  background: linear-gradient(135deg, #dcfce7, #d1fae5);
+  border-color: #22c55e;
+}
+
+.breathing-icon {
+  font-size: 1.5rem;
+}
+
+/* ========================================
+   BUTTONS
+======================================== */
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+}
+
+/* ========================================
+   FOOTER
+======================================== */
+
+.wr-footer {
+  padding: 16px 24px;
+  text-align: center;
+  background: white;
+  border-top: 1px solid #e2e8f0;
+}
+
+.wr-footer p {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #94a3b8;
+}
+
+/* ========================================
+   RESPONSIVE
+======================================== */
+
+@media (max-width: 1200px) {
+  .doctor-stats-panel .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .wr-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .header-center {
+    position: static;
+    transform: none;
+    order: 3;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .header-right .nav-link {
+    display: none;
+  }
+
+  .pre-checkin,
+  .top-row,
+  .bottom-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .wr-header {
+    padding: 12px 16px;
+  }
+
+  .header-info h1 {
+    font-size: 1rem;
+  }
+
+  .header-meta {
+    font-size: 0.75rem;
+  }
+
+  .connection-text {
+    display: none;
+  }
+
+  .wr-content {
+    padding: 16px;
+  }
+
+  .checkin-card,
+  .doctor-stats-panel,
+  .appointment-panel {
+    padding: 20px;
+    border-radius: 16px;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .doctor-stats-panel .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-item {
+    padding: 12px;
+  }
+}

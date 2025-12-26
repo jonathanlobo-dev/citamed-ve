@@ -1,17 +1,15 @@
 /**
  * Waiting Room Socket Handler - CITAMED.VE
+ * M03 - Sala de Espera Virtual
  *
- * SKELETON - Handlers para eventos de Sala de Espera Virtual
- * Se completará en Módulo 3 (M03) - Agendamiento
- *
- * Este handler maneja:
- * - Doctor online/offline status
- * - Patient check-in/checkout
- * - Queue updates en tiempo real
- * - Notificaciones de turno
+ * LA JOYA DE LA CORONA - Handlers en tiempo real
  */
 
 const { WAITING_ROOM_EVENTS, EVENTS } = require('../events');
+const waitingRoomService = require('../../services/waitingRoomService');
+
+// Store de doctores online
+const onlineDoctors = new Map();
 
 /**
  * Handler principal para namespace /waiting-room
@@ -31,9 +29,8 @@ const waitingRoomHandler = (socket, nsp) => {
 
   /**
    * Doctor se marca como online/disponible
-   * Emite estado a pacientes en su sala de espera
    */
-  socket.on(WAITING_ROOM_EVENTS.WR_DOCTOR_ONLINE, (data) => {
+  socket.on(WAITING_ROOM_EVENTS.WR_DOCTOR_ONLINE, async (data) => {
     if (userRole !== 'doctor') {
       socket.emit(EVENTS.ERROR, { message: 'Only doctors can go online' });
       return;
@@ -41,17 +38,29 @@ const waitingRoomHandler = (socket, nsp) => {
 
     const roomName = `doctor:${userId}`;
     socket.join(roomName);
+    onlineDoctors.set(userId, {
+      socketId: socket.id,
+      onlineSince: new Date()
+    });
 
     console.log(`[WaitingRoom] Doctor ${userId} is now ONLINE`);
 
-    // Broadcast a pacientes en la sala
-    nsp.to(roomName).emit(WAITING_ROOM_EVENTS.WR_DOCTOR_ONLINE, {
-      doctorId: userId,
-      timestamp: new Date().toISOString()
-    });
+    // Obtener cola actual
+    try {
+      const queueData = await waitingRoomService.getDoctorQueue(userId);
 
-    // TODO M03: Actualizar estado en base de datos
-    // TODO M03: Enviar cola actual al doctor
+      // Enviar cola al doctor
+      socket.emit(WAITING_ROOM_EVENTS.WR_QUEUE_UPDATE, queueData);
+
+      // Broadcast a pacientes en la sala
+      nsp.to(roomName).emit(WAITING_ROOM_EVENTS.WR_DOCTOR_ONLINE, {
+        doctorId: userId,
+        timestamp: new Date().toISOString(),
+        queue: queueData
+      });
+    } catch (error) {
+      console.error('[WaitingRoom] Error getting queue:', error.message);
+    }
   });
 
   /**
@@ -64,25 +73,24 @@ const waitingRoomHandler = (socket, nsp) => {
     }
 
     const roomName = `doctor:${userId}`;
+    onlineDoctors.delete(userId);
 
     console.log(`[WaitingRoom] Doctor ${userId} is now OFFLINE`);
 
     // Broadcast a pacientes
     nsp.to(roomName).emit(WAITING_ROOM_EVENTS.WR_DOCTOR_OFFLINE, {
       doctorId: userId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      message: 'El doctor ha terminado las consultas del dia'
     });
 
     socket.leave(roomName);
-
-    // TODO M03: Actualizar estado en base de datos
-    // TODO M03: Notificar a pacientes en cola
   });
 
   /**
    * Doctor llama al siguiente paciente
    */
-  socket.on(WAITING_ROOM_EVENTS.WR_CALL_NEXT, (data) => {
+  socket.on(WAITING_ROOM_EVENTS.WR_CALL_NEXT, async (data) => {
     if (userRole !== 'doctor') {
       socket.emit(EVENTS.ERROR, { message: 'Only doctors can call patients' });
       return;
@@ -90,15 +98,62 @@ const waitingRoomHandler = (socket, nsp) => {
 
     console.log(`[WaitingRoom] Doctor ${userId} calling next patient`);
 
-    // TODO M03: Implementar lógica de cola
-    // 1. Obtener siguiente paciente de la cola
-    // 2. Emitir WR_YOUR_TURN al paciente
-    // 3. Actualizar posiciones de todos en la cola
-    // 4. Broadcast WR_QUEUE_UPDATE a la sala
+    try {
+      const entry = await waitingRoomService.callNextPatient(userId);
 
-    socket.emit(EVENTS.ERROR, {
-      message: 'Feature not implemented yet - Coming in M03'
-    });
+      if (!entry) {
+        socket.emit(WAITING_ROOM_EVENTS.WR_QUEUE_UPDATE, {
+          message: 'No hay mas pacientes en la cola',
+          queue: []
+        });
+        return;
+      }
+
+      // La notificacion al paciente ya se envia en el servicio
+      // Aqui solo confirmamos al doctor
+
+      socket.emit('call_success', {
+        patientId: entry.patientId,
+        queueEntryId: entry.id,
+        message: 'Paciente llamado exitosamente'
+      });
+
+    } catch (error) {
+      console.error('[WaitingRoom] Error calling next:', error.message);
+      socket.emit(EVENTS.ERROR, { message: error.message });
+    }
+  });
+
+  /**
+   * Doctor llama a un paciente especifico
+   */
+  socket.on(WAITING_ROOM_EVENTS.WR_CALL_PATIENT, async (data) => {
+    if (userRole !== 'doctor') {
+      socket.emit(EVENTS.ERROR, { message: 'Only doctors can call patients' });
+      return;
+    }
+
+    const { queueEntryId } = data || {};
+
+    if (!queueEntryId) {
+      socket.emit(EVENTS.ERROR, { message: 'Missing queueEntryId' });
+      return;
+    }
+
+    console.log(`[WaitingRoom] Doctor ${userId} calling patient ${queueEntryId}`);
+
+    try {
+      const entry = await waitingRoomService.callSpecificPatient(queueEntryId);
+
+      socket.emit('call_success', {
+        patientId: entry.patientId,
+        queueEntryId: entry.id,
+        message: 'Paciente llamado exitosamente'
+      });
+    } catch (error) {
+      console.error('[WaitingRoom] Error calling patient:', error.message);
+      socket.emit(EVENTS.ERROR, { message: error.message });
+    }
   });
 
   // ==========================================
@@ -108,7 +163,7 @@ const waitingRoomHandler = (socket, nsp) => {
   /**
    * Paciente hace check-in en sala de espera
    */
-  socket.on(WAITING_ROOM_EVENTS.WR_PATIENT_CHECKIN, (data) => {
+  socket.on(WAITING_ROOM_EVENTS.WR_PATIENT_CHECKIN, async (data) => {
     if (userRole !== 'patient') {
       socket.emit(EVENTS.ERROR, { message: 'Only patients can check-in' });
       return;
@@ -121,45 +176,129 @@ const waitingRoomHandler = (socket, nsp) => {
       return;
     }
 
-    const roomName = `doctor:${doctorId}`;
-    socket.join(roomName);
+    console.log(`[WaitingRoom] Patient ${userId} checking in for appointment ${appointmentId}`);
 
-    console.log(`[WaitingRoom] Patient ${userId} checked-in for appointment ${appointmentId}`);
+    try {
+      const result = await waitingRoomService.checkIn(appointmentId);
 
-    // TODO M03: Implementar check-in real
-    // 1. Verificar cita existe y es válida
-    // 2. Agregar paciente a cola en Redis/DB
-    // 3. Calcular posición y tiempo estimado
-    // 4. Emitir WR_QUEUE_UPDATE a la sala
-    // 5. Emitir WR_POSITION_UPDATE al paciente
+      // Unirse a la sala del doctor
+      const roomName = `doctor:${doctorId}`;
+      socket.join(roomName);
 
-    socket.emit(WAITING_ROOM_EVENTS.WR_PATIENT_CHECKIN, {
-      status: 'pending',
-      message: 'Check-in feature coming in M03',
-      appointmentId,
-      doctorId
-    });
+      // Confirmar check-in al paciente
+      socket.emit(WAITING_ROOM_EVENTS.WR_PATIENT_CHECKIN, {
+        status: 'success',
+        message: 'Check-in exitoso! Ya estas en la cola virtual.',
+        position: result.position,
+        estimatedWaitMinutes: result.estimatedWaitMinutes,
+        queueEntryId: result.queueEntry.id,
+        appointmentId
+      });
+
+      // Emitir actualizacion de posicion
+      socket.emit(WAITING_ROOM_EVENTS.WR_POSITION_UPDATE, {
+        position: result.position,
+        estimatedMinutes: result.estimatedWaitMinutes,
+        queueEntryId: result.queueEntry.id
+      });
+
+    } catch (error) {
+      console.error('[WaitingRoom] Check-in error:', error.message);
+      socket.emit(WAITING_ROOM_EVENTS.WR_PATIENT_CHECKIN, {
+        status: 'error',
+        message: error.message,
+        appointmentId,
+        doctorId
+      });
+    }
   });
 
   /**
    * Paciente cancela su turno
    */
-  socket.on(WAITING_ROOM_EVENTS.WR_PATIENT_CANCEL, (data) => {
+  socket.on(WAITING_ROOM_EVENTS.WR_PATIENT_CANCEL, async (data) => {
     if (userRole !== 'patient') {
       socket.emit(EVENTS.ERROR, { message: 'Only patients can cancel' });
       return;
     }
 
-    console.log(`[WaitingRoom] Patient ${userId} cancelled their turn`);
+    const { queueEntryId, reason } = data || {};
 
-    // TODO M03: Implementar cancelación
-    // 1. Remover de cola
-    // 2. Actualizar posiciones
-    // 3. Broadcast WR_QUEUE_UPDATE
+    if (!queueEntryId) {
+      socket.emit(EVENTS.ERROR, { message: 'Missing queueEntryId' });
+      return;
+    }
 
-    socket.emit(EVENTS.ERROR, {
-      message: 'Feature not implemented yet - Coming in M03'
-    });
+    console.log(`[WaitingRoom] Patient ${userId} cancelling turn ${queueEntryId}`);
+
+    try {
+      const entry = await waitingRoomService.cancelTurn(queueEntryId, reason);
+
+      socket.emit(WAITING_ROOM_EVENTS.WR_PATIENT_CANCEL, {
+        status: 'success',
+        message: 'Turno cancelado exitosamente',
+        queueEntryId
+      });
+
+      // Salir de la sala del doctor
+      socket.leave(`doctor:${entry.doctorId}`);
+
+    } catch (error) {
+      console.error('[WaitingRoom] Cancel error:', error.message);
+      socket.emit(EVENTS.ERROR, { message: error.message });
+    }
+  });
+
+  /**
+   * Paciente solicita su posicion actual
+   */
+  socket.on('get_position', async (data) => {
+    const { appointmentId } = data || {};
+
+    if (!appointmentId) {
+      socket.emit(EVENTS.ERROR, { message: 'Missing appointmentId' });
+      return;
+    }
+
+    try {
+      const position = await waitingRoomService.getPatientPosition(appointmentId);
+
+      if (position) {
+        socket.emit(WAITING_ROOM_EVENTS.WR_POSITION_UPDATE, {
+          position: position.position,
+          peopleAhead: position.peopleAhead,
+          estimatedMinutes: position.estimatedWaitMinutes,
+          status: position.status
+        });
+      }
+    } catch (error) {
+      console.error('[WaitingRoom] Get position error:', error.message);
+    }
+  });
+
+  /**
+   * Suscribirse a cola de un doctor
+   */
+  socket.on('subscribe_queue', async (data) => {
+    const { doctorId } = data || {};
+
+    if (!doctorId) {
+      socket.emit(EVENTS.ERROR, { message: 'Missing doctorId' });
+      return;
+    }
+
+    const roomName = `doctor:${doctorId}`;
+    socket.join(roomName);
+
+    console.log(`[WaitingRoom] User ${userId} subscribed to queue of doctor ${doctorId}`);
+
+    // Enviar cola actual
+    try {
+      const chairs = await waitingRoomService.getChairsVisualization(doctorId);
+      socket.emit('chairs_update', chairs);
+    } catch (error) {
+      console.error('[WaitingRoom] Error getting chairs:', error.message);
+    }
   });
 
   // ==========================================
@@ -168,10 +307,38 @@ const waitingRoomHandler = (socket, nsp) => {
   socket.on('disconnect', (reason) => {
     console.log(`[WaitingRoom] User ${userId} disconnected: ${reason}`);
 
-    // TODO M03: Manejar desconexión
-    // - Si es doctor: marcar como offline
-    // - Si es paciente: mantener en cola por X minutos
+    // Si es doctor, marcar como offline
+    if (userRole === 'doctor' && onlineDoctors.has(userId)) {
+      onlineDoctors.delete(userId);
+      const roomName = `doctor:${userId}`;
+
+      nsp.to(roomName).emit(WAITING_ROOM_EVENTS.WR_DOCTOR_OFFLINE, {
+        doctorId: userId,
+        timestamp: new Date().toISOString(),
+        reason: 'disconnected'
+      });
+
+      console.log(`[WaitingRoom] Doctor ${userId} marked as OFFLINE due to disconnect`);
+    }
+
+    // Si es paciente, mantenerlo en la cola (no se elimina por desconexion)
   });
 };
 
+/**
+ * Verificar si un doctor esta online
+ */
+const isDoctorOnline = (doctorId) => {
+  return onlineDoctors.has(doctorId);
+};
+
+/**
+ * Obtener doctores online
+ */
+const getOnlineDoctors = () => {
+  return Array.from(onlineDoctors.keys());
+};
+
 module.exports = waitingRoomHandler;
+module.exports.isDoctorOnline = isDoctorOnline;
+module.exports.getOnlineDoctors = getOnlineDoctors;

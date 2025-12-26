@@ -90,6 +90,8 @@ class AppointmentService {
 
   /**
    * Crear una nueva cita
+   * Automáticamente crea entrada en la cola virtual con posición basada en hora de cita
+   * Usa transacción para prevenir double-booking (race condition)
    */
   async createAppointment(data) {
     const {
@@ -108,7 +110,7 @@ class AppointmentService {
       consultationFee = 0
     } = data;
 
-    // 1. Verificar disponibilidad
+    // 1. Verificar disponibilidad inicial (sin transacción para UX rápida)
     const availability = await this.getAvailableSlots(doctorProfileId, appointmentDate);
 
     if (!availability.available) {
@@ -127,26 +129,80 @@ class AppointmentService {
     const slotInfo = availability.slots.find(s => s.start === appointmentTime);
     const duration = slotInfo ? slotInfo.duration : 30;
 
-    // 3. Crear la cita
-    const appointment = await Appointment.create({
-      patientId,
-      doctorId,
-      doctorProfileId,
-      specialtyId,
-      appointmentDate,
-      appointmentTime,
-      duration,
-      appointmentType,
-      reasonForVisit,
-      symptoms,
-      patientNotes,
-      locationType,
-      locationAddress,
-      consultationFee,
-      status: 'pending'
-    });
+    // 3. Usar transacción para prevenir race condition (double booking)
+    const transaction = await db.sequelize.transaction();
 
-    return appointment;
+    try {
+      // 3.1 Verificar nuevamente dentro de la transacción (con lock)
+      const existingAppointment = await Appointment.findOne({
+        where: {
+          doctorProfileId,
+          appointmentDate,
+          appointmentTime,
+          status: {
+            [Op.notIn]: ['cancelled_patient', 'cancelled_doctor', 'no_show', 'rescheduled']
+          }
+        },
+        lock: transaction.LOCK.UPDATE,
+        transaction
+      });
+
+      if (existingAppointment) {
+        await transaction.rollback();
+        throw new Error('Este horario acaba de ser reservado por otro paciente. Por favor selecciona otro horario.');
+      }
+
+      // 3.2 Crear la cita
+      const appointment = await Appointment.create({
+        patientId,
+        doctorId,
+        doctorProfileId,
+        specialtyId,
+        appointmentDate,
+        appointmentTime,
+        duration,
+        appointmentType,
+        reasonForVisit,
+        symptoms,
+        patientNotes,
+        locationType,
+        locationAddress,
+        consultationFee,
+        status: 'pending'
+      }, { transaction });
+
+      // 4. Crear entrada en la cola virtual automáticamente
+      // La posición se calcula por hora de cita, con orden de booking como desempate
+      try {
+        const queueResult = await WaitingQueue.addToQueueByAppointmentTime({
+          id: appointment.id,
+          doctorId,
+          patientId,
+          appointmentDate,
+          appointmentTime,
+          duration,
+          createdAt: appointment.createdAt // Para desempate por orden de booking
+        }, 30, transaction);
+
+        // Agregar info de cola al appointment para retornar al frontend
+        appointment.dataValues.queueInfo = {
+          queueEntryId: queueResult.entry.id,
+          position: queueResult.position,
+          estimatedWaitMinutes: queueResult.estimatedWaitMinutes,
+          appointmentsAhead: queueResult.appointmentsAhead,
+          scheduledTime: queueResult.scheduledTime
+        };
+      } catch (queueError) {
+        console.error('Error creando entrada en cola:', queueError);
+        // No fallar la cita si la cola falla, pero loguear el error
+      }
+
+      await transaction.commit();
+      return appointment;
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
   }
 
   /**
@@ -297,7 +353,7 @@ class AppointmentService {
       where: {
         patientId,
         appointmentDate: { [Op.gte]: today },
-        status: { [Op.in]: ['pending', 'confirmed'] }
+        status: { [Op.in]: ['pending', 'confirmed', 'scheduled'] }
       },
       include: [
         {
@@ -314,7 +370,25 @@ class AppointmentService {
       order: [['appointmentDate', 'ASC'], ['appointmentTime', 'ASC']]
     });
 
-    return appointments;
+    // Obtener estado de cola para cada cita
+    const appointmentsWithQueue = await Promise.all(
+      appointments.map(async (apt) => {
+        const queueEntry = await WaitingQueue.findOne({
+          where: {
+            appointmentId: apt.id,
+            status: { [Op.notIn]: ['completed', 'cancelled', 'no_show'] }
+          }
+        });
+
+        const aptJson = apt.toJSON();
+        aptJson.queueStatus = queueEntry ? queueEntry.status : null;
+        aptJson.queuePosition = queueEntry ? queueEntry.position : null;
+        aptJson.queueEntryId = queueEntry ? queueEntry.id : null;
+        return aptJson;
+      })
+    );
+
+    return appointmentsWithQueue;
   }
 
   /**

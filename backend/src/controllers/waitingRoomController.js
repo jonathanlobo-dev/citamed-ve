@@ -42,7 +42,7 @@ class WaitingRoomController {
 
   /**
    * PUT /api/waiting-room/physical-check-in/:queueEntryId
-   * Check-in fisico (cuando el paciente llega al consultorio)
+   * Check-in fisico (deprecated - usar confirm-arrival)
    */
   async physicalCheckIn(req, res) {
     try {
@@ -57,6 +57,63 @@ class WaitingRoomController {
       });
     } catch (error) {
       console.error('[WaitingRoomController] physicalCheckIn error:', error);
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * PUT /api/waiting-room/en-route/:queueEntryId
+   * Marcar paciente como "en camino" (GPS detectó movimiento)
+   */
+  async markEnRoute(req, res) {
+    try {
+      const { queueEntryId } = req.params;
+      const patientId = req.user.id;
+
+      const entry = await waitingRoomService.markEnRoute(queueEntryId);
+
+      res.json({
+        success: true,
+        message: 'Marcado como en camino',
+        data: {
+          status: entry.status,
+          queueEntryId: entry.id
+        }
+      });
+    } catch (error) {
+      console.error('[WaitingRoomController] markEnRoute error:', error);
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * PUT /api/waiting-room/confirm-arrival/:queueEntryId
+   * Confirmar llegada física al consultorio (FASE 3)
+   */
+  async confirmArrival(req, res) {
+    try {
+      const { queueEntryId } = req.params;
+
+      const entry = await waitingRoomService.confirmArrival(queueEntryId);
+
+      res.json({
+        success: true,
+        message: '¡Llegada confirmada! El doctor te verá pronto.',
+        data: {
+          status: entry.status,
+          queueEntryId: entry.id,
+          position: entry.position,
+          checkInTime: entry.checkInTime
+        }
+      });
+    } catch (error) {
+      console.error('[WaitingRoomController] confirmArrival error:', error);
       res.status(400).json({
         success: false,
         message: error.message
@@ -158,6 +215,53 @@ class WaitingRoomController {
       });
     } catch (error) {
       console.error('[WaitingRoomController] getMyPosition error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error obteniendo posicion',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * GET /api/waiting-room/my-position/:appointmentId
+   * Obtener mi posición para una cita específica (desde params)
+   */
+  async getMyPositionByAppointment(req, res) {
+    try {
+      const { appointmentId } = req.params;
+
+      if (!appointmentId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Se requiere appointmentId'
+        });
+      }
+
+      const position = await waitingRoomService.getPatientPosition(appointmentId);
+
+      if (!position) {
+        return res.status(404).json({
+          success: false,
+          message: 'No tienes entrada en la cola para esta cita'
+        });
+      }
+
+      // Retornar datos enriquecidos
+      res.json({
+        success: true,
+        data: {
+          queueEntryId: position.entry?.id,
+          position: position.position,
+          status: position.entry?.status,
+          estimatedWaitMinutes: position.estimatedWaitMinutes,
+          appointmentsAhead: position.peopleAhead,
+          originalPosition: position.entry?.originalPosition,
+          joinedQueueAt: position.entry?.joinedQueueAt
+        }
+      });
+    } catch (error) {
+      console.error('[WaitingRoomController] getMyPositionByAppointment error:', error);
       res.status(500).json({
         success: false,
         message: 'Error obteniendo posicion',

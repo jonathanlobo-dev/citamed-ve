@@ -1,0 +1,52 @@
+/**
+ * AgendarCitaPage Styles - CITAMED.VE
+ * M03 - Agendar Cita
+ */
+
+.booking-calendar {
+  user-select: none;
+}
+
+.calendar-day {
+  transition: all 0.2s ease;
+}
+
+.calendar-day:not(:disabled):hover {
+  transform: scale(1.1);
+}
+
+.time-slot {
+  transition: all 0.2s ease;
+}
+
+.time-slot:hover {
+  transform: scale(1.02);
+}
+
+.time-slot.selected {
+  animation: pulse-once 0.3s ease;
+}
+
+@keyframes pulse-once {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Success animation */
+.success-check {
+  animation: checkmark 0.5s ease-in-out;
+}
+
+@keyframes checkmark {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Responsive grid */
+@media (max-width: 768px) {
+  .time-slots-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

@@ -45,6 +45,19 @@ router.get(
 
 /**
  * @swagger
+ * /api/waiting-room/my-position/{appointmentId}:
+ *   get:
+ *     tags: [WaitingRoom]
+ *     summary: Obtener mi posicion en la cola para una cita especifica
+ */
+router.get(
+  '/my-position/:appointmentId',
+  authenticateToken,
+  waitingRoomController.getMyPositionByAppointment.bind(waitingRoomController)
+);
+
+/**
+ * @swagger
  * /api/waiting-room/queue/{doctorId}:
  *   get:
  *     tags: [WaitingRoom]
@@ -120,13 +133,43 @@ router.post(
  * /api/waiting-room/physical-check-in/{queueEntryId}:
  *   put:
  *     tags: [WaitingRoom]
- *     summary: Registrar check-in fisico
+ *     summary: Registrar check-in fisico (deprecated - usar confirm-arrival)
  */
 router.put(
   '/physical-check-in/:queueEntryId',
   authenticateToken,
   requireRoles(['doctor', 'admin']),
   waitingRoomController.physicalCheckIn.bind(waitingRoomController)
+);
+
+// ==========================================
+// RUTAS DE PACIENTE - Sistema de 3 Fases
+// ==========================================
+
+/**
+ * @swagger
+ * /api/waiting-room/en-route/{queueEntryId}:
+ *   put:
+ *     tags: [WaitingRoom]
+ *     summary: Marcar paciente como "en camino" (detectado por GPS)
+ */
+router.put(
+  '/en-route/:queueEntryId',
+  authenticateToken,
+  waitingRoomController.markEnRoute.bind(waitingRoomController)
+);
+
+/**
+ * @swagger
+ * /api/waiting-room/confirm-arrival/{queueEntryId}:
+ *   put:
+ *     tags: [WaitingRoom]
+ *     summary: Confirmar llegada física al consultorio (FASE 3)
+ */
+router.put(
+  '/confirm-arrival/:queueEntryId',
+  authenticateToken,
+  waitingRoomController.confirmArrival.bind(waitingRoomController)
 );
 
 /**

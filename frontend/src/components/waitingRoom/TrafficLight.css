@@ -1,0 +1,187 @@
+/**
+ * TrafficLight CSS - CITAMED.VE
+ * Diseño enterprise minimalista
+ */
+
+.traffic-light-container {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 32px;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-radius: 24px;
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.traffic-light {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 16px;
+  background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+  border-radius: 40px;
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.light {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  position: relative;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.light-glow {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+/* Luz Roja */
+.light.red {
+  background: #4a1c1c;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.light.red.active {
+  background: radial-gradient(circle at 30% 30%, #ff6b6b, #ef4444, #b91c1c);
+  box-shadow:
+    0 0 20px rgba(239, 68, 68, 0.6),
+    0 0 40px rgba(239, 68, 68, 0.3),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.light.red.active .light-glow {
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.4), transparent 70%);
+  opacity: 1;
+}
+
+/* Luz Amarilla */
+.light.yellow {
+  background: #4a3c1c;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.light.yellow.active {
+  background: radial-gradient(circle at 30% 30%, #fde047, #eab308, #a16207);
+  box-shadow:
+    0 0 20px rgba(234, 179, 8, 0.6),
+    0 0 40px rgba(234, 179, 8, 0.3),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.2);
+  animation: pulse-yellow 1.5s ease-in-out infinite;
+}
+
+.light.yellow.active .light-glow {
+  background: radial-gradient(circle, rgba(234, 179, 8, 0.4), transparent 70%);
+  opacity: 1;
+}
+
+@keyframes pulse-yellow {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.9; }
+}
+
+/* Luz Verde */
+.light.green {
+  background: #1c4a2c;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.light.green.active {
+  background: radial-gradient(circle at 30% 30%, #4ade80, #22c55e, #15803d);
+  box-shadow:
+    0 0 20px rgba(34, 197, 94, 0.6),
+    0 0 40px rgba(34, 197, 94, 0.3),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.2);
+  animation: pulse-green 1s ease-in-out infinite;
+}
+
+.light.green.active .light-glow {
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.4), transparent 70%);
+  opacity: 1;
+}
+
+@keyframes pulse-green {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* Info del semáforo */
+.traffic-info {
+  flex: 1;
+  text-align: left;
+}
+
+.traffic-message {
+  margin: 0 0 8px;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  transition: color 0.3s ease;
+}
+
+.traffic-message.red {
+  color: #fca5a5;
+}
+
+.traffic-message.yellow {
+  color: #fde047;
+}
+
+.traffic-message.green {
+  color: #86efac;
+}
+
+.traffic-submessage {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 1rem;
+}
+
+.time-estimate {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 16px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.time-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+}
+
+.time-unit {
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .traffic-light-container {
+    flex-direction: column;
+    text-align: center;
+    padding: 24px;
+  }
+
+  .traffic-light {
+    flex-direction: row;
+  }
+
+  .traffic-info {
+    text-align: center;
+  }
+
+  .traffic-message {
+    font-size: 1.5rem;
+  }
+}

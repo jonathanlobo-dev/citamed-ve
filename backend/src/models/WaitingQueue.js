@@ -69,18 +69,20 @@ module.exports = (sequelize) => {
       }
     },
 
-    // Estado en la cola
+    // Estado en la cola - Sistema de Cola Inteligente por Hora de Cita
     status: {
       type: DataTypes.ENUM(
-        'waiting',         // Esperando en cola virtual
-        'checked_in',      // Hizo check-in (llego fisicamente)
+        'scheduled',       // FASE 1: Cita agendada, posición calculada por hora de cita
+        'waiting',         // FASE 2: En cola virtual activa (día de la cita)
+        'en_route',        // FASE 2.5: En camino al consultorio
+        'checked_in',      // FASE 3: Llegó físicamente al consultorio
         'called',          // Fue llamado por el doctor
         'in_consultation', // En consulta
         'completed',       // Consulta completada
-        'cancelled',       // Cancelo su turno
-        'no_show'          // No se presento
+        'cancelled',       // Canceló su turno
+        'no_show'          // No se presentó
       ),
-      defaultValue: 'waiting'
+      defaultValue: 'scheduled'
     },
 
     // Timestamps de la cola
@@ -211,13 +213,19 @@ module.exports = (sequelize) => {
 
   /**
    * Obtiene la cola activa de un doctor
+   * Incluye citas 'scheduled' (agendadas) y estados activos
    */
-  WaitingQueue.getActiveQueue = async function(doctorId) {
+  WaitingQueue.getActiveQueue = async function(doctorId, includeScheduled = true) {
+    const activeStatuses = ['waiting', 'en_route', 'checked_in', 'called', 'in_consultation'];
+    if (includeScheduled) {
+      activeStatuses.unshift('scheduled');
+    }
+
     return await this.findAll({
       where: {
         doctorId,
         status: {
-          [Op.in]: ['waiting', 'checked_in', 'called', 'in_consultation']
+          [Op.in]: activeStatuses
         }
       },
       order: [['position', 'ASC']],
@@ -225,7 +233,7 @@ module.exports = (sequelize) => {
         {
           model: sequelize.models.Appointment,
           as: 'appointment',
-          attributes: ['appointmentTime', 'appointmentType', 'reasonForVisit']
+          attributes: ['appointmentTime', 'appointmentDate', 'appointmentType', 'reasonForVisit', 'duration']
         },
         {
           model: sequelize.models.User,
@@ -256,7 +264,7 @@ module.exports = (sequelize) => {
       where: {
         doctorId: entry.doctorId,
         position: { [Op.lt]: entry.position },
-        status: { [Op.in]: ['waiting', 'checked_in', 'called'] }
+        status: { [Op.in]: ['waiting', 'en_route', 'checked_in', 'called'] }
       }
     });
 
@@ -269,14 +277,14 @@ module.exports = (sequelize) => {
   };
 
   /**
-   * Agregar paciente a la cola
+   * Agregar paciente a la cola (método legacy - usa orden de llegada)
    */
   WaitingQueue.addToQueue = async function(appointmentId, doctorId, patientId, avgConsultationTime = 20) {
     // Obtener la ultima posicion
     const lastInQueue = await this.findOne({
       where: {
         doctorId,
-        status: { [Op.in]: ['waiting', 'checked_in', 'called', 'in_consultation'] }
+        status: { [Op.in]: ['scheduled', 'waiting', 'en_route', 'checked_in', 'called', 'in_consultation'] }
       },
       order: [['position', 'DESC']]
     });
@@ -298,6 +306,176 @@ module.exports = (sequelize) => {
     });
 
     return entry;
+  };
+
+  /**
+   * Agregar paciente a la cola por HORA DE CITA
+   * La posición se calcula automáticamente basándose en el orden de las citas del día
+   * Cuando hay citas a la misma hora, se usa el orden de booking (createdAt) como desempate
+   * Esto permite que al agendar, el paciente ya sepa su posición exacta
+   */
+  WaitingQueue.addToQueueByAppointmentTime = async function(appointment, avgConsultationTime = 30, existingTransaction = null) {
+    const { id: appointmentId, doctorId, patientId, appointmentDate, appointmentTime, duration, createdAt } = appointment;
+
+    // Usar transacción existente o crear una nueva
+    const transaction = existingTransaction || await sequelize.transaction();
+    const shouldCommit = !existingTransaction; // Solo commit si creamos la transacción
+
+    try {
+      // 1. Obtener todas las citas del día para este doctor que ya tienen entrada en cola
+      const existingEntries = await this.findAll({
+        where: {
+          doctorId,
+          status: { [Op.notIn]: ['completed', 'cancelled', 'no_show'] }
+        },
+        include: [{
+          model: sequelize.models.Appointment,
+          as: 'appointment',
+          where: {
+            appointmentDate,
+            status: { [Op.notIn]: ['cancelled_patient', 'cancelled_doctor', 'rescheduled'] }
+          },
+          required: true
+        }],
+        order: [
+          [{ model: sequelize.models.Appointment, as: 'appointment' }, 'appointmentTime', 'ASC'],
+          [{ model: sequelize.models.Appointment, as: 'appointment' }, 'createdAt', 'ASC'] // Desempate por orden de booking
+        ],
+        transaction
+      });
+
+      // 2. Calcular la posición basada en hora de cita + orden de booking como desempate
+      let newPosition = 1;
+
+      for (const entry of existingEntries) {
+        const existingTime = entry.appointment.appointmentTime;
+        const existingCreatedAt = entry.appointment.createdAt;
+
+        // Incrementar posición si:
+        // - La cita existente es ANTES en hora, O
+        // - La cita existente es a la MISMA hora pero fue reservada ANTES
+        if (existingTime < appointmentTime) {
+          newPosition++;
+        } else if (existingTime === appointmentTime && existingCreatedAt < createdAt) {
+          newPosition++;
+        }
+      }
+
+      // 3. Recalcular posiciones de citas que deben ir después
+      for (const entry of existingEntries) {
+        const existingTime = entry.appointment.appointmentTime;
+        const existingCreatedAt = entry.appointment.createdAt;
+
+        // Mover si la cita existente debe ir DESPUÉS de la nueva
+        const shouldMoveBack = (
+          existingTime > appointmentTime ||
+          (existingTime === appointmentTime && existingCreatedAt >= createdAt)
+        );
+
+        if (shouldMoveBack && entry.position >= newPosition) {
+          entry.position = entry.position + 1;
+          await entry.save({ transaction });
+        }
+      }
+
+      // 4. Calcular tiempo de espera estimado basado en citas anteriores
+      const appointmentsAhead = existingEntries.filter(e => {
+        const existingTime = e.appointment.appointmentTime;
+        const existingCreatedAt = e.appointment.createdAt;
+        return existingTime < appointmentTime ||
+               (existingTime === appointmentTime && existingCreatedAt < createdAt);
+      });
+
+      let accumulatedTime = 0;
+      for (const entry of appointmentsAhead) {
+        accumulatedTime += entry.appointment.duration || avgConsultationTime;
+      }
+
+      const estimatedWaitMinutes = accumulatedTime;
+
+      // 5. Crear la entrada en la cola
+      const entry = await this.create({
+        appointmentId,
+        doctorId,
+        patientId,
+        position: newPosition,
+        originalPosition: newPosition,
+        estimatedWaitMinutes,
+        status: 'scheduled',
+        metadata: {
+          scheduledAppointmentTime: appointmentTime,
+          appointmentDuration: duration || avgConsultationTime,
+          calculatedAt: new Date().toISOString(),
+          bookingOrder: createdAt ? createdAt.toISOString() : new Date().toISOString()
+        }
+      }, { transaction });
+
+      if (shouldCommit) {
+        await transaction.commit();
+      }
+
+      return {
+        entry,
+        position: newPosition,
+        estimatedWaitMinutes,
+        appointmentsAhead: appointmentsAhead.length,
+        scheduledTime: appointmentTime
+      };
+    } catch (error) {
+      if (shouldCommit) {
+        await transaction.rollback();
+      }
+      throw error;
+    }
+  };
+
+  /**
+   * Recalcular todas las posiciones de un día basándose en hora de cita
+   * Usa orden de booking (createdAt) como desempate para citas a la misma hora
+   */
+  WaitingQueue.recalculatePositionsByAppointmentTime = async function(doctorId, appointmentDate) {
+    const transaction = await sequelize.transaction();
+
+    try {
+      const entries = await this.findAll({
+        where: {
+          doctorId,
+          status: { [Op.notIn]: ['completed', 'cancelled', 'no_show'] }
+        },
+        include: [{
+          model: sequelize.models.Appointment,
+          as: 'appointment',
+          where: {
+            appointmentDate,
+            status: { [Op.notIn]: ['cancelled_patient', 'cancelled_doctor', 'rescheduled'] }
+          },
+          required: true
+        }],
+        order: [
+          [{ model: sequelize.models.Appointment, as: 'appointment' }, 'appointmentTime', 'ASC'],
+          [{ model: sequelize.models.Appointment, as: 'appointment' }, 'createdAt', 'ASC'] // Desempate por orden de booking
+        ],
+        transaction
+      });
+
+      let position = 1;
+      let accumulatedTime = 0;
+
+      for (const entry of entries) {
+        entry.position = position;
+        entry.estimatedWaitMinutes = accumulatedTime;
+        await entry.save({ transaction });
+
+        accumulatedTime += entry.appointment.duration || 30;
+        position++;
+      }
+
+      await transaction.commit();
+      return entries;
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
   };
 
   /**

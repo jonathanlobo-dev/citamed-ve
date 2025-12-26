@@ -20,7 +20,9 @@ class WaitingRoomService {
   }
 
   /**
-   * Check-in de paciente - Agregar a la cola
+   * Check-in de paciente - Activar entrada en cola existente o crear nueva
+   * Con el nuevo sistema, la cola ya se crea al agendar (estado 'scheduled')
+   * El check-in cambia el estado a 'waiting' (cola activa)
    */
   async checkIn(appointmentId) {
     const appointment = await Appointment.findByPk(appointmentId, {
@@ -47,31 +49,53 @@ class WaitingRoomService {
       throw new Error('Esta cita no puede hacer check-in');
     }
 
-    // Verificar si ya esta en cola
-    const existingEntry = await WaitingQueue.findOne({
+    // Buscar entrada existente en cola (creada al agendar)
+    let queueEntry = await WaitingQueue.findOne({
       where: { appointmentId }
     });
 
-    if (existingEntry) {
-      throw new Error('Ya hiciste check-in para esta cita');
+    if (queueEntry) {
+      // La cita ya tiene entrada en cola - activarla si está en 'scheduled'
+      if (queueEntry.status === 'scheduled') {
+        queueEntry.status = 'waiting';
+        queueEntry.joinedQueueAt = new Date();
+        await queueEntry.save();
+      } else if (['waiting', 'en_route', 'checked_in'].includes(queueEntry.status)) {
+        // Ya está activa en la cola
+        return {
+          queueEntry,
+          position: queueEntry.position,
+          estimatedWaitMinutes: queueEntry.estimatedWaitMinutes,
+          alreadyActive: true,
+          appointment: {
+            id: appointment.id,
+            time: appointment.appointmentTime,
+            doctor: {
+              name: `${appointment.doctor.firstName} ${appointment.doctor.lastName}`
+            }
+          }
+        };
+      }
+    } else {
+      // No tiene entrada en cola (cita legacy) - crear una nueva
+      const stats = await WaitingQueue.getDayStats(appointment.doctorId);
+      const avgTime = stats.avgConsultationTime || this.defaultConsultationTime;
+
+      queueEntry = await WaitingQueue.addToQueue(
+        appointmentId,
+        appointment.doctorId,
+        appointment.patientId,
+        avgTime
+      );
     }
-
-    // Obtener tiempo promedio de consulta del doctor
-    const stats = await WaitingQueue.getDayStats(appointment.doctorId);
-    const avgTime = stats.avgConsultationTime || this.defaultConsultationTime;
-
-    // Agregar a la cola
-    const queueEntry = await WaitingQueue.addToQueue(
-      appointmentId,
-      appointment.doctorId,
-      appointment.patientId,
-      avgTime
-    );
 
     // Actualizar estado de la cita
     appointment.status = 'confirmed';
     appointment.checkInTime = new Date();
     await appointment.save();
+
+    // Recalcular tiempos con base en el progreso real del día
+    await this._recalculateDynamicTimes(appointment.doctorId);
 
     // Notificar via WebSocket
     this._emitQueueUpdate(appointment.doctorId);
@@ -92,9 +116,9 @@ class WaitingRoomService {
   }
 
   /**
-   * Check-in fisico (cuando el paciente llega al consultorio)
+   * Marcar paciente como "en camino" (detectado por GPS)
    */
-  async physicalCheckIn(queueEntryId) {
+  async markEnRoute(queueEntryId) {
     const entry = await WaitingQueue.findByPk(queueEntryId);
 
     if (!entry) {
@@ -102,17 +126,48 @@ class WaitingRoomService {
     }
 
     if (entry.status !== 'waiting') {
-      throw new Error('El paciente debe estar en estado waiting');
+      return entry; // Ya está en otro estado, no cambiar
+    }
+
+    entry.status = 'en_route';
+    await entry.save();
+
+    // Notificar al doctor que el paciente viene en camino
+    this._emitQueueUpdate(entry.doctorId);
+
+    return entry;
+  }
+
+  /**
+   * Confirmar llegada física (FASE 3 - cuando el paciente llega al consultorio)
+   */
+  async confirmArrival(queueEntryId) {
+    const entry = await WaitingQueue.findByPk(queueEntryId);
+
+    if (!entry) {
+      throw new Error('Entrada de cola no encontrada');
+    }
+
+    if (!['waiting', 'en_route'].includes(entry.status)) {
+      throw new Error('El paciente debe estar en cola o en camino');
     }
 
     entry.status = 'checked_in';
     entry.checkInTime = new Date();
     await entry.save();
 
-    // Notificar
+    // Notificar al doctor que el paciente llegó
     this._emitQueueUpdate(entry.doctorId);
 
     return entry;
+  }
+
+  /**
+   * @deprecated Use confirmArrival instead
+   * Check-in físico (cuando el paciente llega al consultorio)
+   */
+  async physicalCheckIn(queueEntryId) {
+    return this.confirmArrival(queueEntryId);
   }
 
   /**
@@ -394,20 +449,94 @@ class WaitingRoomService {
   }
 
   /**
+   * Recalcular tiempos DINÁMICAMENTE basándose en el progreso real del día
+   * Si las consultas están tardando menos, actualiza las estimaciones hacia abajo
+   * Si están tardando más, actualiza hacia arriba
+   */
+  async _recalculateDynamicTimes(doctorId) {
+    const stats = await WaitingQueue.getDayStats(doctorId);
+
+    // Obtener todas las entradas activas del día ordenadas por hora de cita
+    const activeEntries = await WaitingQueue.findAll({
+      where: {
+        doctorId,
+        status: { [Op.in]: ['scheduled', 'waiting', 'en_route', 'checked_in', 'called'] }
+      },
+      include: [{
+        model: Appointment,
+        as: 'appointment',
+        attributes: ['appointmentTime', 'duration']
+      }],
+      order: [['position', 'ASC']]
+    });
+
+    if (activeEntries.length === 0) return;
+
+    // Calcular el tiempo promedio REAL basado en consultas completadas hoy
+    const avgRealTime = stats.avgConsultationTime || this.defaultConsultationTime;
+
+    // Obtener la hora actual
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+
+    // Calcular tiempo acumulado basándose en consultas anteriores
+    let accumulatedDelay = 0;
+
+    // Verificar si hay consulta en progreso
+    const inProgress = await WaitingQueue.findOne({
+      where: {
+        doctorId,
+        status: 'in_consultation'
+      }
+    });
+
+    if (inProgress && inProgress.consultationStart) {
+      // Calcular cuánto tiempo lleva la consulta actual
+      const consultationMinutes = Math.round((now - new Date(inProgress.consultationStart)) / 60000);
+      const expectedDuration = inProgress.appointment?.duration || avgRealTime;
+
+      // Si la consulta lleva más del tiempo esperado, hay retraso
+      if (consultationMinutes > expectedDuration) {
+        accumulatedDelay = consultationMinutes - expectedDuration;
+      }
+    }
+
+    // Actualizar estimaciones para cada entrada
+    let position = 0;
+    for (const entry of activeEntries) {
+      const appointmentTimeStr = entry.appointment?.appointmentTime || '08:00';
+      const [hours, minutes] = appointmentTimeStr.split(':').map(Number);
+      const appointmentMinutes = hours * 60 + minutes;
+
+      // Calcular tiempo estimado basado en posición actual + retraso acumulado
+      const waitMinutesFromPosition = position * avgRealTime;
+      const estimatedStartTime = appointmentMinutes + waitMinutesFromPosition + accumulatedDelay;
+
+      // Calcular cuántos minutos faltan desde ahora
+      const minutesFromNow = Math.max(0, estimatedStartTime - currentTime);
+
+      entry.estimatedWaitMinutes = minutesFromNow;
+      await entry.save();
+
+      position++;
+    }
+  }
+
+  /**
    * Recalcular tiempos y enviar notificaciones progresivas
    */
   async _recalculateAndNotify(doctorId) {
+    // Primero recalcular tiempos dinámicamente
+    await this._recalculateDynamicTimes(doctorId);
+
     const stats = await WaitingQueue.getDayStats(doctorId);
     const avgTime = stats.avgConsultationTime || this.defaultConsultationTime;
-
-    // Recalcular tiempos estimados
-    await WaitingQueue.recalculateEstimates(doctorId, avgTime);
 
     // Obtener cola actualizada
     const queue = await WaitingQueue.findAll({
       where: {
         doctorId,
-        status: { [Op.in]: ['waiting', 'checked_in'] }
+        status: { [Op.in]: ['waiting', 'en_route', 'checked_in'] }
       },
       order: [['position', 'ASC']]
     });

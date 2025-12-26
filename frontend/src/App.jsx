@@ -31,6 +31,12 @@ import DoctorReputationPage from './pages/doctor/DoctorReputationPage';
 import ComingSoonPage from './pages/ComingSoonPage';
 import SearchPage from './pages/SearchPage';
 import ProviderProfilePage from './pages/provider/ProviderProfilePage';
+import ClinicProfilePage from './pages/clinics/ClinicProfilePage';
+import PatientWaitingRoomPage from './pages/waitingRoom/PatientWaitingRoomPage';
+import DoctorWaitingRoomPage from './pages/waitingRoom/DoctorWaitingRoomPage';
+import SalaEsperaPage from './pages/waitingRoom/SalaEsperaPage';
+import MisCitasPage from './pages/appointments/MisCitasPage';
+import AgendarCitaPage from './pages/appointments/AgendarCitaPage';
 
 function AppRoutes() {
   return (
@@ -46,6 +52,7 @@ function AppRoutes() {
       <Route path="/directorio" element={<DirectorioMedicoPage />} />
       <Route path="/buscar" element={<SearchPage />} />
       <Route path="/clinicas" element={<ClinicasPage />} />
+      <Route path="/clinicas/:clinicId" element={<ClinicProfilePage />} />
       <Route path="/seguros" element={<SegurosPage />} />
 
       {/* Module Routes */}
@@ -98,7 +105,7 @@ function AppRoutes() {
         path="/medico/sala-espera"
         element={
           <ProtectedRoute allowedRoles={['doctor']}>
-            <ComingSoonPage />
+            <DoctorWaitingRoomPage />
           </ProtectedRoute>
         }
       />
@@ -177,8 +184,15 @@ function AppRoutes() {
       {/* Redirect /medico to dashboard */}
       <Route path="/medico" element={<Navigate to="/medico/dashboard" replace />} />
 
-      {/* Agendar cita con doctor */}
-      <Route path="/agendar/:doctorId" element={<ComingSoonPage />} />
+      {/* Agendar cita con doctor - M03 */}
+      <Route
+        path="/agendar/:doctorId"
+        element={
+          <ProtectedRoute allowedRoles={['patient']}>
+            <AgendarCitaPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Patient Profile Routes - M02 Sub-Partida 3.2 */}
       <Route
@@ -210,6 +224,40 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['patient']}>
             <PatientProfileEditPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Sala de Espera Virtual - M03 */}
+      <Route
+        path="/paciente/sala-espera"
+        element={
+          <ProtectedRoute allowedRoles={['patient']}>
+            <SalaEsperaPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sala-espera/:appointmentId"
+        element={
+          <ProtectedRoute allowedRoles={['patient']}>
+            <PatientWaitingRoomPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/paciente/sala-espera/:appointmentId"
+        element={
+          <ProtectedRoute allowedRoles={['patient']}>
+            <PatientWaitingRoomPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Mis Citas - M03 */}
+      <Route
+        path="/paciente/mis-citas"
+        element={
+          <ProtectedRoute allowedRoles={['patient']}>
+            <MisCitasPage />
           </ProtectedRoute>
         }
       />

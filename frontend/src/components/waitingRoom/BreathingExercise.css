@@ -1,0 +1,267 @@
+/**
+ * BreathingExercise CSS - CITAMED.VE
+ * Animaciones suaves y relajantes
+ */
+
+.breathing-exercise {
+  background: white;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+}
+
+.breathing-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.breathing-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.breathing-title svg {
+  width: 20px;
+  height: 20px;
+  color: #ec4899;
+}
+
+.breathing-minimize {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #f1f5f9;
+  border-radius: 8px;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.breathing-minimize:hover {
+  background: #e2e8f0;
+}
+
+.breathing-minimize svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Visual de respiración */
+.breathing-visual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.breathing-circle {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  border: 4px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 4s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.breathing-circle.inhale {
+  transition-duration: 4s;
+}
+
+.breathing-circle.hold {
+  transition-duration: 0.3s;
+}
+
+.breathing-circle.exhale {
+  transition-duration: 8s;
+}
+
+.circle-inner {
+  width: calc(100% - 16px);
+  height: calc(100% - 16px);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: background 0.5s ease;
+}
+
+.phase-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.phase-label.idle {
+  font-size: 0.875rem;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #94a3b8;
+}
+
+.phase-countdown {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1;
+}
+
+/* Indicadores de fase */
+.phase-indicators {
+  display: flex;
+  gap: 24px;
+  margin-top: 20px;
+}
+
+.indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #94a3b8;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.indicator.active {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  transition: all 0.3s ease;
+}
+
+.indicator.active .indicator-dot {
+  background: #3b82f6;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+}
+
+/* Controles */
+.breathing-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.btn-start,
+.btn-stop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-start {
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: white;
+}
+
+.btn-start:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.btn-stop {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.btn-stop:hover {
+  background: #fecaca;
+}
+
+.btn-start svg,
+.btn-stop svg {
+  width: 20px;
+  height: 20px;
+}
+
+.cycles-count {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.breathing-tip {
+  text-align: center;
+  font-size: 0.8125rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* Versión minimizada */
+.breathing-mini {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border: none;
+  background: white;
+  border-radius: 50%;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.breathing-mini:hover {
+  transform: scale(1.1);
+}
+
+.mini-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 4s cubic-bezier(0.4, 0, 0.2, 1);
+  color: white;
+}
+
+.mini-circle svg {
+  width: 20px;
+  height: 20px;
+}
+
+.mini-circle.active {
+  animation: mini-pulse 4s ease-in-out infinite;
+}
+
+@keyframes mini-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+}

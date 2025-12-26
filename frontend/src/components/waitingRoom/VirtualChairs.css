@@ -1,0 +1,309 @@
+/**
+ * VirtualChairs CSS - CITAMED.VE
+ * M03 - Sala de Espera Virtual
+ * Estilos Enterprise para "las sillitas"
+ */
+
+.virtual-chairs-container {
+  background: white;
+  border-radius: 24px;
+  padding: 28px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.chairs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.chairs-header h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.queue-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.queue-count {
+  background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+  padding: 8px 16px;
+  border-radius: 100px;
+  font-size: 0.875rem;
+  color: #475569;
+  font-weight: 500;
+}
+
+.in-consultation-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  color: #166534;
+  padding: 8px 16px;
+  border-radius: 100px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  animation: pulse-badge 2s infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+}
+
+.chairs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (min-width: 768px) {
+  .chairs-grid {
+    grid-template-columns: repeat(8, 1fr);
+  }
+}
+
+.chair-slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 8px;
+  border-radius: 16px;
+  border: 2px solid #e2e8f0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 110px;
+  cursor: default;
+}
+
+.chair-slot.empty {
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border-style: dashed;
+  border-color: #cbd5e1;
+}
+
+.chair-slot.empty:hover {
+  border-color: #94a3b8;
+}
+
+.chair-slot.occupied {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border-color: #3b82f6;
+  border-style: solid;
+}
+
+.chair-slot.my-position {
+  border-color: #8b5cf6;
+  border-width: 3px;
+  background: linear-gradient(180deg, #faf5ff 0%, #f3e8ff 100%);
+  box-shadow:
+    0 0 0 4px rgba(139, 92, 246, 0.15),
+    0 8px 24px rgba(139, 92, 246, 0.2);
+  transform: scale(1.05);
+}
+
+.chair-number {
+  position: absolute;
+  top: 6px;
+  left: 10px;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.chair-icon {
+  width: 36px;
+  height: 36px;
+  color: #cbd5e1;
+  opacity: 0.6;
+}
+
+.chair-icon.empty {
+  color: #cbd5e1;
+}
+
+.chair-occupied {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.patient-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.875rem;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.chair-slot.occupied .patient-avatar {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.status-badge {
+  font-size: 0.625rem;
+  padding: 3px 8px;
+  border-radius: 100px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.status-badge.waiting {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.checked-in {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-badge.en-route {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+  animation: pulse-orange 2s infinite;
+}
+
+.status-badge.waiting {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+@keyframes pulse-orange {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+  50% { box-shadow: 0 0 8px 4px rgba(245, 158, 11, 0.2); }
+}
+
+.patient-avatar.en-route {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  animation: bounce-slow 1.5s ease-in-out infinite;
+}
+
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.status-badge.called {
+  background: linear-gradient(135deg, #fef08a, #fde047);
+  color: #854d0e;
+  animation: blink 0.8s infinite;
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.4);
+}
+
+.status-badge.consultation {
+  background: linear-gradient(135deg, #bbf7d0, #86efac);
+  color: #166534;
+  animation: pulse-green 2s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  50% { box-shadow: 0 0 8px 4px rgba(34, 197, 94, 0.2); }
+}
+
+.my-position-indicator {
+  position: absolute;
+  bottom: -10px;
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  color: white;
+  padding: 4px 14px;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+  z-index: 10;
+}
+
+.chairs-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.legend-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid;
+}
+
+.legend-dot.empty {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  border-style: dashed;
+}
+
+.legend-dot.waiting {
+  background: #fef3c7;
+  border-color: #f59e0b;
+}
+
+.legend-dot.checked-in {
+  background: #dbeafe;
+  border-color: #3b82f6;
+}
+
+.legend-dot.en-route {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  animation: pulse-dot 1.5s infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+.legend-dot.called {
+  background: #fef08a;
+  border-color: #eab308;
+  animation: blink 1s infinite;
+}
+
+.legend-dot.in-consultation {
+  background: #dcfce7;
+  border-color: #22c55e;
+}
