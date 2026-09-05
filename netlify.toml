@@ -1,0 +1,16 @@
+# Configuración de despliegue del frontend (Vite/React) en Netlify
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "frontend/dist"
+
+# Variables del frontend (no son secretos: la URL pública del backend)
+[build.environment]
+  VITE_API_URL = "https://citamed-api.onrender.com/api"
+  VITE_SOCKET_URL = "https://citamed-api.onrender.com"
+
+# Ruteo SPA: cualquier ruta cae en index.html para que React Router funcione al refrescar
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
