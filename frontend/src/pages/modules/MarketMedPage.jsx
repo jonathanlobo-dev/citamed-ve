@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Navbar from '../../components/common/Navbar/Navbar';
 import { ShoppingCart, FileText, Building2, Percent, ArrowLeft } from 'lucide-react';
-import Button from '../../components/common/button/button';
+import Button from '../../components/common/Button/button';
 
 function MarketMedPage() {
   const navigate = useNavigate();

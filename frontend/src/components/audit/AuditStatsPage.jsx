@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import useAudit from '../../hooks/useAudit';
-import Button from '../common/button/button';
+import Button from '../common/Button/button';
 import { AdminGate } from '../permissions/PermissionGate';
 
 // Componente de tarjeta de estadística

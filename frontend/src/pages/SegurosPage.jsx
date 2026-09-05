@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, Shield, Check, Phone, Mail, ChevronRight, Heart, Users, TrendingUp } from 'lucide-react';
 import Navbar from '../components/common/Navbar/Navbar';
-import Button from '../components/common/button/button';
+import Button from '../components/common/Button/button';
 
 function SegurosPage() {
   const navigate = useNavigate();

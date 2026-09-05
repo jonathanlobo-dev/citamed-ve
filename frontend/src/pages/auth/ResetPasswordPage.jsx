@@ -18,7 +18,7 @@ import {
   ArrowLeft,
   Shield
 } from 'lucide-react';
-import Button from '../../components/common/button/button';
+import Button from '../../components/common/Button/button';
 import PasswordStrengthIndicator from '../../components/auth/PasswordStrengthIndicator';
 import { usePasswordRecovery, RECOVERY_STEPS } from '../../hooks/usePasswordRecovery';
 import toast from 'react-hot-toast';

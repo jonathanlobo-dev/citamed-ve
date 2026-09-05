@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowLeft, Eye, EyeOff, AlertCircle } from 'lucide-react';
-import Button from '../components/common/button/button';
+import Button from '../components/common/Button/button';
 import TwoFactorLoginModal from '../components/auth/TwoFactorLoginModal';
 import toast from 'react-hot-toast';
 

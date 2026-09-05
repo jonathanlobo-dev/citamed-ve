@@ -21,7 +21,7 @@ import AuditFilters from './AuditFilters';
 import AuditLogsTable from './AuditLogsTable';
 import AuditLogDetailModal from './AuditLogDetailModal';
 import SecurityAlertsWidget from './SecurityAlertsWidget';
-import Button from '../common/button/button';
+import Button from '../common/Button/button';
 import { AdminGate } from '../permissions/PermissionGate';
 
 const AuditLogsPage = () => {

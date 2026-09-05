@@ -12,7 +12,7 @@ import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, X, Key, AlertCircle, Loader2 } from 'lucide-react';
 import CodeInput from '../verification/CodeInput';
-import Button from '../common/button/button';
+import Button from '../common/Button/button';
 
 /**
  * Modal de verificación 2FA

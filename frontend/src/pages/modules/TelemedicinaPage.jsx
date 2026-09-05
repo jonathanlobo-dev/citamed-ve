@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Navbar from '../../components/common/Navbar/Navbar';
 import { Video, MessageSquare, FileText, CreditCard, ArrowLeft, Shield } from 'lucide-react';
-import Button from '../../components/common/button/button';
+import Button from '../../components/common/Button/button';
 
 function TelemedicinaPage() {
   const navigate = useNavigate();

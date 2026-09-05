@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Calendar, Clock, Bell, History, ArrowLeft, CheckCircle } from 'lucide-react';
 import Navbar from '../../components/common/Navbar/Navbar';
-import Button from '../../components/common/button/button';
+import Button from '../../components/common/Button/button';
 
 function AgendamientoPage() {
   const navigate = useNavigate();

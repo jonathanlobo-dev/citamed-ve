@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { useTwoFactor, SETUP_STATUS } from '../../hooks/useTwoFactor';
 import CodeInput from '../verification/CodeInput';
-import Button from '../common/button/button';
+import Button from '../common/Button/button';
 import toast from 'react-hot-toast';
 
 /**

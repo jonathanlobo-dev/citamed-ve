@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
-import Button from '../button/button';
+import Button from '../Button/button';
 import { LogOut, User, Calendar, Menu, X, Home, Grid, Stethoscope, Building2, Shield, HelpCircle, Search, MapPin, Star } from 'lucide-react';
 import searchService from '../../../services/searchService';
 

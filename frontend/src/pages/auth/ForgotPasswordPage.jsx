@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, ArrowLeft, CheckCircle, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
-import Button from '../../components/common/button/button';
+import Button from '../../components/common/Button/button';
 import { usePasswordRecovery, RECOVERY_STEPS } from '../../hooks/usePasswordRecovery';
 import toast from 'react-hot-toast';
 

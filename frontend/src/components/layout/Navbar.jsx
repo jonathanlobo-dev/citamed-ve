@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import './Navbar.css';
-import Button from '../common/button/button';
+import Button from '../common/Button/button';
 
 function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);

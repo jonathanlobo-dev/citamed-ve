@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import './AppDownload.css';
-import Button from '../button/button';
+import Button from '../Button/button';
 
 function AppDownload() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);

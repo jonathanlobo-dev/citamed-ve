@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Navbar from '../components/common/Navbar/Navbar';
 import ModuleCard from '../components/common/ModuleCard/ModuleCard';
-import Button, { Icons } from '../components/common/button/button';
+import Button, { Icons } from '../components/common/Button/button';
 import { Calendar, Video, ShoppingCart, DollarSign, Users, Shield, TrendingUp, Heart, Search, Stethoscope } from 'lucide-react';
 import axios from 'axios';
 

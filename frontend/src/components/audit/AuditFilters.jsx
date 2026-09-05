@@ -18,7 +18,7 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
-import Button from '../common/button/button';
+import Button from '../common/Button/button';
 
 const severityOptions = [
   { value: '', label: 'Todas las severidades' },

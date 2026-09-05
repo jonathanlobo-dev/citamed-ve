@@ -20,7 +20,7 @@ import { useAuth } from '../../context/AuthContext';
 import useSession from '../../hooks/useSession';
 import SessionCard from '../../components/settings/SessionCard';
 import LoginHistoryTable from '../../components/settings/LoginHistoryTable';
-import Button from '../../components/common/button/button';
+import Button from '../../components/common/Button/button';
 import toast from 'react-hot-toast';
 
 const SessionsPage = () => {

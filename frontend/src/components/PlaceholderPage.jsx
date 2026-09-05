@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Construction, AlertCircle } from 'lucide-react';
 import Navbar from './common/Navbar/Navbar';
-import Button from './common/button/button';
+import Button from './common/Button/button';
 
 /**
  * PlaceholderPage - Componente Reutilizable

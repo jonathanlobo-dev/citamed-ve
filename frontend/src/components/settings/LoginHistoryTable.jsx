@@ -13,7 +13,7 @@ import {
   MapPin,
   Loader
 } from 'lucide-react';
-import Button from '../common/button/button';
+import Button from '../common/Button/button';
 
 // Iconos según tipo de dispositivo
 const deviceIcons = {
