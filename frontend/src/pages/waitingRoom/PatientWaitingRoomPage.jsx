@@ -26,7 +26,7 @@ import useWaitingRoom from '../../hooks/useWaitingRoom';
 import { useAuth } from '../../context/AuthContext';
 import './PatientWaitingRoomPage.css';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
 
 const PatientWaitingRoomPage = () => {
   const { appointmentId } = useParams();

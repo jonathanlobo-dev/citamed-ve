@@ -19,7 +19,7 @@ function LandingPage() {
 
   useEffect(() => {
     // Fetch specialties for the search
-    axios.get('http://localhost:5000/api/specialties')
+    axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/specialties`)
       .then(response => {
         if (response.data.success) {
           setSpecialties(response.data.data);
