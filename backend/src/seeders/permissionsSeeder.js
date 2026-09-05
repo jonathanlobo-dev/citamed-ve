@@ -1,19 +1,20 @@
+﻿require('dotenv').config();
 // src/seeders/permissionsSeeder.js
 // CITAMED.VE - M01 Sub-Partida 2.5.1 RBAC
 // Seeder de permisos base del sistema
 
 const { logger } = require('../config/logger');
 
-// Definición de todos los permisos del sistema
+// DefiniciÃ³n de todos los permisos del sistema
 const PERMISSIONS = [
   // APPOINTMENTS
-  { name: 'appointments.create', resource: 'appointments', action: 'create', description: 'Crear nuevas citas médicas' },
-  { name: 'appointments.read', resource: 'appointments', action: 'read', description: 'Ver citas médicas' },
+  { name: 'appointments.create', resource: 'appointments', action: 'create', description: 'Crear nuevas citas mÃ©dicas' },
+  { name: 'appointments.read', resource: 'appointments', action: 'read', description: 'Ver citas mÃ©dicas' },
   { name: 'appointments.read.own', resource: 'appointments', action: 'read.own', description: 'Ver solo citas propias' },
-  { name: 'appointments.update', resource: 'appointments', action: 'update', description: 'Modificar citas médicas' },
+  { name: 'appointments.update', resource: 'appointments', action: 'update', description: 'Modificar citas mÃ©dicas' },
   { name: 'appointments.update.own', resource: 'appointments', action: 'update.own', description: 'Modificar solo citas propias' },
-  { name: 'appointments.delete', resource: 'appointments', action: 'delete', description: 'Eliminar citas médicas' },
-  { name: 'appointments.cancel', resource: 'appointments', action: 'cancel', description: 'Cancelar citas médicas' },
+  { name: 'appointments.delete', resource: 'appointments', action: 'delete', description: 'Eliminar citas mÃ©dicas' },
+  { name: 'appointments.cancel', resource: 'appointments', action: 'cancel', description: 'Cancelar citas mÃ©dicas' },
 
   // USERS
   { name: 'users.read.own', resource: 'users', action: 'read.own', description: 'Ver perfil propio' },
@@ -26,12 +27,12 @@ const PERMISSIONS = [
   { name: 'sessions.read.own', resource: 'sessions', action: 'read.own', description: 'Ver sesiones propias' },
   { name: 'sessions.revoke.own', resource: 'sessions', action: 'revoke.own', description: 'Cerrar sesiones propias' },
   { name: 'sessions.read.all', resource: 'sessions', action: 'read.all', description: 'Ver todas las sesiones' },
-  { name: 'sessions.revoke.all', resource: 'sessions', action: 'revoke.all', description: 'Cerrar cualquier sesión' },
+  { name: 'sessions.revoke.all', resource: 'sessions', action: 'revoke.all', description: 'Cerrar cualquier sesiÃ³n' },
 
   // DOCTORS
-  { name: 'doctors.read', resource: 'doctors', action: 'read', description: 'Ver directorio de médicos' },
-  { name: 'doctors.verify', resource: 'doctors', action: 'verify', description: 'Verificar médicos' },
-  { name: 'doctors.approve', resource: 'doctors', action: 'approve', description: 'Aprobar solicitudes de médicos' },
+  { name: 'doctors.read', resource: 'doctors', action: 'read', description: 'Ver directorio de mÃ©dicos' },
+  { name: 'doctors.verify', resource: 'doctors', action: 'verify', description: 'Verificar mÃ©dicos' },
+  { name: 'doctors.approve', resource: 'doctors', action: 'approve', description: 'Aprobar solicitudes de mÃ©dicos' },
 
   // PROVIDERS
   { name: 'providers.read', resource: 'providers', action: 'read', description: 'Ver directorio de proveedores' },
@@ -39,22 +40,22 @@ const PERMISSIONS = [
   { name: 'providers.approve', resource: 'providers', action: 'approve', description: 'Aprobar solicitudes de proveedores' },
 
   // 2FA
-  { name: '2fa.enable', resource: '2fa', action: 'enable', description: 'Activar autenticación de dos factores' },
-  { name: '2fa.disable', resource: '2fa', action: 'disable', description: 'Desactivar autenticación de dos factores' },
+  { name: '2fa.enable', resource: '2fa', action: 'enable', description: 'Activar autenticaciÃ³n de dos factores' },
+  { name: '2fa.disable', resource: '2fa', action: 'disable', description: 'Desactivar autenticaciÃ³n de dos factores' },
   { name: '2fa.manage.all', resource: '2fa', action: 'manage.all', description: 'Gestionar 2FA de cualquier usuario' },
 
   // ADMIN
-  { name: 'admin.dashboard', resource: 'admin', action: 'dashboard', description: 'Acceso al panel de administración' },
-  { name: 'admin.analytics', resource: 'admin', action: 'analytics', description: 'Ver analíticas del sistema' },
+  { name: 'admin.dashboard', resource: 'admin', action: 'dashboard', description: 'Acceso al panel de administraciÃ³n' },
+  { name: 'admin.analytics', resource: 'admin', action: 'analytics', description: 'Ver analÃ­ticas del sistema' },
   { name: 'admin.settings', resource: 'admin', action: 'settings', description: 'Configurar ajustes del sistema' },
-  { name: 'admin.audit', resource: 'admin', action: 'audit', description: 'Ver logs de auditoría' },
+  { name: 'admin.audit', resource: 'admin', action: 'audit', description: 'Ver logs de auditorÃ­a' },
 
   // RBAC
   { name: 'rbac.read', resource: 'rbac', action: 'read', description: 'Ver permisos y roles' },
   { name: 'rbac.manage', resource: 'rbac', action: 'manage', description: 'Gestionar permisos y roles' }
 ];
 
-// Asignación de permisos a roles
+// AsignaciÃ³n de permisos a roles
 const ROLE_PERMISSIONS = {
   patient: [
     'appointments.create',
@@ -134,7 +135,7 @@ async function seedPermissions(db) {
       }
     }
 
-    logger.info(`Permisos: ${results.permissionsCreated} creados, ${results.permissionsExisted} ya existían`);
+    logger.info(`Permisos: ${results.permissionsCreated} creados, ${results.permissionsExisted} ya existÃ­an`);
 
     // 2. Asignar permisos a roles
     for (const [role, permissionNames] of Object.entries(ROLE_PERMISSIONS)) {
@@ -186,7 +187,7 @@ async function seedPermissions(db) {
 async function runSeeder() {
   const db = require('../models');
 
-  // Esperar a que la DB esté lista
+  // Esperar a que la DB estÃ© lista
   await db.sequelize.authenticate();
 
   // Sync de modelos

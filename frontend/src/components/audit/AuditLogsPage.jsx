@@ -60,7 +60,7 @@ const AuditLogsPage = () => {
     updateFilters,
     clearFilters,
     goToPage
-  } = useAudit({ defaultLimit: 50 });
+  } = useAudit({ defaultLimit: 15 });
 
   const [showExportMenu, setShowExportMenu] = useState(false);
 

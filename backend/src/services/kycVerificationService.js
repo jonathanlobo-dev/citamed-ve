@@ -505,7 +505,13 @@ async function approveVerification(requestId, adminId, notes = null) {
 
   // Verificar que todos los documentos requeridos estén aprobados
   const allApproved = await DoctorDocument.areAllRequiredApproved(request.doctorProfileId);
-  if (!allApproved) {
+  // Si el médico no ha cargado ningún documento, el admin puede aprobar
+  // verificando el MPPS manualmente (flujo MVP). Si hay documentos,
+  // todos los requeridos deben estar aprobados.
+  const documentsCount = await DoctorDocument.count({
+    where: { doctorProfileId: request.doctorProfileId }
+  });
+  if (documentsCount > 0 && !allApproved) {
     throw new Error('Todos los documentos requeridos deben estar aprobados antes de aprobar la verificación');
   }
 
@@ -521,6 +527,7 @@ async function approveVerification(requestId, adminId, notes = null) {
   await doctorProfile.update({
     verificationStatus: 'approved',
     isVerified: true,
+    profileStatus: 'active',
     verifiedAt: new Date(),
     verifiedBy: adminId,
     verificationNotes: notes,

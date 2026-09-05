@@ -1,6 +1,6 @@
-// models/ProviderProfile.js
+﻿// models/ProviderProfile.js
 // CITAMED.VE - M01.3 Registro Multi-Paso
-// Perfil de proveedores (farmacias, laboratorios, insumos médicos, servicios)
+// Perfil de proveedores (farmacias, laboratorios, insumos mÃ©dicos, servicios)
 
 const { DataTypes } = require('sequelize');
 
@@ -23,7 +23,7 @@ module.exports = (sequelize) => {
     },
 
     // ========================================
-    // INFORMACIÓN DE LA EMPRESA
+    // INFORMACIÃ“N DE LA EMPRESA
     // ========================================
     companyName: {
       type: DataTypes.STRING(255),
@@ -34,17 +34,17 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(20),
       allowNull: false,
       unique: true,
-      comment: 'Registro de Información Fiscal (RIF)'
+      comment: 'Registro de InformaciÃ³n Fiscal (RIF)'
     },
     legalName: {
       type: DataTypes.STRING(255),
       allowNull: false,
-      comment: 'Razón social'
+      comment: 'RazÃ³n social'
     },
     commercialPhone: {
       type: DataTypes.STRING(20),
       allowNull: true,
-      comment: 'Teléfono comercial'
+      comment: 'TelÃ©fono comercial'
     },
     contactEmail: {
       type: DataTypes.STRING(255),
@@ -68,7 +68,7 @@ module.exports = (sequelize) => {
     description: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: 'Descripción de servicios ofrecidos'
+      comment: 'DescripciÃ³n de servicios ofrecidos'
     },
     mainProducts: {
       type: DataTypes.TEXT,
@@ -77,12 +77,12 @@ module.exports = (sequelize) => {
     },
 
     // ========================================
-    // UBICACIÓN
+    // UBICACIÃ“N
     // ========================================
     mainAddress: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: 'Dirección principal'
+      comment: 'DirecciÃ³n principal'
     },
     city: {
       type: DataTypes.STRING(100),
@@ -113,7 +113,7 @@ module.exports = (sequelize) => {
     hasMultipleLocations: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
-      comment: 'Tiene múltiples sedes'
+      comment: 'Tiene mÃºltiples sedes'
     },
     locationCount: {
       type: DataTypes.INTEGER,
@@ -122,17 +122,17 @@ module.exports = (sequelize) => {
     },
 
     // ========================================
-    // VERIFICACIÓN Y ESTADO
+    // VERIFICACIÃ“N Y ESTADO
     // ========================================
     verificationStatus: {
       type: DataTypes.ENUM('pending', 'in_review', 'approved', 'rejected', 'suspended'),
       defaultValue: 'pending',
-      comment: 'Estado de verificación'
+      comment: 'Estado de verificaciÃ³n'
     },
     verificationDocuments: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       defaultValue: [],
-      comment: 'URLs de documentos de verificación'
+      comment: 'URLs de documentos de verificaciÃ³n'
     },
     verificationDate: {
       type: DataTypes.DATE,
@@ -141,11 +141,11 @@ module.exports = (sequelize) => {
     verificationNotes: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: 'Notas del proceso de verificación'
+      comment: 'Notas del proceso de verificaciÃ³n'
     },
 
     // ========================================
-    // PERFIL PÚBLICO
+    // PERFIL PÃšBLICO
     // ========================================
     profilePhoto: {
       type: DataTypes.STRING(500),
@@ -171,7 +171,7 @@ module.exports = (sequelize) => {
     workingHours: {
       type: DataTypes.JSONB,
       defaultValue: {},
-      comment: 'Horarios de atención {monday: {start, end}}'
+      comment: 'Horarios de atenciÃ³n {monday: {start, end}}'
     },
     is24Hours: {
       type: DataTypes.BOOLEAN,
@@ -180,7 +180,7 @@ module.exports = (sequelize) => {
     },
 
     // ========================================
-    // ESTADÍSTICAS
+    // ESTADÃSTICAS
     // ========================================
     averageRating: {
       type: DataTypes.DECIMAL(3, 2),
@@ -189,7 +189,7 @@ module.exports = (sequelize) => {
         min: 0,
         max: 5
       },
-      comment: 'Calificación promedio'
+      comment: 'CalificaciÃ³n promedio'
     },
     totalReviews: {
       type: DataTypes.INTEGER,
@@ -198,7 +198,7 @@ module.exports = (sequelize) => {
     totalOrders: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
-      comment: 'Total de órdenes procesadas'
+      comment: 'Total de Ã³rdenes procesadas'
     },
 
     // ========================================
@@ -212,7 +212,7 @@ module.exports = (sequelize) => {
     commissionRate: {
       type: DataTypes.DECIMAL(5, 2),
       defaultValue: 7.00,
-      comment: 'Tasa de comisión (%)'
+      comment: 'Tasa de comisiÃ³n (%)'
     },
     acceptsFinancing: {
       type: DataTypes.BOOLEAN,
@@ -242,17 +242,17 @@ module.exports = (sequelize) => {
     timestamps: true,
     underscored: true,
     indexes: [
-      { fields: ['userId'], unique: true },
+      { fields: ['user_id'], unique: true },
       { fields: ['rif'], unique: true },
-      { fields: ['providerType'] },
+      { fields: ['provider_type'] },
       { fields: ['city', 'state'] },
-      { fields: ['verificationStatus'] },
-      { fields: ['isMarketplaceEnabled'] },
+      { fields: ['verification_status'] },
+      { fields: ['is_marketplace_enabled'] },
     ]
   });
 
   // ========================================
-  // MÉTODOS DE INSTANCIA
+  // MÃ‰TODOS DE INSTANCIA
   // ========================================
 
   ProviderProfile.prototype.getDisplayName = function() {
@@ -262,12 +262,12 @@ module.exports = (sequelize) => {
   ProviderProfile.prototype.getProviderTypeLabel = function() {
     const labels = {
       'pharmacy': 'Farmacia',
-      'laboratory': 'Laboratorio Clínico',
-      'supplies': 'Insumos Médicos',
+      'laboratory': 'Laboratorio ClÃ­nico',
+      'supplies': 'Insumos MÃ©dicos',
       'services': 'Servicios de Salud',
-      'clinic': 'Clínica',
+      'clinic': 'ClÃ­nica',
       'hospital': 'Hospital',
-      'diagnostic_center': 'Centro de Diagnóstico',
+      'diagnostic_center': 'Centro de DiagnÃ³stico',
       'other': 'Otro'
     };
     return labels[this.providerType] || 'Proveedor';
@@ -286,7 +286,7 @@ module.exports = (sequelize) => {
 
     let completeness = 0;
 
-    // Campos requeridos valen más
+    // Campos requeridos valen mÃ¡s
     requiredFields.forEach(field => {
       if (this[field]) completeness += 2;
     });
@@ -319,12 +319,12 @@ module.exports = (sequelize) => {
     // Calcular completitud del perfil
     instance.profileCompleteness = instance.calculateProfileCompleteness();
 
-    // Actualizar última actividad
+    // Actualizar Ãºltima actividad
     instance.lastActiveDate = new Date();
   });
 
   // ========================================
-  // MÉTODOS ESTÁTICOS
+  // MÃ‰TODOS ESTÃTICOS
   // ========================================
 
   ProviderProfile.findByType = async function(providerType, city = null) {

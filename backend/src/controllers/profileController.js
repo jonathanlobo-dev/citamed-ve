@@ -3,7 +3,7 @@
 const profileController = {
   getMyProfile: async (req, res) => {
     try {
-      const userId = req.user.userId;
+      const userId = req.user.id;
       
       const user = await User.findByPk(userId, {
         include: [
@@ -36,7 +36,7 @@ const profileController = {
 
   updateMyProfile: async (req, res) => {
     try {
-      const userId = req.user.userId;
+      const userId = req.user.id;
       const updateData = req.body;
 
       const [affectedRows] = await User.update(updateData, {

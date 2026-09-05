@@ -18,8 +18,8 @@ const ALLOWED_ROLES = ['patient', 'doctor', 'provider', 'admin'];
  * Regex para validaciones
  */
 const PATTERNS = {
-  // Password: min 8 chars, mayúscula, minúscula, número
-  password: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/,
+  // Password: min 8 chars, mayúscula, minúscula, número (cualquier carácter adicional permitido)
+  password: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/,
   // Teléfono venezolano: +58 o 04XX
   phoneVE: /^(\+58|0)?(412|414|416|424|426|212|251|261|281|241)[0-9]{7}$/,
   // Cédula venezolana: V o E seguido de números

@@ -1,7 +1,9 @@
 require("dotenv").config();
 const express = require("express");
+const http = require("http");
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
+const { initializeSocket } = require('./config/socket');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -98,6 +100,9 @@ const patientRoutes = require("./routes/patients");
 const kycVerificationRoutes = require("./routes/kycVerification");
 const reviewsRoutes = require("./routes/reviews");
 const searchRoutes = require("./routes/search");
+const appointmentRoutes = require("./routes/appointments");
+const waitingRoomRoutes = require("./routes/waitingRoom");
+const clinicRoutes = require("./routes/clinics");
 
 // ==================== USAR RUTAS ====================
 // Auth routes con rate limiting estricto (5 req/15min)
@@ -122,6 +127,11 @@ app.use("/api/reviews", reviewsRoutes);
 
 // Search routes con rate limiting moderado
 app.use("/api/search", searchLimiter, searchRoutes);
+
+// M03: Citas, Sala de Espera y Clínicas
+app.use("/api/appointments", appointmentRoutes);
+app.use("/api/waiting-room", waitingRoomRoutes);
+app.use("/api/clinics", clinicRoutes);
 
 // ==================== RUTAS BÁSICAS ====================
 app.get("/", (req, res) => {
@@ -392,7 +402,12 @@ async function startServer() {
     const count = await Specialty.count({ where: { isActive: true } });
     logger.info(`Database ready: ${count} active specialties`);
 
-    app.listen(PORT, () => {
+    // Servidor HTTP + WebSocket (Sala de Espera en tiempo real)
+    const httpServer = http.createServer(app);
+    initializeSocket(httpServer);
+    logger.info('Socket.io initialized (namespaces: /, /waiting-room, /notifications)');
+
+    httpServer.listen(PORT, () => {
       logServerStart(PORT, process.env.NODE_ENV || 'development');
 
       // Initialize scheduled jobs

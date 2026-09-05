@@ -150,6 +150,11 @@ const initializeSocket = (httpServer) => {
   waitingRoomNsp.use(socketAuthMiddleware);
   waitingRoomNsp.on('connection', (socket) => {
     console.log(`[Socket.io] /waiting-room connected: ${socket.id}`);
+    socket.emit(EVENTS.AUTHENTICATED, {
+      userId: socket.userId,
+      role: socket.userRole,
+      socketId: socket.id
+    });
     waitingRoomHandler(socket, waitingRoomNsp);
   });
 
@@ -160,6 +165,11 @@ const initializeSocket = (httpServer) => {
   notificationsNsp.use(socketAuthMiddleware);
   notificationsNsp.on('connection', (socket) => {
     console.log(`[Socket.io] /notifications connected: ${socket.id}`);
+    socket.emit(EVENTS.AUTHENTICATED, {
+      userId: socket.userId,
+      role: socket.userRole,
+      socketId: socket.id
+    });
     notificationsHandler(socket, notificationsNsp);
   });
 

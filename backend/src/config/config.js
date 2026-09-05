@@ -13,6 +13,9 @@ module.exports = {
     port: parseInt(process.env.DB_PORT, 10) || 5432,
     dialect: 'postgres',
     logging: console.log,
+    dialectOptions: process.env.DB_SSL === 'true'
+      ? { ssl: { require: true, rejectUnauthorized: false } }
+      : {},
     define: {
       timestamps: true,
       underscored: false

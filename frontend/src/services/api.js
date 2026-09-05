@@ -5,8 +5,8 @@
 
 import axios from 'axios';
 
-// URL del backend (Puerto 5000 confirmado)
-const API_URL = 'http://localhost:5000/api';
+// URL del backend (configurable por entorno, puerto 5000 en desarrollo)
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Crear instancia de axios con configuración base
 const api = axios.create({

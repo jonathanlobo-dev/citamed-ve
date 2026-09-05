@@ -180,9 +180,16 @@ function DoctorWizard() {
         setFieldErrors(serverErrors);
       }
 
+      // Mostrar el detalle de los errores en el paso actual, no solo en el campo de origen
+      const detalles = (error.response?.data?.errors || [])
+        .map(err => err.message)
+        .filter(Boolean)
+        .join(' · ');
+
       setRegistrationError(
-        error.response?.data?.message ||
-        'Error al registrar. Por favor intenta nuevamente.'
+        error.response?.data?.message
+          ? (detalles ? `${error.response.data.message}: ${detalles}` : error.response.data.message)
+          : 'Error al registrar. Por favor intenta nuevamente.'
       );
     } finally {
       setIsSubmitting(false);

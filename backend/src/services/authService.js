@@ -9,7 +9,7 @@
  */
 
 const jwt = require('jsonwebtoken');
-const { User, PatientProfile, DoctorProfile, ProviderProfile, sequelize } = require('../models');
+const { User, PatientProfile, DoctorProfile, ProviderProfile, VerificationRequest, sequelize } = require('../models');
 
 /**
  * Genera token JWT para un usuario
@@ -235,6 +235,13 @@ const createDoctor = async (data) => {
       acceptedInsurances: data.acceptedInsurances || null,
       profileStatus: 'pending_review', // Médicos requieren aprobación
       isVerified: false
+    }, { transaction });
+
+    // Crear solicitud de verificación KYC automáticamente para que el admin
+    // la vea en la cola (/admin/verificacion) y pueda aprobar o rechazar
+    await VerificationRequest.create({
+      doctorProfileId: profile.id,
+      status: 'submitted'
     }, { transaction });
 
     await transaction.commit();

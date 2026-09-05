@@ -459,12 +459,12 @@ module.exports = (sequelize) => {
       { fields: ['specialtyId'] },
       { fields: ['licenseNumber'] },
       { fields: ['city', 'state'] },
-      { fields: ['averageRating'] },
+      { fields: ['average_rating'] },
       { fields: ['profileStatus'] },
       { fields: ['acceptingNewPatients'] },
       { fields: ['isVerified'] },
-      { fields: ['verificationStatus'] },
-      { fields: ['verifiedAt'] },
+      { fields: ['verification_status'] },
+      { fields: ['verified_at'] },
     ]
   });
 

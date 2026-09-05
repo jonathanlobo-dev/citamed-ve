@@ -15,7 +15,10 @@ class AppointmentService {
    * Obtener slots disponibles para un doctor en una fecha
    */
   async getAvailableSlots(doctorProfileId, date) {
-    const dateObj = new Date(date);
+    // Parsear YYYY-MM-DD en hora LOCAL (new Date('YYYY-MM-DD') lo interpreta como UTC
+    // y getDay() se evalua en hora local => desfase de un dia para Venezuela UTC-4)
+    const [year, month, day] = date.split('-').map(Number);
+    const dateObj = new Date(year, month - 1, day);
     const dayOfWeek = dateObj.getDay();
 
     // 1. Verificar overrides

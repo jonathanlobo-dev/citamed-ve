@@ -342,15 +342,15 @@ const doctorRegisterValidator = [
 
   // Paso 5: Precios
   body('priceConsultation')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isFloat({ min: 0 }),
 
   body('priceTeleconsultation')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isFloat({ min: 0 }),
 
   body('priceHomeVisit')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isFloat({ min: 0 }),
 
   body('acceptsHomeVisits')

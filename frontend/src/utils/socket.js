@@ -11,7 +11,7 @@
 import { io } from 'socket.io-client';
 
 // Configuración desde variables de entorno
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
 const isDev = import.meta.env.DEV;
 
 /**
@@ -72,7 +72,7 @@ const socketCache = new Map();
  * Obtener token JWT del localStorage
  */
 const getToken = () => {
-  return localStorage.getItem('token');
+  return localStorage.getItem('citamed_token');
 };
 
 /**
