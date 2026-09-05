@@ -2,7 +2,7 @@
 [build]
   base = "frontend"
   command = "npm run build"
-  publish = "frontend/dist"
+  publish = "dist"
 
 # Variables del frontend (no son secretos: la URL pública del backend)
 [build.environment]
