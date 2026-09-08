@@ -103,6 +103,7 @@ const patientStep2Validator = [
     .trim()
     .notEmpty()
     .withMessage('Cédula es requerida')
+    .customSanitizer((v) => (typeof v === 'string' ? v.toUpperCase().replace(/[\s.]/g, '') : v))
     .matches(PATTERNS.cedulaVE)
     .withMessage('Cédula debe tener formato venezolano válido (V-12345678 o E-12345678)'),
 
@@ -141,6 +142,7 @@ const patientStep2Validator = [
     .trim()
     .notEmpty()
     .withMessage('Teléfono es requerido')
+    .customSanitizer((v) => (typeof v === 'string' ? v.replace(/[\s()\-.]/g, '') : v))
     .matches(PATTERNS.phoneVE)
     .withMessage('Teléfono debe ser un número venezolano válido (0412-1234567)')
 ];
@@ -183,6 +185,7 @@ const patientStep3Validator = [
     .trim()
     .notEmpty()
     .withMessage('Teléfono del contacto de emergencia es requerido')
+    .customSanitizer((v) => (typeof v === 'string' ? v.replace(/[\s()\-.]/g, '') : v))
     .matches(PATTERNS.phoneVE)
     .withMessage('Teléfono del contacto debe ser un número venezolano válido')
 ];
@@ -246,6 +249,7 @@ const patientRegisterValidator = [
     .trim()
     .notEmpty()
     .withMessage('Teléfono del contacto de emergencia es requerido')
+    .customSanitizer((v) => (typeof v === 'string' ? v.replace(/[\s()\-.]/g, '') : v))
     .matches(PATTERNS.phoneVE)
     .withMessage('Teléfono del contacto debe ser un número venezolano válido'),
 

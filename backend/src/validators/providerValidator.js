@@ -102,6 +102,7 @@ const providerStep2Validator = [
     .trim()
     .notEmpty()
     .withMessage('Teléfono comercial es requerido')
+    .customSanitizer((v) => (typeof v === 'string' ? v.replace(/[\s()\-.]/g, '') : v))
     .matches(PATTERNS.phoneVE)
     .withMessage('Teléfono debe ser un número venezolano válido'),
 
@@ -239,6 +240,7 @@ const providerRegisterValidator = [
   body('commercialPhone')
     .optional()
     .trim()
+    .customSanitizer((v) => (typeof v === 'string' ? v.replace(/[\s()\-.]/g, '') : v))
     .matches(PATTERNS.phoneVE)
     .withMessage('Teléfono debe ser formato venezolano'),
 

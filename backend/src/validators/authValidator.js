@@ -90,6 +90,7 @@ const registerValidator = [
   body('phone')
     .optional()
     .trim()
+    .customSanitizer((v) => (typeof v === 'string' ? v.replace(/[\s()\-.]/g, '') : v))
     .matches(PATTERNS.phoneVE)
     .withMessage('Teléfono debe ser un número venezolano válido')
 ];

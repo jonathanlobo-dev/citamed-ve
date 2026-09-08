@@ -85,6 +85,7 @@ const doctorStep2Validator = [
     .trim()
     .notEmpty()
     .withMessage('Cédula es requerida')
+    .customSanitizer((v) => (typeof v === 'string' ? v.toUpperCase().replace(/[\s.]/g, '') : v))
     .matches(PATTERNS.cedulaVE)
     .withMessage('Cédula debe tener formato venezolano válido'),
 
@@ -104,6 +105,7 @@ const doctorStep2Validator = [
     .trim()
     .notEmpty()
     .withMessage('Teléfono es requerido')
+    .customSanitizer((v) => (typeof v === 'string' ? v.replace(/[\s()\-.]/g, '') : v))
     .matches(PATTERNS.phoneVE)
     .withMessage('Teléfono debe ser un número venezolano válido')
 ];
@@ -289,6 +291,7 @@ const doctorRegisterValidator = [
   body('phone')
     .optional()
     .trim()
+    .customSanitizer((v) => (typeof v === 'string' ? v.replace(/[\s()\-.]/g, '') : v))
     .matches(PATTERNS.phoneVE)
     .withMessage('Teléfono debe ser formato venezolano'),
 
