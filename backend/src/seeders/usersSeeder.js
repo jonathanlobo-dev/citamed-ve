@@ -1,4 +1,4 @@
-﻿require('dotenv').config();
+require('dotenv').config();
 /**
  * Users Seeder - CITAMED.VE
  *
@@ -25,13 +25,13 @@ const testUsers = [
     email: 'paciente@citamed.ve',
     password: 'Paciente123!',
     firstName: 'Juan',
-    lastName: 'PÃ©rez',
+    lastName: 'Pérez',
     role: 'patient',
     status: 'active',
     emailVerified: true,
     profile: {
       firstName: 'Juan',
-      lastName: 'PÃ©rez',
+      lastName: 'Pérez',
       identificationNumber: 'V-12345678',
       dateOfBirth: '1990-05-15',
       gender: 'male',
@@ -39,21 +39,21 @@ const testUsers = [
       bloodType: 'O+',
       allergies: [],
       chronicConditions: [],
-      emergencyContactName: 'MarÃ­a PÃ©rez',
+      emergencyContactName: 'María Pérez',
       emergencyContactPhone: '04141234567'
     }
   },
   {
     email: 'doctor@citamed.ve',
     password: 'Doctor123!',
-    firstName: 'MarÃ­a',
-    lastName: 'GonzÃ¡lez',
+    firstName: 'María',
+    lastName: 'González',
     role: 'doctor',
     status: 'active',
     emailVerified: true,
     profile: {
-      firstName: 'María',
-      lastName: 'González',
+      firstName: 'Mar�a',
+      lastName: 'Gonz�lez',
       identificationNumber: 'V-87654321',
       licenseNumber: 'MPPS-88888',
       phone: '04241234567',
@@ -62,13 +62,13 @@ const testUsers = [
       university: 'Universidad Central de Venezuela',
       graduationYear: 2010,
       yearsOfExperience: 14,
-      consultationAddress: 'Centro Médico Caracas, Piso 5, Consultorio 502',
+      consultationAddress: 'Centro M�dico Caracas, Piso 5, Consultorio 502',
       city: 'Caracas',
       state: 'Distrito Capital',
       consultationFee: 50.00,
       followUpFee: 30.00,
       acceptsInsurance: true,
-      biography: 'Médico especialista con más de 14 años de experiencia.',
+      biography: 'M�dico especialista con m�s de 14 a�os de experiencia.',
       profileStatus: 'active',
       isVerified: true,
       verificationStatus: 'approved',
@@ -79,7 +79,7 @@ const testUsers = [
     email: 'proveedor@citamed.ve',
     password: 'Proveedor123!',
     firstName: 'Carlos',
-    lastName: 'RodrÃ­guez',
+    lastName: 'Rodríguez',
     role: 'provider',
     status: 'active',
     emailVerified: true,
@@ -93,38 +93,38 @@ const testUsers = [
       mainAddress: 'Av. Principal, Centro Comercial Plaza',
       city: 'Caracas',
       state: 'Distrito Capital',
-      description: 'Farmacia con mÃ¡s de 20 aÃ±os de experiencia'
+      description: 'Farmacia con más de 20 años de experiencia'
     }
   }
 ];
 
 async function seedUsers() {
-  console.log('ðŸŒ± Iniciando seeder de usuarios...\n');
+  console.log('�xR� Iniciando seeder de usuarios...\n');
 
   try {
     // Conectar a la base de datos
     await sequelize.authenticate();
-    console.log('âœ… ConexiÃ³n a base de datos establecida\n');
+    console.log('�S& Conexión a base de datos establecida\n');
 
     // Obtener una especialidad para el doctor
     let specialty = await Specialty.findOne({ where: { isActive: true } });
     if (!specialty) {
-      console.log('âš ï¸ No hay especialidades, creando una de prueba...');
+      console.log('�a�️ No hay especialidades, creando una de prueba...');
       specialty = await Specialty.create({
         name: 'Medicina General',
-        description: 'AtenciÃ³n mÃ©dica primaria',
+        description: 'Atención médica primaria',
         isActive: true
       });
     }
 
     for (const userData of testUsers) {
-      console.log(`ðŸ“ Procesando: ${userData.email}`);
+      console.log(`�x� Procesando: ${userData.email}`);
 
       // Verificar si el usuario ya existe
       const existingUser = await User.findOne({ where: { email: userData.email } });
 
       if (existingUser) {
-        console.log(`   â­ï¸  Usuario ya existe, saltando...\n`);
+        console.log(`   ⏭️  Usuario ya existe, saltando...\n`);
         continue;
       }
 
@@ -140,15 +140,15 @@ async function seedUsers() {
         emailVerified: userData.emailVerified
       });
 
-      console.log(`   âœ… Usuario creado (ID: ${user.id})`);
+      console.log(`   �S& Usuario creado (ID: ${user.id})`);
 
-      // Crear perfil segÃºn el rol
+      // Crear perfil según el rol
       if (userData.role === 'patient' && userData.profile) {
         await PatientProfile.create({
           userId: user.id,
           ...userData.profile
         });
-        console.log(`   âœ… Perfil de paciente creado`);
+        console.log(`   �S& Perfil de paciente creado`);
       }
 
       if (userData.role === 'doctor' && userData.profile) {
@@ -157,7 +157,7 @@ async function seedUsers() {
           specialtyId: specialty.id,
           ...userData.profile
         });
-        console.log(`   âœ… Perfil de doctor creado`);
+        console.log(`   �S& Perfil de doctor creado`);
       }
 
       if (userData.role === 'provider' && userData.profile) {
@@ -165,24 +165,24 @@ async function seedUsers() {
           userId: user.id,
           ...userData.profile
         });
-        console.log(`   âœ… Perfil de proveedor creado`);
+        console.log(`   �S& Perfil de proveedor creado`);
       }
 
-      console.log(`   ðŸ”‘ Credenciales: ${userData.email} / ${userData.password}\n`);
+      console.log(`   �x Credenciales: ${userData.email} / ${userData.password}\n`);
     }
 
-    console.log('â•'.repeat(50));
-    console.log('âœ… SEEDER COMPLETADO\n');
+    console.log('�"�'.repeat(50));
+    console.log('�S& SEEDER COMPLETADO\n');
     console.log('USUARIOS DE PRUEBA:');
-    console.log('â”€'.repeat(50));
-    console.log('ðŸ‘¤ Admin:     admin@citamed.ve     / Admin123!');
-    console.log('ðŸ‘¤ Paciente:  paciente@citamed.ve  / Paciente123!');
-    console.log('ðŸ‘¤ Doctor:    doctor@citamed.ve    / Doctor123!');
-    console.log('ðŸ‘¤ Proveedor: proveedor@citamed.ve / Proveedor123!');
-    console.log('â•'.repeat(50));
+    console.log('��'.repeat(50));
+    console.log('�x� Admin:     admin@citamed.ve     / Admin123!');
+    console.log('�x� Paciente:  paciente@citamed.ve  / Paciente123!');
+    console.log('�x� Doctor:    doctor@citamed.ve    / Doctor123!');
+    console.log('�x� Proveedor: proveedor@citamed.ve / Proveedor123!');
+    console.log('�"�'.repeat(50));
 
   } catch (error) {
-    console.error('âŒ Error en seeder:', error.message);
+    console.error('�R Error en seeder:', error.message);
     console.error(error.stack);
     process.exit(1);
   } finally {
