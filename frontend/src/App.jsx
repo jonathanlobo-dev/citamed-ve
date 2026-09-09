@@ -27,6 +27,7 @@ import PatientProfileEditPage from './pages/patient/PatientProfileEditPage';
 import DocumentUploadPage from './pages/doctor/verification/DocumentUploadPage';
 import VerificationQueuePage from './pages/admin/verification/VerificationQueuePage';
 import DoctorReputationPage from './pages/doctor/DoctorReputationPage';
+import DoctorAgendaPage from './pages/doctor/DoctorAgendaPage';
 import ComingSoonPage from './pages/ComingSoonPage';
 import SearchPage from './pages/SearchPage';
 import ProviderProfilePage from './pages/provider/ProviderProfilePage';
@@ -112,7 +113,7 @@ function AppRoutes() {
         path="/medico/agenda"
         element={
           <ProtectedRoute allowedRoles={['doctor']}>
-            <ComingSoonPage />
+            <DoctorAgendaPage />
           </ProtectedRoute>
         }
       />
