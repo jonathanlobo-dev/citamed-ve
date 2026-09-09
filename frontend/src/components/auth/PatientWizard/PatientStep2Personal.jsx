@@ -12,7 +12,8 @@
 
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { User, CreditCard, Calendar, Phone, AlertCircle, Check, X, Loader2 } from 'lucide-react';
+import { User, Calendar, Phone, AlertCircle, Check, X, Loader2 } from 'lucide-react';
+import DocumentInput from '../../common/DocumentInput/DocumentInput';
 import { debounce } from 'lodash';
 import authService from '../../../services/authService';
 
@@ -33,7 +34,7 @@ function PatientStep2Personal({ formData, updateField, errors, setFieldErrors, o
   // Verificar disponibilidad de cédula con debounce
   const checkCedulaAvailability = useCallback(
     debounce(async (cedula) => {
-      if (!cedula || cedula.length < 6) {
+      if (!cedula || !/^[VEJ]-\d{6,9}$/.test(cedula)) {
         setCedulaAvailable(null);
         return;
       }
@@ -55,12 +56,8 @@ function PatientStep2Personal({ formData, updateField, errors, setFieldErrors, o
     [errors, setFieldErrors]
   );
 
-  // Manejar cambio de cédula
-  const handleCedulaChange = (e) => {
-    let value = e.target.value.toUpperCase();
-    // Formatear automáticamente: V-12345678 o E-12345678
-    value = value.replace(/[^VE0-9-]/g, '');
-
+  // Manejar cambio de cédula (llega ya compuesto: V-12345678)
+  const handleCedulaChange = (value) => {
     updateField('identificationNumber', value);
     setCedulaAvailable(null);
     checkCedulaAvailability(value);
@@ -92,10 +89,12 @@ function PatientStep2Personal({ formData, updateField, errors, setFieldErrors, o
     }
 
     // Cédula
+    const docMatch = /^([VEJ])-(\d{6,9})$/.exec(formData.identificationNumber || '');
+
     if (!formData.identificationNumber?.trim()) {
       newErrors.identificationNumber = 'Cédula es requerida';
-    } else if (!/^[VE]-?\d{6,9}$/i.test(formData.identificationNumber)) {
-      newErrors.identificationNumber = 'Formato: V-12345678 o E-12345678';
+    } else if (!docMatch) {
+      newErrors.identificationNumber = 'Ingresa el número de cédula (6 a 9 dígitos)';
     } else if (cedulaAvailable === false) {
       newErrors.identificationNumber = 'Esta cédula ya está registrada';
     }
@@ -222,23 +221,12 @@ function PatientStep2Personal({ formData, updateField, errors, setFieldErrors, o
           Cédula de Identidad
         </label>
         <div className="relative">
-          <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-          <input
-            type="text"
+          <DocumentInput
             value={formData.identificationNumber || ''}
             onChange={handleCedulaChange}
-            className={`
-              w-full pl-10 pr-10 py-3 border rounded-lg focus:outline-none focus:ring-2
-              ${errors.identificationNumber
-                ? 'border-red-500 focus:ring-red-200'
-                : cedulaAvailable === true
-                  ? 'border-green-500 focus:ring-green-200'
-                  : 'border-gray-300 focus:ring-primary/20 focus:border-primary'
-              }
-            `}
-            placeholder="V-12345678"
+            status={errors.identificationNumber ? 'error' : cedulaAvailable === true ? 'success' : undefined}
           />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
             {checkingCedula && <Loader2 className="h-5 w-5 text-gray-400 animate-spin" />}
             {!checkingCedula && cedulaAvailable === true && (
               <Check className="h-5 w-5 text-green-500" />
@@ -255,7 +243,7 @@ function PatientStep2Personal({ formData, updateField, errors, setFieldErrors, o
           </p>
         )}
         <p className="mt-1 text-xs text-gray-500">
-          Formato: V-12345678 (venezolano) o E-12345678 (extranjero)
+          V: Venezolano · E: Extranjero · J: Jurídico (RIF). Ingresa solo el número (6 a 9 dígitos).
         </p>
       </div>
 
