@@ -1,10 +1,9 @@
 name: CI Tests
 
 on:
-  push:
-    branches: [ master, main, develop ]
-  pull_request:
-    branches: [ master, main ]
+  # Pausado: la suite de pruebas aun no esta lista para CI (requiere preparacion de BD).
+  # Se reactivara al construir los tests (Semanas 3-5). Mientras, ejecutar a mano si se necesita.
+  workflow_dispatch:
 
 jobs:
   test:
