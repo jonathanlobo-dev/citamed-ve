@@ -178,6 +178,21 @@ function DoctorWizard() {
           serverErrors[err.field] = err.message;
         });
         setFieldErrors(serverErrors);
+
+        // Llevar al usuario al primer paso que tenga un error, para que lo corrija en contexto
+        const FIELD_STEP = {
+          email: 1, password: 1, confirmPassword: 1, acceptTerms: 1,
+          firstName: 2, lastName: 2, identificationNumber: 2, dateOfBirth: 2, gender: 2, phone: 2,
+          mppsNumber: 3, specialtyId: 3, university: 3, graduationYear: 3,
+          consultationAddress: 4, city: 4, state: 4, availableDays: 4, startTime: 4, endTime: 4,
+          priceConsultation: 5, priceTeleconsultation: 5, priceHomeVisit: 5
+        };
+        const errorSteps = Object.keys(serverErrors)
+          .map((field) => FIELD_STEP[field])
+          .filter(Boolean);
+        if (errorSteps.length > 0) {
+          goToStep(Math.min(...errorSteps));
+        }
       }
 
       // Mostrar el detalle de los errores en el paso actual, no solo en el campo de origen

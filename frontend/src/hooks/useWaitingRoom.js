@@ -57,13 +57,11 @@ const useWaitingRoom = (token, userRole) => {
 
     // Eventos de conexion
     socketInstance.on(EVENTS.CONNECT, () => {
-      console.log('[useWaitingRoom] Connected');
       setConnected(true);
       setError(null);
     });
 
     socketInstance.on(EVENTS.DISCONNECT, (reason) => {
-      console.log('[useWaitingRoom] Disconnected:', reason);
       setConnected(false);
     });
 
@@ -73,23 +71,19 @@ const useWaitingRoom = (token, userRole) => {
     });
 
     socketInstance.on(EVENTS.AUTHENTICATED, (data) => {
-      console.log('[useWaitingRoom] Authenticated:', data);
     });
 
     // Eventos de sala de espera
     socketInstance.on(EVENTS.WR_QUEUE_UPDATE, (data) => {
-      console.log('[useWaitingRoom] Queue update:', data);
       if (data.queue) setQueue(data.queue);
       if (data.stats) setStats(data.stats);
     });
 
     socketInstance.on(EVENTS.WR_POSITION_UPDATE, (data) => {
-      console.log('[useWaitingRoom] Position update:', data);
       setMyPosition(data);
     });
 
     socketInstance.on(EVENTS.WR_YOUR_TURN, (data) => {
-      console.log('[useWaitingRoom] YOUR TURN!', data);
       setIsMyTurn(true);
 
       // Mostrar notificacion del navegador
@@ -102,7 +96,6 @@ const useWaitingRoom = (token, userRole) => {
     });
 
     socketInstance.on(EVENTS.WR_ALMOST_YOUR_TURN, (data) => {
-      console.log('[useWaitingRoom] Almost your turn:', data);
 
       // Mostrar notificacion
       if (Notification.permission === 'granted') {
@@ -118,17 +111,14 @@ const useWaitingRoom = (token, userRole) => {
     });
 
     socketInstance.on(EVENTS.WR_DOCTOR_ONLINE, (data) => {
-      console.log('[useWaitingRoom] Doctor online:', data);
       setIsDoctorOnline(true);
     });
 
     socketInstance.on(EVENTS.WR_DOCTOR_OFFLINE, (data) => {
-      console.log('[useWaitingRoom] Doctor offline:', data);
       setIsDoctorOnline(false);
     });
 
     socketInstance.on('chairs_update', (data) => {
-      console.log('[useWaitingRoom] Chairs update:', data);
     });
 
     return () => {

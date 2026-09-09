@@ -86,7 +86,6 @@ function PatientWizard() {
   useEffect(() => {
     if (hasSavedData() && currentStep > 1) {
       // Podríamos mostrar un modal preguntando si quiere continuar
-      console.log('Datos guardados encontrados, continuando desde paso', currentStep);
     }
   }, []);
 

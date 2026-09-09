@@ -116,11 +116,9 @@ export const getSocket = (namespace = '/') => {
   // Logging en desarrollo
   if (isDev) {
     socket.on('connect', () => {
-      console.log(`[Socket] Connected to ${namespace} (id: ${socket.id})`);
     });
 
     socket.on('disconnect', (reason) => {
-      console.log(`[Socket] Disconnected from ${namespace}: ${reason}`);
     });
 
     socket.on('connect_error', (error) => {
@@ -128,7 +126,6 @@ export const getSocket = (namespace = '/') => {
     });
 
     socket.on(EVENTS.AUTHENTICATED, (data) => {
-      console.log(`[Socket] Authenticated on ${namespace}:`, data);
     });
 
     socket.on(EVENTS.ERROR, (error) => {
@@ -169,7 +166,6 @@ export const disconnectSocket = (namespace = '/') => {
     socketCache.delete(cacheKey);
 
     if (isDev) {
-      console.log(`[Socket] Manually disconnected from ${namespace}`);
     }
   }
 };
@@ -182,7 +178,6 @@ export const disconnectAllSockets = () => {
     socket.disconnect();
     socket.removeAllListeners();
     if (isDev) {
-      console.log(`[Socket] Disconnected from ${namespace}`);
     }
   }
   socketCache.clear();

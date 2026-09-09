@@ -324,7 +324,6 @@ const PatientWaitingRoomPage = () => {
             headers: { Authorization: `Bearer ${token}` }
           }
         );
-        console.log('[WaitingRoom] Marked as en_route');
       } catch (err) {
         console.error('Error marking en_route:', err);
       }

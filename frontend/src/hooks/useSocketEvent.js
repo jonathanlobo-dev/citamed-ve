@@ -112,7 +112,6 @@ export const useWaitingRoomEvents = (onQueueUpdate, onYourTurn) => {
   useSocketEvent(namespace, 'wr:your-turn', onYourTurn);
   useSocketEvent(namespace, 'wr:almost-your-turn', (data) => {
     // Notificación de "casi tu turno"
-    console.log('[WaitingRoom] Almost your turn:', data);
   });
 
   const { lastData: doctorStatus } = useSocketEvent(
