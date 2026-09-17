@@ -1,8 +1,3 @@
-/**
- * AgendarCitaPage - CITAMED.VE
- * M03 - Agendar Cita con Doctor
- */
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -23,6 +18,7 @@ import Navbar from '../../components/common/Navbar/Navbar';
 import { useAuth } from '../../context/AuthContext';
 import appointmentService from '../../services/appointmentService';
 import api from '../../services/api';
+import toast from 'react-hot-toast';
 import './AgendarCitaPage.css';
 
 const AgendarCitaPage = () => {
@@ -68,6 +64,15 @@ const AgendarCitaPage = () => {
     }
   }, [doctorId]);
 
+  // Formateador de fecha local para evitar desfase de zona horaria (UTC-4 Venezuela)
+  const formatLocalDate = (date) => {
+    if (!date) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Fetch available slots when date is selected
   useEffect(() => {
     const fetchSlots = async () => {
@@ -75,8 +80,9 @@ const AgendarCitaPage = () => {
 
       try {
         setLoadingSlots(true);
-        const dateStr = selectedDate.toISOString().split('T')[0];
-        const response = await appointmentService.getAvailableSlots(doctorId, dateStr);
+        const dateStr = formatLocalDate(selectedDate);
+        const targetDoctorId = doctor?.id || doctorId;
+        const response = await appointmentService.getAvailableSlots(targetDoctorId, dateStr);
         // Extraer solo las horas únicas de los slots
         const slots = response.data?.slots || [];
         const uniqueSlots = [...new Set(slots.map(s => s.start))].sort();
@@ -90,7 +96,7 @@ const AgendarCitaPage = () => {
     };
 
     fetchSlots();
-  }, [selectedDate, doctorId]);
+  }, [selectedDate, doctorId, doctor]);
 
   const generateCalendarDays = () => {
     const year = currentMonth.getFullYear();
@@ -99,6 +105,12 @@ const AgendarCitaPage = () => {
     const lastDay = new Date(year, month + 1, 0);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    // Obtener días configurados por el médico (0=Domingo, 1=Lunes, ..., 6=Sábado)
+    const activeDays = Array.isArray(doctor?.availability)
+      ? doctor.availability.map(a => Number(a.dayOfWeek))
+      : [];
+    const hasConfiguredAvailability = activeDays.length > 0;
 
     const days = [];
     const startPadding = firstDay.getDay();
@@ -111,13 +123,16 @@ const AgendarCitaPage = () => {
     // Days of current month
     for (let day = 1; day <= lastDay.getDate(); day++) {
       const date = new Date(year, month, day);
-      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
       const isPast = date < today;
+      const dayOfWeek = date.getDay();
+      const isDayAvailable = hasConfiguredAvailability
+        ? activeDays.includes(dayOfWeek)
+        : (dayOfWeek !== 0 && dayOfWeek !== 6);
 
       days.push({
         day,
         date,
-        disabled: isPast || isWeekend,
+        disabled: isPast || !isDayAvailable,
         isToday: date.toDateString() === today.toDateString(),
         isSelected: selectedDate?.toDateString() === date.toDateString()
       });
@@ -149,25 +164,46 @@ const AgendarCitaPage = () => {
     try {
       setBookingInProgress(true);
 
+      const targetDoctorProfileId = doctor.id || parseInt(doctorId);
+      const targetUserId = doctor.userId || doctor.user?.id || doctor.id;
+      const specialtyId = doctor.specialtyId || doctor.specialties?.[0]?.id || doctor.specialty?.id || null;
+
       const appointmentData = {
-        doctorId: doctor.userId || doctor.user?.id,  // ID del usuario doctor
-        doctorProfileId: parseInt(doctorId),          // ID del perfil (de la URL)
-        appointmentDate: selectedDate.toISOString().split('T')[0],
+        doctorId: targetUserId,
+        doctorProfileId: targetDoctorProfileId,
+        specialtyId,
+        appointmentDate: formatLocalDate(selectedDate),
         appointmentTime: selectedSlot,
-        reasonForVisit: reason || 'Consulta general',
+        reasonForVisit: reason.trim() || 'Consulta general',
         appointmentType: 'first_consultation'
       };
 
       const response = await appointmentService.create(appointmentData);
-      setNewAppointmentId(response.data.id);
-      // Guardar info de cola si existe
-      if (response.data.queueInfo) {
+      setNewAppointmentId(response.data?.id);
+      if (response.data?.queueInfo) {
         setQueueInfo(response.data.queueInfo);
       }
       setBookingSuccess(true);
+      toast.success('¡Solicitud de cita enviada con éxito!');
     } catch (err) {
       console.error('Error booking appointment:', err);
-      alert(err.response?.data?.message || 'No pudimos agendar tu cita. Intenta de nuevo.');
+      const errorMsg = err.response?.data?.message || err.message || 'No pudimos agendar tu cita. Intenta de nuevo.';
+      toast.error(errorMsg);
+
+      // Si el horario fue tomado, refrescar slots automáticamente
+      if (selectedDate) {
+        const dateStr = formatLocalDate(selectedDate);
+        appointmentService.getAvailableSlots(doctor?.id || doctorId, dateStr)
+          .then((res) => {
+            const slots = res.data?.slots || [];
+            const uniqueSlots = [...new Set(slots.map(s => s.start))].sort();
+            setAvailableSlots(uniqueSlots);
+            if (!uniqueSlots.includes(selectedSlot)) {
+              setSelectedSlot(null);
+            }
+          })
+          .catch(() => {});
+      }
     } finally {
       setBookingInProgress(false);
     }
@@ -214,24 +250,39 @@ const AgendarCitaPage = () => {
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="max-w-md mx-auto text-center bg-white rounded-2xl shadow-xl p-8"
+            className="max-w-md mx-auto text-center bg-white rounded-2xl shadow-xl p-8 border border-gray-100"
           >
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Check className="w-10 h-10 text-green-600" />
+            <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Clock className="w-10 h-10 text-amber-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">
-              Cita Agendada Exitosamente
+
+            <div className="inline-block px-3 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-full text-xs font-semibold uppercase tracking-wider mb-3">
+              ⏳ Solicitud Enviada (Pre-Cita)
+            </div>
+
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              Turno Pre-Reservado
             </h2>
-            <p className="text-gray-600 mb-2">
-              Tu cita con Dr. {doctor?.user?.firstName} {doctor?.user?.lastName}
+            <p className="text-gray-600 mb-1">
+              Dr(a). {doctor?.user?.firstName} {doctor?.user?.lastName}
             </p>
-            <p className="text-gray-600 mb-4">
+            <p className="text-gray-800 font-semibold mb-4">
               {selectedDate?.toLocaleDateString('es-VE', {
                 weekday: 'long',
                 day: 'numeric',
                 month: 'long'
               })} a las {selectedSlot}
             </p>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-900 text-left mb-6">
+              <p className="font-semibold mb-1 flex items-center gap-1.5">
+                <AlertCircle className="w-4 h-4 text-blue-600" />
+                Aprobación del consultorio:
+              </p>
+              <p className="text-blue-700 text-xs leading-relaxed">
+                Tu cupo ha quedado bloqueado para ti. El médico o su asistente confirmará la cita a la brevedad. Puedes seguir el estado en <strong>Mis Citas</strong>.
+              </p>
+            </div>
 
             {/* Info de Cola Virtual */}
             {queueInfo && (
@@ -243,12 +294,12 @@ const AgendarCitaPage = () => {
               >
                 <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center justify-center gap-2">
                   <Users className="w-4 h-4" />
-                  Tu Posicion en la Cola Virtual
+                  Tu Posición Estimada en Cola
                 </h3>
                 <div className="flex justify-center gap-6">
                   <div className="text-center">
                     <div className="text-3xl font-bold text-blue-600">#{queueInfo.position}</div>
-                    <div className="text-xs text-blue-700">Posicion</div>
+                    <div className="text-xs text-blue-700">Tu turno</div>
                   </div>
                   {queueInfo.appointmentsAhead > 0 && (
                     <div className="text-center">
@@ -266,29 +317,22 @@ const AgendarCitaPage = () => {
                     </div>
                   )}
                 </div>
-                {queueInfo.position === 1 && (
-                  <p className="text-xs text-green-700 mt-3 font-medium">
-                    Eres el primero en la lista del dia
-                  </p>
-                )}
               </motion.div>
             )}
 
             <div className="space-y-3">
               <button
                 onClick={() => navigate('/paciente/mis-citas')}
-                className="w-full bg-primary text-white py-3 rounded-lg hover:bg-primary-dark transition"
+                className="w-full bg-primary text-white py-3 rounded-xl font-semibold hover:bg-primary-dark transition shadow-md"
               >
                 Ver Mis Citas
               </button>
-              {newAppointmentId && (
-                <button
-                  onClick={() => navigate(`/sala-espera/${newAppointmentId}`)}
-                  className="w-full border border-primary text-primary py-3 rounded-lg hover:bg-primary/5 transition"
-                >
-                  Ir a Sala de Espera Virtual
-                </button>
-              )}
+              <button
+                onClick={() => navigate('/directorio')}
+                className="w-full border border-gray-300 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-50 transition"
+              >
+                Volver al Directorio
+              </button>
             </div>
           </motion.div>
         </div>
@@ -321,7 +365,7 @@ const AgendarCitaPage = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-800">
-                Agendar Cita con Dr. {doctor?.user?.firstName} {doctor?.user?.lastName}
+                Solicitar Cita con Dr(a). {doctor?.user?.firstName} {doctor?.user?.lastName}
               </h1>
               <p className="text-gray-600">{doctor?.specialty?.name || 'Medicina General'}</p>
               <div className="flex items-center gap-4 mt-2">
@@ -463,20 +507,23 @@ const AgendarCitaPage = () => {
                     <button
                       onClick={handleBookAppointment}
                       disabled={bookingInProgress}
-                      className="w-full mt-4 bg-primary text-white py-4 rounded-lg font-semibold hover:bg-primary-dark transition disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="w-full mt-4 bg-primary text-white py-4 rounded-xl font-semibold hover:bg-primary-dark transition disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
                     >
                       {bookingInProgress ? (
                         <>
                           <Loader className="w-5 h-5 animate-spin" />
-                          Agendando...
+                          Enviando solicitud...
                         </>
                       ) : (
                         <>
                           <Check className="w-5 h-5" />
-                          Confirmar Cita
+                          Enviar Solicitud de Cita
                         </>
                       )}
                     </button>
+                    <p className="text-xs text-gray-500 text-center mt-2.5">
+                      🔒 Tu horario se reservará de inmediato y el consultorio confirmará tu cita.
+                    </p>
                   </div>
                 )}
               </>

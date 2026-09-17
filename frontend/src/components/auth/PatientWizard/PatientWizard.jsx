@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { UserPlus, AlertCircle, CheckCircle } from 'lucide-react';
 import { useWizard } from '../../../hooks/useWizard';
@@ -57,9 +57,13 @@ const INITIAL_DATA = {
  */
 function PatientWizard() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { login } = useAuth();
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [registrationError, setRegistrationError] = useState(null);
+
+  const returnTo = location.state?.from?.pathname || location.state?.from || searchParams.get('returnTo');
 
   const {
     currentStep,
@@ -135,18 +139,20 @@ function PatientWizard() {
           const userEmail = response.data.user?.email || formData.email;
           const hasPhone = !!formData.phone;
 
-          // Redirigir a verificación de email
+          // Redirigir a verificación de email preservando el retorno
           setTimeout(() => {
-            const verifyUrl = `/verificar/email?userId=${userId}&email=${encodeURIComponent(userEmail)}${hasPhone ? '&verifyPhone=true' : ''}`;
+            const returnParam = returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : '';
+            const verifyUrl = `/verificar/email?userId=${userId}&email=${encodeURIComponent(userEmail)}${hasPhone ? '&verifyPhone=true' : ''}${returnParam}`;
             navigate(verifyUrl);
           }, 2000);
         } else {
-          // Si no hay token, redirigir a login
+          // Si no hay token, redirigir a login preservando returnTo
           setTimeout(() => {
             navigate('/login', {
               state: {
                 message: 'Registro exitoso. Por favor inicia sesión para verificar tu cuenta.',
-                email: formData.email
+                email: formData.email,
+                from: returnTo
               }
             });
           }, 3000);

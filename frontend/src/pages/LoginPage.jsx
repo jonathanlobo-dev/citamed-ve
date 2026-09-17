@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowLeft, Eye, EyeOff, AlertCircle } from 'lucide-react';
@@ -9,6 +9,8 @@ import toast from 'react-hot-toast';
 
 function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { login, loginWith2FA, getDashboardPath } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
@@ -17,6 +19,13 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
+
+  const getRedirectTarget = (userRole) => {
+    const fromState = location.state?.from;
+    const fromPath = typeof fromState === 'string' ? fromState : fromState?.pathname;
+    const returnToParam = searchParams.get('returnTo');
+    return fromPath || returnToParam || getDashboardPath(userRole);
+  };
 
   // Estado para 2FA
   const [requires2FA, setRequires2FA] = useState(false);
@@ -94,10 +103,10 @@ function LoginPage() {
         }
 
         const userRole = result.user.role;
-        const dashboardPath = getDashboardPath(userRole);
+        const targetPath = getRedirectTarget(userRole);
         toast.success('¡Bienvenido de vuelta!');
         setTimeout(() => {
-          navigate(dashboardPath);
+          navigate(targetPath, { replace: true });
         }, 1000);
       } else {
         const errorMessage = result.message || 'Error al iniciar sesión';
@@ -126,10 +135,10 @@ function LoginPage() {
         setRequires2FA(false);
         setTempUserId(null);
         const userRole = result.user.role;
-        const dashboardPath = getDashboardPath(userRole);
+        const targetPath = getRedirectTarget(userRole);
         toast.success('¡Bienvenido de vuelta!');
         setTimeout(() => {
-          navigate(dashboardPath);
+          navigate(targetPath, { replace: true });
         }, 1000);
       } else {
         setTwoFactorError(result.message || 'Código inválido');
@@ -140,7 +149,7 @@ function LoginPage() {
     } finally {
       setTwoFactorLoading(false);
     }
-  }, [tempUserId, loginWith2FA, getDashboardPath, navigate]);
+  }, [tempUserId, loginWith2FA, location, searchParams, navigate]);
 
   // Cerrar modal 2FA
   const handle2FAClose = useCallback(() => {

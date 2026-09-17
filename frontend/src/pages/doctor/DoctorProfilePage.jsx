@@ -434,7 +434,7 @@ const DoctorProfilePage = () => {
                 </div>
 
                 <button
-                  onClick={() => window.alert('Sistema de citas próximamente disponible')}
+                  onClick={() => navigate(`/agendar/${profile?.id || doctorId}`)}
                   className="w-full bg-gradient-to-r from-teal-500 to-cyan-500 text-white py-4 rounded-xl font-bold text-lg hover:from-teal-600 hover:to-cyan-600 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 mb-3"
                 >
                   <Calendar className="w-5 h-5" />
@@ -870,7 +870,7 @@ const DoctorProfilePage = () => {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4 z-30">
         <div className="flex gap-3">
           <button
-            onClick={() => window.alert('Sistema de citas próximamente disponible')}
+            onClick={() => navigate(`/agendar/${profile?.id || doctorId}`)}
             className="flex-1 bg-gradient-to-r from-teal-500 to-cyan-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2"
           >
             <Calendar className="w-5 h-5" />

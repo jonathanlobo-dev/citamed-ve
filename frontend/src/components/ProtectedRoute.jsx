@@ -1,8 +1,9 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 function ProtectedRoute({ children, allowedRoles = [] }) {
   const { user, loading, getDashboardPath } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -15,9 +16,9 @@ function ProtectedRoute({ children, allowedRoles = [] }) {
     );
   }
 
-  // No está logueado → redirect a login
+  // No está logueado → redirect a login preservando la ruta de origen
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // Está logueado pero no tiene el rol permitido → redirect a su dashboard correcto

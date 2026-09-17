@@ -320,9 +320,7 @@ function DirectorioMedicoPage() {
   const activeFiltersCount = [selectedSpecialty, selectedCity, priceRange !== 'all'].filter(Boolean).length;
 
   const handleViewProfile = (doctorId) => navigate(`/doctor/${doctorId}`);
-  const handleSchedule = (doctorId) => {
-    toast('Sistema de citas próximamente disponible', { icon: '🗓️' });
-  };
+  const handleSchedule = (doctorId) => navigate(`/agendar/${doctorId}`);
 
   if (loading) {
     return (

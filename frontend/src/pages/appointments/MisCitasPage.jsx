@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar/Navbar';
 import appointmentService from '../../services/appointmentService';
+import toast from 'react-hot-toast';
 import './MisCitasPage.css';
 
 const MisCitasPage = () => {
@@ -166,19 +167,22 @@ const MisCitasPage = () => {
   };
 
   const handleCancelAppointment = async (appointmentId) => {
-    if (!confirm('¿Estas seguro de cancelar esta cita?')) return;
+    if (!confirm('¿Estás seguro de cancelar esta cita?')) return;
 
     try {
       await appointmentService.cancel(appointmentId, 'Cancelada por el paciente');
+      toast.success('Cita cancelada');
       fetchAppointments();
     } catch (err) {
       console.error('Error cancelling appointment:', err);
-      alert('No pudimos cancelar la cita. Por favor intenta de nuevo.');
+      toast.error('No pudimos cancelar la cita. Por favor intenta de nuevo.');
     }
   };
 
   const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
+    if (!dateStr) return '';
+    const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
+    const date = new Date(year, month - 1, day);
     return date.toLocaleDateString('es-VE', {
       weekday: 'long',
       day: 'numeric',
@@ -188,8 +192,10 @@ const MisCitasPage = () => {
   };
 
   const isToday = (dateStr) => {
+    if (!dateStr) return false;
+    const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
+    const date = new Date(year, month - 1, day);
     const today = new Date();
-    const date = new Date(dateStr);
     return date.toDateString() === today.toDateString();
   };
 
