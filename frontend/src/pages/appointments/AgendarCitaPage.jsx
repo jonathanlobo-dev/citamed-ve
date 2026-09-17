@@ -9,6 +9,7 @@ import {
   Check,
   AlertCircle,
   MapPin,
+  Building2,
   Star,
   Loader,
   Users,
@@ -172,6 +173,8 @@ const AgendarCitaPage = () => {
         doctorId: targetUserId,
         doctorProfileId: targetDoctorProfileId,
         specialtyId,
+        clinicId: doctor.clinicId || doctor.clinic?.id || null,
+        locationAddress: doctor.clinicAddress || null,
         appointmentDate: formatLocalDate(selectedDate),
         appointmentTime: selectedSlot,
         reasonForVisit: reason.trim() || 'Consulta general',
@@ -266,13 +269,23 @@ const AgendarCitaPage = () => {
             <p className="text-gray-600 mb-1">
               Dr(a). {doctor?.user?.firstName} {doctor?.user?.lastName}
             </p>
-            <p className="text-gray-800 font-semibold mb-4">
+            <p className="text-gray-800 font-semibold mb-3">
               {selectedDate?.toLocaleDateString('es-VE', {
                 weekday: 'long',
                 day: 'numeric',
                 month: 'long'
               })} a las {selectedSlot}
             </p>
+
+            {(doctor?.clinicName || doctor?.clinicAddress) && (
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-700 text-left mb-4 flex items-start gap-2.5">
+                <Building2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-semibold text-gray-900">{doctor.clinicName || 'Consultorio Médico'}</p>
+                  <p className="text-gray-600">{doctor.clinicAddress || ''} {doctor.city ? `(${doctor.city})` : ''}</p>
+                </div>
+              </div>
+            )}
 
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-900 text-left mb-6">
               <p className="font-semibold mb-1 flex items-center gap-1.5">
@@ -381,6 +394,16 @@ const AgendarCitaPage = () => {
                   </span>
                 )}
               </div>
+              {(doctor?.clinicName || doctor?.clinicAddress) && (
+                <div className="flex items-center gap-2 mt-3 text-sm text-gray-600 bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 w-fit">
+                  <Building2 className="w-4 h-4 text-primary shrink-0" />
+                  <span>
+                    <strong className="text-gray-800">{doctor.clinicName || 'Consultorio Médico'}</strong>
+                    {doctor.clinicAddress && ` · ${doctor.clinicAddress}`}
+                    {doctor.city && ` (${doctor.city})`}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </motion.div>

@@ -10,6 +10,7 @@ import {
   Calendar,
   Clock,
   MapPin,
+  Building2,
   User,
   CheckCircle,
   XCircle,
@@ -358,10 +359,14 @@ const MisCitasPage = () => {
                       <Clock className="w-5 h-5 text-gray-400" />
                       <span>{appointment.appointmentTime}</span>
                     </div>
-                    {appointment.clinic && (
+                    {(appointment.clinic || appointment.clinicLocation || appointment.locationAddress) && (
                       <div className="flex items-center gap-2 text-gray-600">
-                        <MapPin className="w-5 h-5 text-gray-400" />
-                        <span>{appointment.clinic.name}</span>
+                        <Building2 className="w-5 h-5 text-primary shrink-0" />
+                        <span className="truncate">
+                          <strong>{appointment.clinic?.commercialName || appointment.clinicLocation?.name || 'Consultorio Médico'}</strong>
+                          {appointment.clinicLocation?.addressLine1 && ` · ${appointment.clinicLocation.addressLine1}`}
+                          {appointment.clinicLocation?.city && ` (${appointment.clinicLocation.city})`}
+                        </span>
                       </div>
                     )}
                   </div>

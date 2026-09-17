@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Calendar, Clock, Plus, X, Save, Loader2, AlertCircle, CheckCircle,
-  Users, Check, ChevronLeft, ChevronRight, XCircle, Phone, Mail
+  Users, Check, ChevronLeft, ChevronRight, XCircle, Phone, Mail, Building2
 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar/Navbar';
 import doctorService from '../../services/doctorService';
@@ -554,6 +554,12 @@ function DoctorAgendaPage() {
                               <span className="font-medium text-gray-700">Motivo:</span> {apt.reasonForVisit || 'Consulta general'}
                             </p>
                             <div className="flex items-center gap-4 text-xs text-gray-500 flex-wrap">
+                              {(apt.clinic || apt.clinicLocation || apt.locationAddress) && (
+                                <span className="flex items-center gap-1 text-teal-700 font-medium bg-teal-50 px-2 py-0.5 rounded">
+                                  <Building2 className="w-3.5 h-3.5 text-teal-600" />
+                                  <span>{apt.clinic?.commercialName || apt.clinicLocation?.name || 'Consultorio Principal'}{apt.clinicLocation?.city ? ` · ${apt.clinicLocation.city}` : ''}</span>
+                                </span>
+                              )}
                               {apt.patient?.phone && (
                                 <span className="flex items-center gap-1">
                                   <Phone className="w-3.5 h-3.5 text-gray-400" />

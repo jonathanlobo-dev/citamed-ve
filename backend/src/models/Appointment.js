@@ -49,6 +49,24 @@ module.exports = (sequelize) => {
         key: 'id'
       }
     },
+    clinicId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'clinics',
+        key: 'id'
+      },
+      comment: 'ID de la clínica o consultorio donde se realiza la cita'
+    },
+    locationId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'clinic_locations',
+        key: 'id'
+      },
+      comment: 'ID de la sede específica de la clínica'
+    },
 
     // ========================================
     // INFORMACIÓN DE LA CITA

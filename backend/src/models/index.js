@@ -1,4 +1,4 @@
-﻿// src/models/index.js
+// src/models/index.js
 // MÓDULO 2 - CITAMED.VE
 // Índice de modelos con asociaciones
 
@@ -658,6 +658,28 @@ try {
     as: 'clinic'
   });
   console.log('  ✅ Clinic <-> ClinicImage');
+
+  // CLINIC <-> APPOINTMENT (1:N)
+  db.Clinic.hasMany(db.Appointment, {
+    foreignKey: 'clinicId',
+    as: 'appointments'
+  });
+  db.Appointment.belongsTo(db.Clinic, {
+    foreignKey: 'clinicId',
+    as: 'clinic'
+  });
+  console.log('  ✅ Clinic <-> Appointment');
+
+  // CLINIC_LOCATION <-> APPOINTMENT (1:N)
+  db.ClinicLocation.hasMany(db.Appointment, {
+    foreignKey: 'locationId',
+    as: 'appointments'
+  });
+  db.Appointment.belongsTo(db.ClinicLocation, {
+    foreignKey: 'locationId',
+    as: 'clinicLocation'
+  });
+  console.log('  ✅ ClinicLocation <-> Appointment');
 
   // CLINIC_LOCATION <-> CLINIC_IMAGE (1:N)
   db.ClinicLocation.hasMany(db.ClinicImage, {

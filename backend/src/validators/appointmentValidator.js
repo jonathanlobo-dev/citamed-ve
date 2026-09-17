@@ -104,7 +104,17 @@ const createAppointmentValidator = [
     .optional()
     .isBoolean()
     .withMessage('Telemedicina debe ser true o false')
-    .toBoolean()
+    .toBoolean(),
+
+  body('clinicId')
+    .optional({ nullable: true })
+    .isInt({ min: 1 })
+    .toInt(),
+
+  body('locationId')
+    .optional({ nullable: true })
+    .isInt({ min: 1 })
+    .toInt()
 ];
 
 /**

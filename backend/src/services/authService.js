@@ -9,7 +9,17 @@
  */
 
 const jwt = require('jsonwebtoken');
-const { User, PatientProfile, DoctorProfile, ProviderProfile, VerificationRequest, sequelize } = require('../models');
+const {
+  User,
+  PatientProfile,
+  DoctorProfile,
+  ProviderProfile,
+  VerificationRequest,
+  Clinic,
+  ClinicLocation,
+  ClinicDoctor,
+  sequelize
+} = require('../models');
 
 /**
  * Genera token JWT para un usuario
@@ -207,6 +217,7 @@ const createDoctor = async (data) => {
     }, { transaction });
 
     // Crear perfil de médico
+    const clinicName = data.clinicName || `Consultorio Dr. ${data.firstName} ${data.lastName}`;
     const profile = await DoctorProfile.create({
       userId: user.id,
       firstName: data.firstName,
@@ -218,6 +229,7 @@ const createDoctor = async (data) => {
       graduationYear: data.graduationYear ? parseInt(data.graduationYear) : null,
       specialtyId: data.specialtyId ? parseInt(data.specialtyId) : null,
       experienceYears: data.experienceYears ? parseInt(data.experienceYears) : 0,
+      clinicName: clinicName,
       clinicAddress: data.consultationAddress || null,
       city: data.city || null,
       state: data.state || null,
@@ -236,6 +248,53 @@ const createDoctor = async (data) => {
       profileStatus: 'pending_review', // Médicos requieren aprobación
       isVerified: false
     }, { transaction });
+
+    // Auto-crear Consultorio Privado del Médico
+    try {
+      const clinic = await Clinic.create({
+        legalName: clinicName,
+        commercialName: clinicName,
+        taxId: data.mppsNumber ? `MPPS-${data.mppsNumber.toUpperCase()}` : `TEMP-RIF-${user.id}-${Date.now()}`,
+        organizationType: 'consultorio_multiple',
+        email: data.email.toLowerCase(),
+        phone: data.phone || null,
+        adminUserId: user.id,
+        description: `Consultorio privado del Dr. ${data.firstName} ${data.lastName}`,
+        isActive: true,
+        isVerified: false
+      }, { transaction });
+
+      const location = await ClinicLocation.create({
+        clinicId: clinic.id,
+        name: 'Sede Principal',
+        isMain: true,
+        addressLine1: data.consultationAddress || 'Consultorio Principal',
+        city: data.city || 'Caracas',
+        state: data.state || 'Distrito Capital',
+        country: 'Venezuela',
+        phone: data.phone || null,
+        email: data.email.toLowerCase(),
+        isActive: true
+      }, { transaction });
+
+      await ClinicDoctor.create({
+        clinicId: clinic.id,
+        locationId: location.id,
+        doctorId: user.id,
+        employmentType: 'partner',
+        schedule: {
+          days: data.availableDays || [],
+          startTime: data.startTime || null,
+          endTime: data.endTime || null
+        },
+        consultationRoom: 'Principal',
+        isActive: true
+      }, { transaction });
+
+      await clinic.update({ totalDoctors: 1, totalLocations: 1 }, { transaction });
+    } catch (clinicErr) {
+      console.warn('⚠️ No se pudo auto-crear la clínica para el médico:', clinicErr.message);
+    }
 
     // Crear solicitud de verificación KYC automáticamente para que el admin
     // la vea en la cola (/admin/verificacion) y pueda aprobar o rechazar

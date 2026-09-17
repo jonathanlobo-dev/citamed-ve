@@ -8,7 +8,18 @@
 const { Op } = require('sequelize');
 const db = require('../models');
 
-const { Appointment, User, DoctorProfile, DoctorAvailability, AvailabilityOverride, WaitingQueue, Specialty } = db;
+const {
+  Appointment,
+  User,
+  DoctorProfile,
+  DoctorAvailability,
+  AvailabilityOverride,
+  WaitingQueue,
+  Specialty,
+  Clinic,
+  ClinicLocation,
+  ClinicDoctor
+} = db;
 
 class AppointmentService {
   /**
@@ -102,6 +113,8 @@ class AppointmentService {
       doctorId,
       doctorProfileId,
       specialtyId,
+      clinicId: rawClinicId,
+      locationId: rawLocationId,
       appointmentDate,
       appointmentTime,
       appointmentType = 'first_consultation',
@@ -112,6 +125,25 @@ class AppointmentService {
       locationAddress,
       consultationFee = 0
     } = data;
+
+    // Resolver clinicId y locationId si no vienen en la petición
+    let clinicId = rawClinicId || null;
+    let locationId = rawLocationId || null;
+
+    if (!clinicId && doctorId) {
+      try {
+        const assignment = await ClinicDoctor.findOne({
+          where: { doctorId, isActive: true },
+          order: [['id', 'ASC']]
+        });
+        if (assignment) {
+          clinicId = assignment.clinicId;
+          locationId = locationId || assignment.locationId;
+        }
+      } catch (err) {
+        console.warn('⚠️ No se pudo obtener la clínica del médico para la cita:', err.message);
+      }
+    }
 
     // 1. Verificar disponibilidad inicial (sin transacción para UX rápida)
     const availability = await this.getAvailableSlots(doctorProfileId, appointmentDate);
@@ -161,6 +193,8 @@ class AppointmentService {
         doctorId,
         doctorProfileId,
         specialtyId,
+        clinicId,
+        locationId,
         appointmentDate,
         appointmentTime,
         duration,
@@ -338,6 +372,16 @@ class AppointmentService {
           model: User,
           as: 'patient',
           attributes: ['id', 'firstName', 'lastName', 'email', 'phone']
+        },
+        {
+          model: Clinic,
+          as: 'clinic',
+          attributes: ['id', 'commercialName', 'legalName']
+        },
+        {
+          model: ClinicLocation,
+          as: 'clinicLocation',
+          attributes: ['id', 'name', 'addressLine1', 'city', 'state']
         }
       ],
       order: [['appointmentTime', 'ASC']]
@@ -368,6 +412,16 @@ class AppointmentService {
           model: DoctorProfile,
           as: 'doctorProfile',
           include: [{ model: Specialty, as: 'specialty' }]
+        },
+        {
+          model: Clinic,
+          as: 'clinic',
+          attributes: ['id', 'commercialName', 'legalName', 'phone']
+        },
+        {
+          model: ClinicLocation,
+          as: 'clinicLocation',
+          attributes: ['id', 'name', 'addressLine1', 'city', 'state']
         }
       ],
       order: [['appointmentDate', 'ASC'], ['appointmentTime', 'ASC']]
@@ -412,6 +466,16 @@ class AppointmentService {
           model: DoctorProfile,
           as: 'doctorProfile',
           include: [{ model: Specialty, as: 'specialty' }]
+        },
+        {
+          model: Clinic,
+          as: 'clinic',
+          attributes: ['id', 'commercialName', 'legalName']
+        },
+        {
+          model: ClinicLocation,
+          as: 'clinicLocation',
+          attributes: ['id', 'name', 'addressLine1', 'city', 'state']
         }
       ],
       order: [['appointmentDate', 'DESC'], ['appointmentTime', 'DESC']],
