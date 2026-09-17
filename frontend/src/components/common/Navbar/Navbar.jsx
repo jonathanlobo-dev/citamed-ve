@@ -105,8 +105,14 @@ function Navbar() {
             onClick={() => navigate('/')}
             className="flex items-center cursor-pointer hover:opacity-80 transition-opacity"
           >
-            <h1 className="text-2xl font-extrabold text-primary">
+            <h1 className="text-2xl font-extrabold text-primary flex items-baseline">
               CITAMED<span className="text-accent">.VE</span>
+              <span
+                className="ml-2 text-[10px] font-mono font-medium text-gray-400 opacity-60 hover:opacity-100 transition-opacity cursor-default tracking-wider select-none"
+                title={`CitaMed v${typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.4.0'} · Commit #${typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : 'f7ab5f4'}`}
+              >
+                v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.4.0'}#{typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : 'f7ab5f4'}
+              </span>
             </h1>
           </div>
 

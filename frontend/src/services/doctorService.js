@@ -246,6 +246,16 @@ export const setAvailability = async (schedules) => {
   return response.data;
 };
 
+/**
+ * Obtiene resumen semanal de disponibilidad del doctor
+ * @param {number} doctorId - ID del doctor
+ * @returns {Promise<Object>} Resumen semanal
+ */
+export const getWeeklySummary = async (doctorId) => {
+  const response = await api.get(`/doctors/${doctorId}/availability`);
+  return response.data;
+};
+
 // ═══════════════════════════════════════════════════════════════
 // FOTOS
 // ═══════════════════════════════════════════════════════════════
@@ -384,6 +394,7 @@ export default {
 
   // Disponibilidad
   setAvailability,
+  getWeeklySummary,
 
   // Fotos
   uploadProfilePhoto,

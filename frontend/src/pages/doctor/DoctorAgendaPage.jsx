@@ -146,34 +146,33 @@ function DoctorAgendaPage() {
     const loadAgenda = async () => {
       try {
         setLoadingAvailability(true);
-        const profile = await doctorService.getMyProfile();
+        const profileRes = await doctorService.getMyProfile();
+        const profile = profileRes?.data || profileRes;
         if (!profile || !profile.id) {
           throw new Error('No se pudo identificar el perfil del médico.');
         }
 
-        const summary = await doctorService.getWeeklySummary(profile.id);
-        const summaryDays = summary.days || [];
+        const activeAvailability = (profile.availability || []).filter((a) => a.isActive !== false);
 
         setDays(
           DISPLAY_DAYS.map((dayOfWeek) => {
-            const dayData = summaryDays.find((d) => d.dayOfWeek === dayOfWeek);
+            const daySchedules = activeAvailability.filter((a) => a.dayOfWeek === dayOfWeek);
             const dayName = doctorService.getDayName(dayOfWeek);
-            if (!dayData || !dayData.hasAvailability) {
+            if (daySchedules.length === 0) {
               return { dayOfWeek, dayName, enabled: false, blocks: [] };
             }
             return {
               dayOfWeek,
               dayName,
               enabled: true,
-              blocks: (dayData.slots || []).map((slot) => ({
-                startTime: slot.startTime,
-                endTime: slot.endTime
+              blocks: daySchedules.map((slot) => ({
+                startTime: (slot.startTime || '08:00').substring(0, 5),
+                endTime: (slot.endTime || '12:00').substring(0, 5)
               }))
             };
           })
         );
 
-        const activeAvailability = profile.availability || [];
         if (activeAvailability.length > 0) {
           const first = activeAvailability[0];
           if (first.slotDuration) setSlotDuration(first.slotDuration);
@@ -181,7 +180,7 @@ function DoctorAgendaPage() {
         }
       } catch (err) {
         console.error('Error cargando agenda:', err);
-        setError(err.response?.data?.message || 'Error al cargar tu agenda. Intenta nuevamente.');
+        setError(err.response?.data?.message || err.message || 'Error al cargar tu agenda. Intenta nuevamente.');
       } finally {
         setLoadingAvailability(false);
       }
