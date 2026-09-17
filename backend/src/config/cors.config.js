@@ -14,15 +14,26 @@ const isProduction = process.env.NODE_ENV === 'production';
  * Orígenes permitidos según entorno
  */
 const getAllowedOrigins = () => {
+  const baseOrigins = [
+    'https://citamed.ve',
+    'https://www.citamed.ve',
+    'https://citamedve.netlify.app',
+    'https://citamed-ve.pages.dev'
+  ];
+
   // En producción, solo dominios específicos
   if (isProduction) {
-    const prodOrigins = process.env.ALLOWED_ORIGINS || 'https://citamed.ve';
-    return prodOrigins.split(',').map(origin => origin.trim());
+    const prodOrigins = process.env.ALLOWED_ORIGINS
+      ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+      : [];
+    return Array.from(new Set([...baseOrigins, ...prodOrigins]));
   }
 
   // En desarrollo, localhost y variantes
-  const devOrigins = process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173';
-  return devOrigins.split(',').map(origin => origin.trim());
+  const devOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+    : ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000'];
+  return Array.from(new Set([...baseOrigins, ...devOrigins]));
 };
 
 /**
@@ -40,6 +51,11 @@ const originVerifier = (origin, callback) => {
 
   // Verificar si el origen está en la whitelist
   if (allowedOrigins.includes(origin)) {
+    return callback(null, true);
+  }
+
+  // Permitir cualquier subdominio de Cloudflare Pages o Netlify
+  if (origin.endsWith('.pages.dev') || origin.endsWith('.netlify.app')) {
     return callback(null, true);
   }
 
@@ -110,7 +126,7 @@ const strictCorsOptions = {
       return callback(new Error('Origin required for this endpoint'));
     }
 
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.includes(origin) || origin.endsWith('.pages.dev') || origin.endsWith('.netlify.app')) {
       return callback(null, true);
     }
 

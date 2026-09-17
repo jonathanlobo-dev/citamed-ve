@@ -19,18 +19,26 @@ const notificationsHandler = require('../socket/handlers/notifications');
 // Configuración desde variables de entorno
 const isProduction = process.env.NODE_ENV === 'production';
 
-// En desarrollo, permitir cualquier localhost
 const getCorsOrigin = () => {
-  if (isProduction) {
-    return process.env.SOCKET_CORS_ORIGIN || 'https://citamed.ve';
+  const allowed = [
+    'https://citamed.ve',
+    'https://www.citamed.ve',
+    'https://citamedve.netlify.app',
+    'https://citamed-ve.pages.dev'
+  ];
+  if (process.env.SOCKET_CORS_ORIGIN) {
+    allowed.push(...process.env.SOCKET_CORS_ORIGIN.split(',').map(s => s.trim()));
   }
-  // En desarrollo, aceptar cualquier localhost/127.0.0.1
+
   return (origin, callback) => {
-    if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+    if (!origin) return callback(null, true);
+    if (allowed.includes(origin) || origin.endsWith('.pages.dev') || origin.endsWith('.netlify.app')) {
+      return callback(null, true);
     }
+    if (!isProduction && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+      return callback(null, true);
+    }
+    callback(new Error('Not allowed by CORS'));
   };
 };
 
