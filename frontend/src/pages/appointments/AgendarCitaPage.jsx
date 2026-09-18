@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Calendar,
@@ -25,6 +25,8 @@ import './AgendarCitaPage.css';
 const AgendarCitaPage = () => {
   const { doctorId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const rescheduleId = searchParams.get('reschedule');
   const { user } = useAuth();
 
   const [doctor, setDoctor] = useState(null);
@@ -180,6 +182,19 @@ const AgendarCitaPage = () => {
         reasonForVisit: reason.trim() || 'Consulta general',
         appointmentType: 'first_consultation'
       };
+
+      if (rescheduleId) {
+        const response = await appointmentService.reschedule(
+          rescheduleId,
+          formatLocalDate(selectedDate),
+          selectedSlot,
+          reason.trim() || 'Reprogramada por el paciente'
+        );
+        setNewAppointmentId(response.data?.id);
+        setBookingSuccess(true);
+        toast.success('¡Cita reprogramada con éxito!');
+        return;
+      }
 
       const response = await appointmentService.create(appointmentData);
       setNewAppointmentId(response.data?.id);
@@ -407,6 +422,25 @@ const AgendarCitaPage = () => {
             </div>
           </div>
         </motion.div>
+
+        {/* Banner de Modo Reprogramación */}
+        {rescheduleId && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-amber-50 border border-amber-300 text-amber-900 px-5 py-4 rounded-2xl mb-8 flex items-center gap-4 shadow-sm"
+          >
+            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+              <Timer className="w-6 h-6 text-amber-600" />
+            </div>
+            <div>
+              <h4 className="font-bold text-amber-900">Modo Reprogramación de Cita</h4>
+              <p className="text-sm text-amber-800">
+                Estás seleccionando un nuevo horario para tu cita previa (#{rescheduleId}). Al confirmar, tu turno anterior se actualizará automáticamente sin duplicarse.
+              </p>
+            </div>
+          </motion.div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Calendar */}

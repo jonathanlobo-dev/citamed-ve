@@ -67,16 +67,24 @@ const VerificationBadge = ({ isVerified, verificationStatus }) => {
 };
 
 // Componente de Badge para especialidades
-const SpecialtyBadge = ({ specialty, isPrimary }) => (
-  <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${
-    isPrimary
-      ? 'bg-white text-teal-700 shadow-lg'
-      : 'bg-white/20 text-white backdrop-blur-sm'
-  }`}>
-    {isPrimary && <Star className="w-3.5 h-3.5 mr-1.5 text-amber-500 fill-current" />}
-    {specialty?.name || specialty}
-  </span>
-);
+const SpecialtyBadge = ({ specialty, isPrimary }) => {
+  const label = typeof specialty === 'string'
+    ? specialty
+    : (typeof specialty?.name === 'string'
+        ? specialty.name
+        : (typeof specialty?.name?.name === 'string' ? specialty.name.name : 'Medicina General'));
+
+  return (
+    <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${
+      isPrimary
+        ? 'bg-white text-teal-700 shadow-lg'
+        : 'bg-white/20 text-white backdrop-blur-sm'
+    }`}>
+      {isPrimary && <Star className="w-3.5 h-3.5 mr-1.5 text-amber-500 fill-current" />}
+      {label}
+    </span>
+  );
+};
 
 // Componente de sección con icono
 const SectionHeader = ({ icon: Icon, title, color = 'teal' }) => (
@@ -379,7 +387,7 @@ const DoctorProfilePage = () => {
                   <SpecialtyBadge key={idx} specialty={spec} isPrimary={spec.isPrimary || idx === 0} />
                 ))}
                 {profile.specialty && !profile.specialtiesList?.length && (
-                  <SpecialtyBadge specialty={{ name: profile.specialty }} isPrimary />
+                  <SpecialtyBadge specialty={profile.specialty?.name || profile.specialty} isPrimary />
                 )}
               </div>
 
@@ -619,7 +627,9 @@ const DoctorProfilePage = () => {
                       {profile.specialty && !profile.specialtiesList?.length && (
                         <div className="flex items-center gap-3 p-3 bg-teal-50 rounded-xl">
                           <CheckCircle className="w-5 h-5 text-teal-600" />
-                          <span className="font-medium text-teal-800">{profile.specialty}</span>
+                          <span className="font-medium text-teal-800">
+                            {profile.specialty?.name || (typeof profile.specialty === 'string' ? profile.specialty : 'Medicina General')}
+                          </span>
                         </div>
                       )}
                     </div>

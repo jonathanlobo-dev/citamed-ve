@@ -19,7 +19,13 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 5432,
     dialect: 'postgres',
-    logging: console.log
+    logging: false,
+    dialectOptions: process.env.DB_SSL === 'true' ? {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
+    } : {}
   }
 );
 
@@ -219,8 +225,8 @@ async function runMigration() {
           dp.state,
           dp.price_teleconsultation,
           dp."consultationFee",
-          dp.office_latitude,
-          dp.office_longitude,
+          NULL::DOUBLE PRECISION,
+          NULL::DOUBLE PRECISION,
           COALESCE(dp."experienceYears", 0),
           COALESCE(dp."acceptsInsurance", false),
           COALESCE(dp.languages, ARRAY['Espanol']),
@@ -240,7 +246,7 @@ async function runMigration() {
           AND u.role = 'doctor'
         GROUP BY u.id, dp.id, u."firstName", u."lastName", dp."firstName", dp."lastName",
                  dp.city, dp.state, dp.price_teleconsultation, dp."consultationFee",
-                 dp.office_latitude, dp.office_longitude, dp."experienceYears", dp."acceptsInsurance",
+                 dp."experienceYears", dp."acceptsInsurance",
                  dp.languages, dp.reputation_level, dp.average_rating,
                  dp.total_reviews, dp.total_appointments, dp.verification_status, dp."profilePhoto"
         ON CONFLICT (doctor_id) DO UPDATE SET
@@ -365,8 +371,8 @@ async function runMigration() {
         dp.state,
         dp.price_teleconsultation,
         dp."consultationFee",
-        dp.office_latitude,
-        dp.office_longitude,
+        NULL::DOUBLE PRECISION,
+        NULL::DOUBLE PRECISION,
         COALESCE(dp."experienceYears", 0),
         COALESCE(dp."acceptsInsurance", false),
         COALESCE(dp.languages, ARRAY['Espanol']),
@@ -384,7 +390,7 @@ async function runMigration() {
       WHERE u.role = 'doctor'
       GROUP BY u.id, dp.id, u."firstName", u."lastName", dp."firstName", dp."lastName",
                dp.city, dp.state, dp.price_teleconsultation, dp."consultationFee",
-               dp.office_latitude, dp.office_longitude, dp."experienceYears", dp."acceptsInsurance",
+               dp."experienceYears", dp."acceptsInsurance",
                dp.languages, dp.reputation_level, dp.average_rating,
                dp.total_reviews, dp.total_appointments, dp.verification_status, dp."profilePhoto"
       ON CONFLICT (doctor_id) DO UPDATE SET

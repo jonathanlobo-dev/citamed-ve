@@ -56,9 +56,20 @@ const MisCitasPage = () => {
     }
   };
 
+  const parseAppointmentDateTime = (apt) => {
+    if (!apt?.appointmentDate) return new Date(0);
+    const datePart = String(apt.appointmentDate).split('T')[0];
+    const timePart = apt.appointmentTime || '23:59:59';
+    const [y, m, d] = datePart.split('-').map(Number);
+    const [h, min, s] = timePart.split(':').map(Number);
+    return new Date(y, m - 1, d, h || 0, min || 0, s || 0);
+  };
+
   const getStatusConfig = (status, queueStatus) => {
-    // Si está en cola, mostrar ese estado
-    if (queueStatus) {
+    // Si la cita fue cancelada o reprogramada, no mostrar estado de cola
+    const isInactiveStatus = ['cancelled', 'cancelled_patient', 'cancelled_doctor', 'rescheduled', 'completed', 'no_show'].includes(status);
+
+    if (queueStatus && !isInactiveStatus) {
       const queueConfigs = {
         scheduled: {
           label: '📋 En Cola',
@@ -118,6 +129,11 @@ const MisCitasPage = () => {
         color: 'bg-green-50 text-green-700 border border-green-300',
         icon: CheckCircle
       },
+      rescheduled: {
+        label: '🔄 Reprogramada',
+        color: 'bg-amber-100 text-amber-800 border border-amber-300',
+        icon: CalendarClock
+      },
       in_progress: {
         label: '👨‍⚕️ En Consulta',
         color: 'bg-purple-100 text-purple-800 border border-purple-400',
@@ -130,6 +146,16 @@ const MisCitasPage = () => {
       },
       cancelled: {
         label: '✗ Cancelada',
+        color: 'bg-red-50 text-red-600 border border-red-300',
+        icon: XCircle
+      },
+      cancelled_patient: {
+        label: '✗ Cancelada por Paciente',
+        color: 'bg-red-50 text-red-600 border border-red-300',
+        icon: XCircle
+      },
+      cancelled_doctor: {
+        label: '✗ Cancelada por Médico',
         color: 'bg-red-50 text-red-600 border border-red-300',
         icon: XCircle
       },
@@ -148,16 +174,18 @@ const MisCitasPage = () => {
     switch (filter) {
       case 'upcoming':
         return appointments.filter(apt =>
-          new Date(apt.appointmentDate) >= now &&
-          !['cancelled', 'completed', 'no_show'].includes(apt.status)
+          parseAppointmentDateTime(apt) >= now &&
+          !['cancelled', 'cancelled_patient', 'cancelled_doctor', 'completed', 'no_show', 'rescheduled'].includes(apt.status)
         );
       case 'past':
         return appointments.filter(apt =>
-          new Date(apt.appointmentDate) < now ||
-          ['completed'].includes(apt.status)
+          apt.status === 'completed' ||
+          (parseAppointmentDateTime(apt) < now && !['cancelled', 'cancelled_patient', 'cancelled_doctor', 'rescheduled'].includes(apt.status))
         );
       case 'cancelled':
-        return appointments.filter(apt => apt.status === 'cancelled');
+        return appointments.filter(apt =>
+          ['cancelled', 'cancelled_patient', 'cancelled_doctor', 'rescheduled'].includes(apt.status)
+        );
       default:
         return appointments;
     }
@@ -201,6 +229,9 @@ const MisCitasPage = () => {
   };
 
   const canEnterWaitingRoom = (appointment) => {
+    if (['cancelled', 'cancelled_patient', 'cancelled_doctor', 'rescheduled', 'completed', 'no_show'].includes(appointment.status)) {
+      return false;
+    }
     // Puede entrar si tiene entrada en cola (ya sea para monitorear o participar)
     if (appointment.queueEntryId) {
       return true;
@@ -372,7 +403,7 @@ const MisCitasPage = () => {
                   </div>
 
                   {/* Queue Position Info */}
-                  {appointment.queuePosition && (
+                  {appointment.queuePosition && !['cancelled', 'cancelled_patient', 'cancelled_doctor', 'rescheduled', 'completed', 'no_show'].includes(appointment.status) && (
                     <div className="mt-4 flex items-center gap-4 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg px-4 py-3 border border-indigo-100">
                       <div className="flex items-center gap-2">
                         <Users className="w-5 h-5 text-indigo-600" />
@@ -394,8 +425,16 @@ const MisCitasPage = () => {
 
                   {/* Action Buttons */}
                   <div className="mt-6 flex flex-wrap gap-3">
+                    {/* Indicador de cita reprogramada */}
+                    {appointment.status === 'rescheduled' && (
+                      <span className="inline-flex items-center gap-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-300 px-3 py-2 rounded-lg font-medium">
+                        <CalendarClock className="w-4 h-4 text-amber-600" />
+                        Esta cita fue transferida a una nueva fecha y hora
+                      </span>
+                    )}
+
                     {/* Botón principal: Sala de Espera */}
-                    {canEnterWaitingRoom(appointment) && !['completed', 'cancelled', 'no_show'].includes(appointment.status) && (
+                    {canEnterWaitingRoom(appointment) && (
                       <button
                         onClick={() => handleGoToWaitingRoom(appointment.id)}
                         className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition"
