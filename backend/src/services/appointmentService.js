@@ -76,22 +76,47 @@ class AppointmentService {
         doctorProfileId,
         appointmentDate: date,
         status: {
-          [Op.notIn]: ['cancelled_patient', 'cancelled_doctor', 'no_show']
+          [Op.notIn]: ['cancelled_patient', 'cancelled_doctor', 'no_show', 'rescheduled']
         }
       },
       attributes: ['appointmentTime', 'duration', 'endTime']
     });
 
-    const bookedSlots = existingAppointments.map(apt => ({
-      start: apt.appointmentTime,
-      end: apt.endTime || this._calculateEndTime(apt.appointmentTime, apt.duration)
-    }));
+    const bookedSlots = existingAppointments.map(apt => {
+      const start = apt.appointmentTime ? apt.appointmentTime.slice(0, 5) : '';
+      const rawEnd = apt.endTime || this._calculateEndTime(apt.appointmentTime, apt.duration);
+      const end = rawEnd ? rawEnd.slice(0, 5) : '';
+      return { start, end };
+    });
+
+    // Calcular fecha y hora actual en Venezuela (UTC-4)
+    const now = new Date();
+    const veDateParts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Caracas',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).formatToParts(now);
+
+    const getPart = (type) => veDateParts.find(p => p.type === type)?.value;
+    const todayStr = `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
+    const currentTimeStr = `${getPart('hour')}:${getPart('minute')}`;
 
     // 4. Generar slots disponibles
     const allSlots = [];
     for (const availability of availabilities) {
       const slots = availability.generateSlots(dateObj, bookedSlots);
-      allSlots.push(...slots.filter(s => s.available));
+      for (const slot of slots) {
+        if (!slot.available) continue;
+        // Descartar fechas en el pasado
+        if (date < todayStr) continue;
+        // Si la fecha consultada es hoy, descartar horarios que ya pasaron
+        if (date === todayStr && slot.start <= currentTimeStr) continue;
+        allSlots.push(slot);
+      }
     }
 
     return {
@@ -453,6 +478,60 @@ class AppointmentService {
             status: { [Op.notIn]: ['completed', 'cancelled', 'no_show'] }
           }
         });
+
+        const aptJson = apt.toJSON();
+        aptJson.queueStatus = queueEntry ? queueEntry.status : null;
+        aptJson.queuePosition = queueEntry ? queueEntry.position : null;
+        aptJson.queueEntryId = queueEntry ? queueEntry.id : null;
+        return aptJson;
+      })
+    );
+
+    return appointmentsWithQueue;
+  }
+
+  /**
+   * Obtener todas las citas de un paciente (futuras, pasadas, canceladas, reprogramadas)
+   */
+  async getPatientAllAppointments(patientId) {
+    const appointments = await Appointment.findAll({
+      where: { patientId },
+      include: [
+        {
+          model: User,
+          as: 'doctor',
+          attributes: ['id', 'firstName', 'lastName', 'email', 'phone']
+        },
+        {
+          model: DoctorProfile,
+          as: 'doctorProfile',
+          include: [{ model: Specialty, as: 'specialty' }]
+        },
+        {
+          model: Clinic,
+          as: 'clinic',
+          attributes: ['id', 'commercialName', 'legalName', 'phone']
+        },
+        {
+          model: ClinicLocation,
+          as: 'clinicLocation',
+          attributes: ['id', 'name', 'addressLine1', 'city', 'state']
+        }
+      ],
+      order: [['appointmentDate', 'DESC'], ['appointmentTime', 'DESC']]
+    });
+
+    const appointmentsWithQueue = await Promise.all(
+      appointments.map(async (apt) => {
+        let queueEntry = null;
+        if (!['completed', 'cancelled', 'cancelled_patient', 'cancelled_doctor', 'rescheduled', 'no_show'].includes(apt.status)) {
+          queueEntry = await WaitingQueue.findOne({
+            where: {
+              appointmentId: apt.id,
+              status: { [Op.notIn]: ['completed', 'cancelled', 'no_show'] }
+            }
+          });
+        }
 
         const aptJson = apt.toJSON();
         aptJson.queueStatus = queueEntry ? queueEntry.status : null;

@@ -205,9 +205,20 @@ class AppointmentController {
     try {
       const userId = req.user.id;
       const userRole = req.user.role;
-      const { page = 1, limit = 10, upcoming = 'true' } = req.query;
+      const { page, limit = 10, upcoming, all } = req.query;
 
       let appointments;
+
+      // Si se solicitan todas las citas del paciente (para tabs de Mis Citas)
+      if (all === 'true' || upcoming === 'all' || (!upcoming && !page)) {
+        if (userRole === 'patient') {
+          appointments = await appointmentService.getPatientAllAppointments(userId);
+          return res.json({
+            success: true,
+            data: appointments
+          });
+        }
+      }
 
       if (upcoming === 'true') {
         if (userRole === 'patient') {
@@ -225,7 +236,7 @@ class AppointmentController {
       // Historial paginado
       const history = await appointmentService.getPatientAppointmentHistory(
         userId,
-        parseInt(page),
+        parseInt(page || 1),
         parseInt(limit)
       );
 

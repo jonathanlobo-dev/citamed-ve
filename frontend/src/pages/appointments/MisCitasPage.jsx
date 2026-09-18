@@ -46,7 +46,7 @@ const MisCitasPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await appointmentService.getMyAppointments();
+      const response = await appointmentService.getMyAppointments({ all: 'true' });
       setAppointments(response.data || []);
     } catch (err) {
       console.error('Error fetching appointments:', err);
@@ -73,41 +73,27 @@ const MisCitasPage = () => {
       const queueConfigs = {
         scheduled: {
           label: '📋 En Cola',
-          color: 'bg-indigo-100 text-indigo-800 border border-indigo-300',
-          icon: Users,
-          animate: false
+          color: 'bg-blue-100 text-blue-800 border border-blue-300',
+          icon: Users
         },
         waiting: {
-          label: '🏠 En Cola (Casa)',
-          color: 'bg-blue-100 text-blue-800 border border-blue-300',
-          icon: Clock,
-          animate: false
-        },
-        en_route: {
-          label: '🚗 En Camino',
-          color: 'bg-yellow-100 text-yellow-800 border border-yellow-400',
-          icon: Clock,
-          animate: true
-        },
-        checked_in: {
-          label: '✅ Presente',
-          color: 'bg-green-100 text-green-800 border border-green-400',
-          icon: CheckCircle,
-          animate: false
+          label: '⏳ En Espera',
+          color: 'bg-amber-100 text-amber-800 border border-amber-300',
+          icon: Clock
         },
         called: {
-          label: '📢 ¡Te están llamando!',
-          color: 'bg-purple-200 text-purple-900 border border-purple-500',
+          label: '📢 ¡Es tu Turno!',
+          color: 'bg-green-100 text-green-800 border border-green-400',
           icon: AlertCircle,
           animate: true
         },
         in_consultation: {
           label: '👨‍⚕️ En Consulta',
-          color: 'bg-teal-100 text-teal-800 border border-teal-400',
-          icon: User,
-          animate: true
+          color: 'bg-purple-100 text-purple-800 border border-purple-400',
+          icon: CheckCircle
         }
       };
+
       if (queueConfigs[queueStatus]) {
         return queueConfigs[queueStatus];
       }
@@ -119,13 +105,18 @@ const MisCitasPage = () => {
         color: 'bg-yellow-50 text-yellow-700 border border-yellow-300',
         icon: Clock
       },
-      scheduled: {
-        label: '📅 Programada',
-        color: 'bg-blue-50 text-blue-700 border border-blue-300',
-        icon: Calendar
-      },
       confirmed: {
         label: '✓ Confirmada',
+        color: 'bg-blue-50 text-blue-700 border border-blue-300',
+        icon: CheckCircle
+      },
+      scheduled: {
+        label: '📅 Programada',
+        color: 'bg-indigo-50 text-indigo-700 border border-indigo-300',
+        icon: Calendar
+      },
+      completed: {
+        label: '✓ Completada',
         color: 'bg-green-50 text-green-700 border border-green-300',
         icon: CheckCircle
       },
@@ -137,11 +128,6 @@ const MisCitasPage = () => {
       in_progress: {
         label: '👨‍⚕️ En Consulta',
         color: 'bg-purple-100 text-purple-800 border border-purple-400',
-        icon: Clock
-      },
-      completed: {
-        label: '✅ Atendido',
-        color: 'bg-gray-100 text-gray-600 border border-gray-300',
         icon: CheckCircle
       },
       cancelled: {
@@ -165,13 +151,14 @@ const MisCitasPage = () => {
         icon: AlertCircle
       }
     };
-    return configs[status] || configs.scheduled;
+
+    return configs[status] || configs.pending;
   };
 
-  const filterAppointments = (appointments) => {
+  const filterAppointments = (appointments, targetFilter = filter) => {
     const now = new Date();
 
-    switch (filter) {
+    switch (targetFilter) {
       case 'upcoming':
         return appointments.filter(apt =>
           parseAppointmentDateTime(apt) >= now &&
@@ -263,21 +250,26 @@ const MisCitasPage = () => {
         {/* Filtros */}
         <div className="flex flex-wrap gap-2 mb-6">
           {[
-            { key: 'all', label: 'Todas' },
-            { key: 'upcoming', label: 'Proximas' },
-            { key: 'past', label: 'Pasadas' },
-            { key: 'cancelled', label: 'Canceladas' }
-          ].map(({ key, label }) => (
+            { key: 'all', label: 'Todas', count: appointments.length },
+            { key: 'upcoming', label: 'Proximas', count: filterAppointments(appointments, 'upcoming').length },
+            { key: 'past', label: 'Pasadas', count: filterAppointments(appointments, 'past').length },
+            { key: 'cancelled', label: 'Canceladas', count: filterAppointments(appointments, 'cancelled').length }
+          ].map(({ key, label, count }) => (
             <button
               key={key}
               onClick={() => setFilter(key)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
                 filter === key
-                  ? 'bg-primary text-white'
-                  : 'bg-white text-gray-600 hover:bg-gray-100'
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
               }`}
             >
-              {label}
+              <span>{label}</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                filter === key ? 'bg-white/25 text-white' : 'bg-gray-100 text-gray-600'
+              }`}>
+                {count}
+              </span>
             </button>
           ))}
           <button

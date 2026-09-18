@@ -76,6 +76,78 @@ const AgendarCitaPage = () => {
     return `${year}-${month}-${day}`;
   };
 
+  // Verifica si un día de la semana tiene disponibilidad activa
+  const getActiveAvailabilitiesForDay = (dayOfWeek) => {
+    if (!Array.isArray(doctor?.availability)) return [];
+    return doctor.availability.filter(a => Number(a.dayOfWeek) === dayOfWeek && a.isActive !== false);
+  };
+
+  // Verifica si una fecha tiene horarios disponibles futuros
+  const isDateBookable = (date) => {
+    if (!date) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const testDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    if (testDate < today) return false;
+
+    const dayOfWeek = testDate.getDay();
+    const dayAvailabilities = getActiveAvailabilitiesForDay(dayOfWeek);
+
+    // Si el médico tiene configuraciones y este día no atiende
+    if (doctor?.availability?.length > 0 && dayAvailabilities.length === 0) {
+      return false;
+    }
+
+    // Si es hoy: verificar si la jornada laboral del médico ya terminó hoy
+    const isTodayDate = testDate.toDateString() === today.toDateString();
+    if (isTodayDate) {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      if (dayAvailabilities.length > 0) {
+        // Encontrar la hora de fin más tardía del día
+        const hasRemainingHours = dayAvailabilities.some(a => {
+          const [endH, endM] = (a.endTime || '18:00:00').split(':').map(Number);
+          const endMinutes = endH * 60 + (endM || 0);
+          return endMinutes > currentMinutes + 15; // al menos 15 min de margen
+        });
+        if (!hasRemainingHours) return false;
+      } else {
+        // Horario estándar si no hay configuración: 08:00 a 17:00
+        if (currentMinutes >= 17 * 60) return false;
+      }
+    }
+
+    return true;
+  };
+
+  // Encuentra la primera fecha futura disponible para atenderse
+  const findNextAvailableDate = () => {
+    const candidate = new Date();
+    for (let i = 0; i < 60; i++) {
+      const testDate = new Date();
+      testDate.setDate(candidate.getDate() + i);
+      testDate.setHours(0, 0, 0, 0);
+
+      if (isDateBookable(testDate)) {
+        return testDate;
+      }
+    }
+    return null;
+  };
+
+  // Preseleccionar automáticamente el próximo día disponible cuando carga el doctor
+  useEffect(() => {
+    if (doctor && !selectedDate) {
+      const nextDate = findNextAvailableDate();
+      if (nextDate) {
+        setSelectedDate(nextDate);
+        setCurrentMonth(new Date(nextDate.getFullYear(), nextDate.getMonth(), 1));
+      }
+    }
+  }, [doctor]);
+
   // Fetch available slots when date is selected
   useEffect(() => {
     const fetchSlots = async () => {
@@ -86,9 +158,21 @@ const AgendarCitaPage = () => {
         const dateStr = formatLocalDate(selectedDate);
         const targetDoctorId = doctor?.id || doctorId;
         const response = await appointmentService.getAvailableSlots(targetDoctorId, dateStr);
+        
         // Extraer solo las horas únicas de los slots
         const slots = response.data?.slots || [];
-        const uniqueSlots = [...new Set(slots.map(s => s.start))].sort();
+        let uniqueSlots = [...new Set(slots.map(s => s.start))].sort();
+
+        // Si la fecha seleccionada es hoy, filtrar slots que ya hayan pasado de hora
+        const todayStr = formatLocalDate(new Date());
+        if (dateStr === todayStr) {
+          const now = new Date();
+          const currentHour = String(now.getHours()).padStart(2, '0');
+          const currentMin = String(now.getMinutes()).padStart(2, '0');
+          const currentTime = `${currentHour}:${currentMin}`;
+          uniqueSlots = uniqueSlots.filter(time => time > currentTime);
+        }
+
         setAvailableSlots(uniqueSlots);
       } catch (err) {
         console.error('Error fetching slots:', err);
@@ -109,12 +193,6 @@ const AgendarCitaPage = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Obtener días configurados por el médico (0=Domingo, 1=Lunes, ..., 6=Sábado)
-    const activeDays = Array.isArray(doctor?.availability)
-      ? doctor.availability.map(a => Number(a.dayOfWeek))
-      : [];
-    const hasConfiguredAvailability = activeDays.length > 0;
-
     const days = [];
     const startPadding = firstDay.getDay();
 
@@ -126,16 +204,12 @@ const AgendarCitaPage = () => {
     // Days of current month
     for (let day = 1; day <= lastDay.getDate(); day++) {
       const date = new Date(year, month, day);
-      const isPast = date < today;
-      const dayOfWeek = date.getDay();
-      const isDayAvailable = hasConfiguredAvailability
-        ? activeDays.includes(dayOfWeek)
-        : (dayOfWeek !== 0 && dayOfWeek !== 6);
+      const bookable = isDateBookable(date);
 
       days.push({
         day,
         date,
-        disabled: isPast || !isDayAvailable,
+        disabled: !bookable,
         isToday: date.toDateString() === today.toDateString(),
         isSelected: selectedDate?.toDateString() === date.toDateString()
       });

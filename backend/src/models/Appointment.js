@@ -284,12 +284,12 @@ module.exports = (sequelize) => {
       allowNull: true,
     },
     rescheduledFrom: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: true,
       comment: 'ID de la cita original si fue reprogramada'
     },
     rescheduledTo: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: true,
       comment: 'ID de la nueva cita si fue reprogramada'
     },
