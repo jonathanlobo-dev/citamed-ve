@@ -258,19 +258,43 @@ function DoctorAgendaPage() {
   const fetchAppointments = async () => {
     try {
       setLoadingAppointments(true);
-      let queryParam;
+      let list = [];
+
       if (viewMode === 'day') {
-        queryParam = { date: selectedDate };
+        const response = await appointmentService.getDoctorToday({ date: selectedDate });
+        list = response.data || [];
       } else if (viewMode === 'week') {
         const [start, end] = getWeekRange(selectedDate);
-        queryParam = { startDate: formatLocalDate(start), endDate: formatLocalDate(end) };
+        const response = await appointmentService.getDoctorToday({
+          startDate: formatLocalDate(start),
+          endDate: formatLocalDate(end)
+        });
+        list = response.data || [];
+
+        // Respaldo de compatibilidad: si la búsqueda por rango no devolvió citas
+        // (por si el backend en Render aún no termina de desplegar el soporte de rango),
+        // consultamos en paralelo los 7 días de la semana activa.
+        if (list.length === 0) {
+          const weekDaysList = getWeekDays(selectedDate).map((d) => formatLocalDate(d));
+          const dailyResponses = await Promise.all(
+            weekDaysList.map((d) =>
+              appointmentService.getDoctorToday({ date: d }).catch(() => ({ data: [] }))
+            )
+          );
+          const fallbackList = dailyResponses.flatMap((r) => r.data || []);
+          if (fallbackList.length > 0) {
+            list = fallbackList;
+          }
+        }
       } else if (viewMode === 'month') {
         const [start, end] = getMonthRange(selectedDate);
-        queryParam = { startDate: formatLocalDate(start), endDate: formatLocalDate(end) };
+        const response = await appointmentService.getDoctorToday({
+          startDate: formatLocalDate(start),
+          endDate: formatLocalDate(end)
+        });
+        list = response.data || [];
       }
 
-      const response = await appointmentService.getDoctorToday(queryParam);
-      const list = response.data || [];
       setAppointments(list);
       setPendingCount(list.filter((a) => a.status === 'pending').length);
     } catch (err) {
