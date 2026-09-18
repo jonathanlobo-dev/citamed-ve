@@ -241,7 +241,7 @@ async function runMigration() {
         FROM users u
         INNER JOIN doctor_profiles dp ON dp."userId" = u.id
         LEFT JOIN doctor_specialties ds ON ds.doctor_profile_id = dp.id
-        LEFT JOIN specialties s ON s.id = ds.specialty_id
+        LEFT JOIN specialties s ON (s.id = dp."specialtyId" OR s.id = ds.specialty_id)
         WHERE u.id = p_doctor_id
           AND u.role = 'doctor'
         GROUP BY u.id, dp.id, u."firstName", u."lastName", dp."firstName", dp."lastName",
@@ -386,7 +386,7 @@ async function runMigration() {
       FROM users u
       INNER JOIN doctor_profiles dp ON dp."userId" = u.id
       LEFT JOIN doctor_specialties ds ON ds.doctor_profile_id = dp.id
-      LEFT JOIN specialties s ON s.id = ds.specialty_id
+      LEFT JOIN specialties s ON (s.id = dp."specialtyId" OR s.id = ds.specialty_id)
       WHERE u.role = 'doctor'
       GROUP BY u.id, dp.id, u."firstName", u."lastName", dp."firstName", dp."lastName",
                dp.city, dp.state, dp.price_teleconsultation, dp."consultationFee",
