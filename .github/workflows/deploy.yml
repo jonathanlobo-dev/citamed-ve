@@ -8,13 +8,13 @@
 # - Production: Deploy manual con aprobación
 # ============================================
 
-name: Deploy Pipeline
+name: Deploy Pipeline (Legacy Docker/SSH)
 
 on:
-  # Auto deploy staging on develop push
-  push:
-    branches: [develop]
-  # Manual deploy production
+  # Pausado: CitaMed se despliega actualmente mediante:
+  # - Frontend: Cloudflare Pages (automático al hacer push a GitHub)
+  # - Backend: Render (automático al hacer push a master)
+  # Se desactiva el disparador 'push' para evitar ejecuciones fallidas y correos innecesarios a GitHub.
   workflow_dispatch:
     inputs:
       environment:
