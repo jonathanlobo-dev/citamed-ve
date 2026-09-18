@@ -354,15 +354,25 @@ class AppointmentService {
   }
 
   /**
-   * Obtener citas del dia para un doctor
+   * Obtener citas para un doctor (día, rango de semana o mes)
    */
-  async getDoctorDayAppointments(doctorId, date = new Date()) {
-    const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0];
+  async getDoctorAppointments(doctorId, options = {}) {
+    const { date, startDate, endDate } = typeof options === 'string' ? { date: options } : options;
+
+    let dateFilter;
+    if (startDate && endDate) {
+      dateFilter = { [Op.between]: [startDate, endDate] };
+    } else if (date) {
+      const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0];
+      dateFilter = dateStr;
+    } else {
+      dateFilter = new Date().toISOString().split('T')[0];
+    }
 
     const appointments = await Appointment.findAll({
       where: {
         doctorId,
-        appointmentDate: dateStr,
+        appointmentDate: dateFilter,
         status: {
           [Op.notIn]: ['cancelled_patient', 'cancelled_doctor']
         }
@@ -384,10 +394,17 @@ class AppointmentService {
           attributes: ['id', 'name', 'addressLine1', 'city', 'state']
         }
       ],
-      order: [['appointmentTime', 'ASC']]
+      order: [['appointmentDate', 'ASC'], ['appointmentTime', 'ASC']]
     });
 
     return appointments;
+  }
+
+  /**
+   * Obtener citas del dia para un doctor (retrocompatible)
+   */
+  async getDoctorDayAppointments(doctorId, date = new Date()) {
+    return this.getDoctorAppointments(doctorId, { date });
   }
 
   /**

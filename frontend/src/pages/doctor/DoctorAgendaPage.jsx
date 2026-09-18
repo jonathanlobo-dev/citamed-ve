@@ -11,7 +11,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Calendar, Clock, Plus, X, Save, Loader2, AlertCircle, CheckCircle,
-  Users, Check, ChevronLeft, ChevronRight, XCircle, Phone, Mail, Building2
+  Users, Check, ChevronLeft, ChevronRight, XCircle, Phone, Mail, Building2,
+  CalendarRange, CalendarDays
 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar/Navbar';
 import doctorService from '../../services/doctorService';
@@ -31,6 +32,67 @@ const formatLocalDate = (date) => {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+// Helper para rango semanal (Lunes a Domingo)
+const getWeekRange = (dateStr) => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const curr = new Date(y, m - 1, d);
+  const day = curr.getDay();
+  const diffToMonday = (day === 0 ? -6 : 1) - day;
+  const monday = new Date(curr);
+  monday.setDate(curr.getDate() + diffToMonday);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return [monday, sunday];
+};
+
+// Helper para obtener los 7 días de la semana
+const getWeekDays = (dateStr) => {
+  const [monday] = getWeekRange(dateStr);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+};
+
+// Helper para rango mensual (inicio a fin de mes)
+const getMonthRange = (dateStr) => {
+  const [y, m] = dateStr.split('-').map(Number);
+  const firstDay = new Date(y, m - 1, 1);
+  const lastDay = new Date(y, m, 0);
+  return [firstDay, lastDay];
+};
+
+// Helper para matriz del calendario mensual (35 o 42 celdas)
+const getMonthCalendarDays = (dateStr) => {
+  const [y, m] = dateStr.split('-').map(Number);
+  const firstDayOfMonth = new Date(y, m - 1, 1);
+  const lastDayOfMonth = new Date(y, m, 0);
+
+  const firstDayWeekIndex = firstDayOfMonth.getDay();
+  const padLeft = firstDayWeekIndex === 0 ? 6 : firstDayWeekIndex - 1; // Lunes = 0
+
+  const calendarDays = [];
+
+  for (let i = padLeft; i > 0; i--) {
+    const d = new Date(y, m - 1, 1 - i);
+    calendarDays.push({ date: d, isCurrentMonth: false, dateStr: formatLocalDate(d) });
+  }
+
+  for (let i = 1; i <= lastDayOfMonth.getDate(); i++) {
+    const d = new Date(y, m - 1, i);
+    calendarDays.push({ date: d, isCurrentMonth: true, dateStr: formatLocalDate(d) });
+  }
+
+  const remaining = (7 - (calendarDays.length % 7)) % 7;
+  for (let i = 1; i <= remaining; i++) {
+    const d = new Date(y, m, i);
+    calendarDays.push({ date: d, isCurrentMonth: false, dateStr: formatLocalDate(d) });
+  }
+
+  return calendarDays;
 };
 
 const buildInitialDays = () =>
@@ -189,17 +251,31 @@ function DoctorAgendaPage() {
     loadAgenda();
   }, []);
 
-  // Cargar citas para la fecha seleccionada
-  const fetchAppointments = async (dateStr) => {
+  // Modo de visualización: 'day' (Día) | 'week' (Semana) | 'month' (Mes)
+  const [viewMode, setViewMode] = useState('day');
+
+  // Cargar citas según el modo de vista activo (día, semana o mes)
+  const fetchAppointments = async () => {
     try {
       setLoadingAppointments(true);
-      const response = await appointmentService.getDoctorToday(dateStr);
+      let queryParam;
+      if (viewMode === 'day') {
+        queryParam = { date: selectedDate };
+      } else if (viewMode === 'week') {
+        const [start, end] = getWeekRange(selectedDate);
+        queryParam = { startDate: formatLocalDate(start), endDate: formatLocalDate(end) };
+      } else if (viewMode === 'month') {
+        const [start, end] = getMonthRange(selectedDate);
+        queryParam = { startDate: formatLocalDate(start), endDate: formatLocalDate(end) };
+      }
+
+      const response = await appointmentService.getDoctorToday(queryParam);
       const list = response.data || [];
       setAppointments(list);
       setPendingCount(list.filter((a) => a.status === 'pending').length);
     } catch (err) {
       console.error('Error cargando citas del médico:', err);
-      toast.error('No pudimos cargar las citas para esta fecha');
+      toast.error('No pudimos cargar las citas para este período');
     } finally {
       setLoadingAppointments(false);
     }
@@ -207,16 +283,16 @@ function DoctorAgendaPage() {
 
   useEffect(() => {
     if (activeTab === 'appointments') {
-      fetchAppointments(selectedDate);
+      fetchAppointments();
     }
-  }, [activeTab, selectedDate]);
+  }, [activeTab, selectedDate, viewMode]);
 
   // Manejo de Aprobación de Pre-Cita
   const handleConfirmAppointment = async (id) => {
     try {
       await appointmentService.confirm(id);
       toast.success('¡Cita confirmada exitosamente!');
-      fetchAppointments(selectedDate);
+      fetchAppointments();
     } catch (err) {
       console.error('Error confirming appointment:', err);
       toast.error(err.response?.data?.message || 'Error al confirmar la cita');
@@ -230,18 +306,24 @@ function DoctorAgendaPage() {
     try {
       await appointmentService.cancel(id, reason.trim() || 'Cancelada por el consultorio médico');
       toast.success('Cita cancelada y turno liberado');
-      fetchAppointments(selectedDate);
+      fetchAppointments();
     } catch (err) {
       console.error('Error cancelling appointment:', err);
       toast.error(err.response?.data?.message || 'Error al cancelar la cita');
     }
   };
 
-  // Navegación de días para citas
-  const changeDateByDays = (delta) => {
+  // Navegación de fechas según el modo de visualización activo
+  const changeDateByDelta = (delta) => {
     const [year, month, day] = selectedDate.split('-').map(Number);
     const curr = new Date(year, month - 1, day);
-    curr.setDate(curr.getDate() + delta);
+    if (viewMode === 'day') {
+      curr.setDate(curr.getDate() + delta);
+    } else if (viewMode === 'week') {
+      curr.setDate(curr.getDate() + (delta * 7));
+    } else if (viewMode === 'month') {
+      curr.setMonth(curr.getMonth() + delta);
+    }
     setSelectedDate(formatLocalDate(curr));
   };
 
@@ -249,10 +331,27 @@ function DoctorAgendaPage() {
     setSelectedDate(formatLocalDate(new Date()));
   };
 
-  const setDateToTomorrow = () => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    setSelectedDate(formatLocalDate(d));
+  const getHeaderTitle = () => {
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    if (viewMode === 'day') {
+      return dt.toLocaleDateString('es-VE', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+    } else if (viewMode === 'week') {
+      const [start, end] = getWeekRange(selectedDate);
+      const startStr = start.toLocaleDateString('es-VE', { day: 'numeric', month: 'short' });
+      const endStr = end.toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' });
+      return `Semana: ${startStr} – ${endStr}`;
+    } else {
+      return dt.toLocaleDateString('es-VE', {
+        month: 'long',
+        year: 'numeric'
+      });
+    }
   };
 
   // Métodos de disponibilidad
@@ -414,214 +513,411 @@ function DoctorAgendaPage() {
         {/* CONTENIDO PESTAÑA 1: CITAS PROGRAMADAS */}
         {activeTab === 'appointments' && (
           <div className="space-y-6">
-            {/* Control de Fecha */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-between">
+            {/* Barra de Control de Vistas y Fecha */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 space-y-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                {/* Selector de Modo: Día / Semana / Mes */}
+                <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200 text-xs font-semibold w-full sm:w-auto justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('day')}
+                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                      viewMode === 'day'
+                        ? 'bg-white text-primary shadow-sm font-bold'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    Día
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('week')}
+                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                      viewMode === 'week'
+                        ? 'bg-white text-primary shadow-sm font-bold'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <CalendarRange className="w-3.5 h-3.5" />
+                    Semana
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('month')}
+                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                      viewMode === 'month'
+                        ? 'bg-white text-primary shadow-sm font-bold'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    Mes
+                  </button>
+                </div>
+
+                {/* Botón de acceso rápido a fecha actual */}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={setDateToToday}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 transition"
+                  >
+                    {viewMode === 'day' ? 'Hoy' : viewMode === 'week' ? 'Esta Semana' : 'Este Mes'}
+                  </button>
+                  {viewMode === 'day' && (
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+                      className="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Navegación temporal (< Titulo >) */}
+              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                 <button
                   type="button"
-                  onClick={() => changeDateByDays(-1)}
+                  onClick={() => changeDateByDelta(-1)}
                   className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
-                  title="Día anterior"
+                  title="Anterior"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <div className="text-center sm:text-left">
-                  <div className="font-bold text-gray-800 text-base sm:text-lg">
-                    {(() => {
-                      const [y, m, d] = selectedDate.split('-').map(Number);
-                      const dt = new Date(y, m - 1, d);
-                      return dt.toLocaleDateString('es-VE', {
-                        weekday: 'long',
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                      });
-                    })()}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {selectedDate === formatLocalDate(new Date()) ? '• Hoy' : ''}
-                  </div>
+                <div className="text-center">
+                  <h3 className="font-bold text-gray-800 text-base sm:text-lg capitalize">
+                    {getHeaderTitle()}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    {appointments.length} cita{appointments.length !== 1 ? 's' : ''} en este período
+                  </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => changeDateByDays(1)}
+                  onClick={() => changeDateByDelta(1)}
                   className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
-                  title="Día siguiente"
+                  title="Siguiente"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
               </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <button
-                  type="button"
-                  onClick={setDateToToday}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition ${
-                    selectedDate === formatLocalDate(new Date())
-                      ? 'bg-primary text-white border-primary'
-                      : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
-                  }`}
-                >
-                  Hoy
-                </button>
-                <button
-                  type="button"
-                  onClick={setDateToTomorrow}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 transition"
-                >
-                  Mañana
-                </button>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
-                  className="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-              </div>
             </div>
 
-            {/* Listado de Citas */}
-            {loadingAppointments ? (
+            {/* Spinner de Carga */}
+            {loadingAppointments && (
               <div className="bg-white rounded-xl shadow-sm p-12 text-center border border-gray-200">
                 <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-2" />
-                <p className="text-gray-500 text-sm">Cargando citas de la fecha...</p>
+                <p className="text-gray-500 text-sm">Cargando citas de la agenda...</p>
               </div>
-            ) : appointments.length === 0 ? (
-              <div className="bg-white rounded-xl shadow-sm p-12 text-center border border-gray-200">
-                <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <h3 className="text-lg font-bold text-gray-800 mb-1">
-                  Sin citas para esta fecha
-                </h3>
-                <p className="text-gray-500 text-sm max-w-md mx-auto mb-4">
-                  No hay pacientes agendados ni solicitudes pendientes para este día.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('availability')}
-                  className="text-primary hover:underline text-sm font-semibold inline-flex items-center gap-1"
-                >
-                  Ver disponibilidad configurada →
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {appointments.map((apt) => {
-                  const isPending = apt.status === 'pending';
-                  const isConfirmed = apt.status === 'confirmed';
-                  const isCancelled = apt.status.startsWith('cancelled');
+            )}
+
+            {/* VISTA 1: DÍA (DETALLADA) */}
+            {!loadingAppointments && viewMode === 'day' && (
+              <>
+                {appointments.length === 0 ? (
+                  <div className="bg-white rounded-xl shadow-sm p-12 text-center border border-gray-200">
+                    <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <h3 className="text-lg font-bold text-gray-800 mb-1">
+                      Sin citas para este día
+                    </h3>
+                    <p className="text-gray-500 text-sm max-w-md mx-auto mb-4">
+                      No hay pacientes agendados ni solicitudes pendientes para esta fecha.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('availability')}
+                      className="text-primary hover:underline text-sm font-semibold inline-flex items-center gap-1"
+                    >
+                      Ver disponibilidad configurada →
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {appointments.map((apt) => {
+                      const isPending = apt.status === 'pending';
+                      const isConfirmed = apt.status === 'confirmed';
+                      const isCancelled = apt.status.startsWith('cancelled');
+
+                      return (
+                        <div
+                          key={apt.id}
+                          className={`bg-white rounded-xl p-5 shadow-sm border transition-all ${
+                            isPending
+                              ? 'border-amber-300 bg-amber-50/20'
+                              : isConfirmed
+                              ? 'border-green-200 hover:shadow-md'
+                              : 'border-gray-200 opacity-75'
+                          }`}
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex items-start gap-4">
+                              <div className="bg-primary/10 text-primary p-3 rounded-xl flex flex-col items-center justify-center min-w-[70px]">
+                                <Clock className="w-4 h-4 mb-1" />
+                                <span className="font-bold text-sm">{apt.appointmentTime}</span>
+                                <span className="text-[10px] text-gray-500">{apt.duration || 30} min</span>
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                  <h4 className="font-bold text-gray-900 text-lg">
+                                    {apt.patient?.firstName} {apt.patient?.lastName}
+                                  </h4>
+                                  {isPending && (
+                                    <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-300 rounded-full text-xs font-bold animate-pulse">
+                                      ⏳ Solicitud Pendiente
+                                    </span>
+                                  )}
+                                  {isConfirmed && (
+                                    <span className="px-2.5 py-0.5 bg-green-100 text-green-800 border border-green-300 rounded-full text-xs font-semibold">
+                                      ✓ Confirmada
+                                    </span>
+                                  )}
+                                  {isCancelled && (
+                                    <span className="px-2.5 py-0.5 bg-red-100 text-red-700 border border-red-200 rounded-full text-xs font-semibold">
+                                      ✗ Cancelada
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-gray-600 text-sm mb-2">
+                                  <span className="font-medium text-gray-700">Motivo:</span> {apt.reasonForVisit || 'Consulta general'}
+                                </p>
+                                <div className="flex items-center gap-4 text-xs text-gray-500 flex-wrap">
+                                  {(apt.clinic || apt.clinicLocation || apt.locationAddress) && (
+                                    <span className="flex items-center gap-1 text-teal-700 font-medium bg-teal-50 px-2 py-0.5 rounded">
+                                      <Building2 className="w-3.5 h-3.5 text-teal-600" />
+                                      <span>{apt.clinic?.commercialName || apt.clinicLocation?.name || 'Consultorio Principal'}{apt.clinicLocation?.city ? ` · ${apt.clinicLocation.city}` : ''}</span>
+                                    </span>
+                                  )}
+                                  {apt.patient?.phone && (
+                                    <span className="flex items-center gap-1">
+                                      <Phone className="w-3.5 h-3.5 text-gray-400" />
+                                      {apt.patient.phone}
+                                    </span>
+                                  )}
+                                  {apt.patient?.email && (
+                                    <span className="flex items-center gap-1">
+                                      <Mail className="w-3.5 h-3.5 text-gray-400" />
+                                      {apt.patient.email}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Botones de acción */}
+                            <div className="flex items-center gap-2 self-end sm:self-center">
+                              {isPending && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleConfirmAppointment(apt.id)}
+                                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg shadow transition flex items-center gap-1.5"
+                                  >
+                                    <Check className="w-4 h-4" />
+                                    Aceptar Cita
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCancelAppointment(apt.id)}
+                                    className="px-3 py-2 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium rounded-lg transition flex items-center gap-1"
+                                  >
+                                    <X className="w-4 h-4" />
+                                    Rechazar
+                                  </button>
+                                </>
+                              )}
+                              {isConfirmed && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => navigate('/medico/sala-espera')}
+                                    className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-sm font-semibold rounded-lg transition flex items-center gap-1.5"
+                                  >
+                                    <Users className="w-4 h-4" />
+                                    Sala de Espera
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCancelAppointment(apt.id)}
+                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                    title="Cancelar cita"
+                                  >
+                                    <XCircle className="w-5 h-5" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* VISTA 2: SEMANA (7 COLUMNAS) */}
+            {!loadingAppointments && viewMode === 'week' && (
+              <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
+                {getWeekDays(selectedDate).map((dayDate) => {
+                  const dateStr = formatLocalDate(dayDate);
+                  const dayApts = appointments.filter((a) => a.appointmentDate === dateStr);
+                  const isToday = dateStr === formatLocalDate(new Date());
+                  const dayName = dayDate.toLocaleDateString('es-VE', { weekday: 'short' });
+                  const dayNum = dayDate.getDate();
 
                   return (
                     <div
-                      key={apt.id}
-                      className={`bg-white rounded-xl p-5 shadow-sm border transition-all ${
-                        isPending
-                          ? 'border-amber-300 bg-amber-50/20'
-                          : isConfirmed
-                          ? 'border-green-200 hover:shadow-md'
-                          : 'border-gray-200 opacity-75'
+                      key={dateStr}
+                      className={`bg-white rounded-xl border p-3 flex flex-col transition-all min-h-[260px] ${
+                        isToday ? 'border-primary/60 ring-1 ring-primary/20 shadow-sm' : 'border-gray-200'
                       }`}
                     >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex items-start gap-4">
-                          <div className="bg-primary/10 text-primary p-3 rounded-xl flex flex-col items-center justify-center min-w-[70px]">
-                            <Clock className="w-4 h-4 mb-1" />
-                            <span className="font-bold text-sm">{apt.appointmentTime}</span>
-                            <span className="text-[10px] text-gray-500">{apt.duration || 30} min</span>
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
-                              <h4 className="font-bold text-gray-900 text-lg">
-                                {apt.patient?.firstName} {apt.patient?.lastName}
-                              </h4>
-                              {isPending && (
-                                <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-300 rounded-full text-xs font-bold animate-pulse">
-                                  ⏳ Solicitud Pendiente
-                                </span>
-                              )}
-                              {isConfirmed && (
-                                <span className="px-2.5 py-0.5 bg-green-100 text-green-800 border border-green-300 rounded-full text-xs font-semibold">
-                                  ✓ Confirmada
-                                </span>
-                              )}
-                              {isCancelled && (
-                                <span className="px-2.5 py-0.5 bg-red-100 text-red-700 border border-red-200 rounded-full text-xs font-semibold">
-                                  ✗ Cancelada
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-gray-600 text-sm mb-2">
-                              <span className="font-medium text-gray-700">Motivo:</span> {apt.reasonForVisit || 'Consulta general'}
-                            </p>
-                            <div className="flex items-center gap-4 text-xs text-gray-500 flex-wrap">
-                              {(apt.clinic || apt.clinicLocation || apt.locationAddress) && (
-                                <span className="flex items-center gap-1 text-teal-700 font-medium bg-teal-50 px-2 py-0.5 rounded">
-                                  <Building2 className="w-3.5 h-3.5 text-teal-600" />
-                                  <span>{apt.clinic?.commercialName || apt.clinicLocation?.name || 'Consultorio Principal'}{apt.clinicLocation?.city ? ` · ${apt.clinicLocation.city}` : ''}</span>
-                                </span>
-                              )}
-                              {apt.patient?.phone && (
-                                <span className="flex items-center gap-1">
-                                  <Phone className="w-3.5 h-3.5 text-gray-400" />
-                                  {apt.patient.phone}
-                                </span>
-                              )}
-                              {apt.patient?.email && (
-                                <span className="flex items-center gap-1">
-                                  <Mail className="w-3.5 h-3.5 text-gray-400" />
-                                  {apt.patient.email}
-                                </span>
-                              )}
-                            </div>
-                          </div>
+                      {/* Header de Columna de Día */}
+                      <div
+                        onClick={() => {
+                          setSelectedDate(dateStr);
+                          setViewMode('day');
+                        }}
+                        className="flex items-center justify-between border-b pb-2 mb-2 cursor-pointer hover:opacity-80 transition"
+                        title="Clic para ver detalle de este día"
+                      >
+                        <div>
+                          <span className="text-xs font-bold uppercase text-gray-500 block">
+                            {dayName}
+                          </span>
+                          <span className={`text-lg font-black ${isToday ? 'text-primary' : 'text-gray-800'}`}>
+                            {dayNum}
+                          </span>
                         </div>
+                        {dayApts.length > 0 && (
+                          <span className="bg-primary/10 text-primary text-xs font-bold px-2 py-0.5 rounded-full">
+                            {dayApts.length}
+                          </span>
+                        )}
+                      </div>
 
-                        {/* Botones de acción */}
-                        <div className="flex items-center gap-2 self-end sm:self-center">
-                          {isPending && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => handleConfirmAppointment(apt.id)}
-                                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg shadow transition flex items-center gap-1.5"
-                              >
-                                <Check className="w-4 h-4" />
-                                Aceptar Cita
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleCancelAppointment(apt.id)}
-                                className="px-3 py-2 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium rounded-lg transition flex items-center gap-1"
-                              >
-                                <X className="w-4 h-4" />
-                                Rechazar
-                              </button>
-                            </>
-                          )}
-                          {isConfirmed && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => navigate('/medico/sala-espera')}
-                                className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-sm font-semibold rounded-lg transition flex items-center gap-1.5"
-                              >
-                                <Users className="w-4 h-4" />
-                                Sala de Espera
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleCancelAppointment(apt.id)}
-                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                                title="Cancelar cita"
-                              >
-                                <XCircle className="w-5 h-5" />
-                              </button>
-                            </>
-                          )}
-                        </div>
+                      {/* Lista de citas de este día */}
+                      <div className="flex-1 space-y-2 overflow-y-auto max-h-[320px]">
+                        {dayApts.length === 0 ? (
+                          <p className="text-xs text-gray-400 text-center py-8">Sin citas</p>
+                        ) : (
+                          dayApts.map((apt) => (
+                            <div
+                              key={apt.id}
+                              onClick={() => {
+                                setSelectedDate(dateStr);
+                                setViewMode('day');
+                              }}
+                              className={`p-2 rounded-lg border text-xs cursor-pointer transition hover:scale-[1.02] ${
+                                apt.status === 'pending'
+                                  ? 'bg-amber-50 border-amber-300 text-amber-900'
+                                  : apt.status === 'confirmed'
+                                  ? 'bg-green-50 border-green-200 text-green-900'
+                                  : 'bg-gray-50 border-gray-200 text-gray-700'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between font-bold mb-1">
+                                <span>{apt.appointmentTime}</span>
+                                <span className="text-[10px]">
+                                  {apt.status === 'pending' ? '⏳ Pendiente' : '✓ Confirmada'}
+                                </span>
+                              </div>
+                              <p className="font-semibold truncate">
+                                {apt.patient?.firstName} {apt.patient?.lastName}
+                              </p>
+                              {apt.clinic?.commercialName && (
+                                <p className="text-[10px] text-gray-500 truncate mt-0.5">
+                                  {apt.clinic.commercialName}
+                                </p>
+                              )}
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* VISTA 3: MES (CUADRÍCULA CALENDARIO) */}
+            {!loadingAppointments && viewMode === 'month' && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                {/* Cabecera días de semana */}
+                <div className="grid grid-cols-7 gap-1 text-center font-bold text-xs uppercase text-gray-500 mb-2 py-2 border-b">
+                  <span>Lun</span>
+                  <span>Mar</span>
+                  <span>Mié</span>
+                  <span>Jue</span>
+                  <span>Vie</span>
+                  <span>Sáb</span>
+                  <span>Dom</span>
+                </div>
+
+                {/* Cuadrícula de 35 o 42 celdas */}
+                <div className="grid grid-cols-7 gap-1">
+                  {getMonthCalendarDays(selectedDate).map((cell, idx) => {
+                    const dayApts = appointments.filter((a) => a.appointmentDate === cell.dateStr);
+                    const isToday = cell.dateStr === formatLocalDate(new Date());
+                    const pendingCountInDay = dayApts.filter((a) => a.status === 'pending').length;
+
+                    return (
+                      <div
+                        key={cell.dateStr + idx}
+                        onClick={() => {
+                          setSelectedDate(cell.dateStr);
+                          setViewMode('day');
+                        }}
+                        className={`min-h-[85px] sm:min-h-[105px] p-1.5 sm:p-2 rounded-lg border transition cursor-pointer flex flex-col justify-between hover:border-primary/60 hover:bg-primary/5 ${
+                          !cell.isCurrentMonth
+                            ? 'bg-gray-50/50 border-gray-100 text-gray-300 opacity-50'
+                            : isToday
+                            ? 'bg-blue-50/50 border-primary/50'
+                            : 'bg-white border-gray-200 text-gray-700'
+                        }`}
+                        title="Clic para ver detalle de este día"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`text-xs font-semibold rounded-full w-5 h-5 flex items-center justify-center ${
+                              isToday ? 'bg-primary text-white font-bold' : ''
+                            }`}
+                          >
+                            {cell.date.getDate()}
+                          </span>
+                          {pendingCountInDay > 0 && (
+                            <span
+                              className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"
+                              title={`${pendingCountInDay} solicitud(es) pendiente(s)`}
+                            />
+                          )}
+                        </div>
+
+                        <div className="space-y-1 mt-1 overflow-hidden">
+                          {dayApts.slice(0, 2).map((apt) => (
+                            <div
+                              key={apt.id}
+                              className={`text-[10px] px-1.5 py-0.5 rounded truncate font-medium ${
+                                apt.status === 'pending'
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                  : 'bg-green-100 text-green-800 border border-green-200'
+                              }`}
+                            >
+                              {apt.appointmentTime} {apt.patient?.firstName || 'Cita'}
+                            </div>
+                          ))}
+                          {dayApts.length > 2 && (
+                            <div className="text-[9px] font-bold text-primary pl-1">
+                              +{dayApts.length - 2} más
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>

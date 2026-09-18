@@ -77,14 +77,16 @@ const appointmentService = {
     api.put(`/appointments/${id}/confirm`).then((res) => res.data),
 
   /**
-   * Obtener las citas del día del médico autenticado.
-   * @param {string} [date] - YYYY-MM-DD (por defecto hoy, lo resuelve el backend)
+   * Obtener las citas del día o rango para el médico autenticado.
+   * @param {string|Object} [param] - YYYY-MM-DD o { date, startDate, endDate }
    * @returns {Promise<{success: boolean, data: Array}>}
    */
-  getDoctorToday: (date) =>
-    api
-      .get('/appointments/doctor/today', { params: date ? { date } : {} })
-      .then((res) => res.data),
+  getDoctorToday: (param) => {
+    const params = typeof param === 'string' ? { date: param } : (param || {});
+    return api
+      .get('/appointments/doctor/today', { params })
+      .then((res) => res.data);
+  },
 };
 
 export default appointmentService;
