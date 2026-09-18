@@ -253,21 +253,25 @@ function DoctorAgendaPage() {
 
   // Modo de visualización: 'day' (Día) | 'week' (Semana) | 'month' (Mes)
   const [viewMode, setViewMode] = useState('day');
+  // Filtro para mostrar/ocultar citas canceladas y reprogramadas
+  const [showCancelled, setShowCancelled] = useState(false);
 
   // Cargar citas según el modo de vista activo (día, semana o mes)
   const fetchAppointments = async () => {
     try {
       setLoadingAppointments(true);
       let list = [];
+      const queryParams = showCancelled ? { includeCancelled: 'true' } : {};
 
       if (viewMode === 'day') {
-        const response = await appointmentService.getDoctorToday({ date: selectedDate });
+        const response = await appointmentService.getDoctorToday({ date: selectedDate, ...queryParams });
         list = response.data || [];
       } else if (viewMode === 'week') {
         const [start, end] = getWeekRange(selectedDate);
         const response = await appointmentService.getDoctorToday({
           startDate: formatLocalDate(start),
-          endDate: formatLocalDate(end)
+          endDate: formatLocalDate(end),
+          ...queryParams
         });
         list = response.data || [];
 
@@ -278,7 +282,7 @@ function DoctorAgendaPage() {
           const weekDaysList = getWeekDays(selectedDate).map((d) => formatLocalDate(d));
           const dailyResponses = await Promise.all(
             weekDaysList.map((d) =>
-              appointmentService.getDoctorToday({ date: d }).catch(() => ({ data: [] }))
+              appointmentService.getDoctorToday({ date: d, ...queryParams }).catch(() => ({ data: [] }))
             )
           );
           const fallbackList = dailyResponses.flatMap((r) => r.data || []);
@@ -290,7 +294,8 @@ function DoctorAgendaPage() {
         const [start, end] = getMonthRange(selectedDate);
         const response = await appointmentService.getDoctorToday({
           startDate: formatLocalDate(start),
-          endDate: formatLocalDate(end)
+          endDate: formatLocalDate(end),
+          ...queryParams
         });
         list = response.data || [];
       }
@@ -309,7 +314,7 @@ function DoctorAgendaPage() {
     if (activeTab === 'appointments') {
       fetchAppointments();
     }
-  }, [activeTab, selectedDate, viewMode]);
+  }, [activeTab, selectedDate, viewMode, showCancelled]);
 
   // Manejo de Aprobación de Pre-Cita
   const handleConfirmAppointment = async (id) => {
@@ -580,8 +585,8 @@ function DoctorAgendaPage() {
                   </button>
                 </div>
 
-                {/* Botón de acceso rápido a fecha actual */}
-                <div className="flex items-center gap-2">
+                {/* Botón de acceso rápido a fecha actual y filtro */}
+                <div className="flex items-center gap-2 flex-wrap">
                   <button
                     type="button"
                     onClick={setDateToToday}
@@ -597,6 +602,15 @@ function DoctorAgendaPage() {
                       className="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                   )}
+                  <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 transition ml-auto sm:ml-0">
+                    <input
+                      type="checkbox"
+                      checked={showCancelled}
+                      onChange={(e) => setShowCancelled(e.target.checked)}
+                      className="rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <span>Ver canceladas / reprogramadas</span>
+                  </label>
                 </div>
               </div>
 
@@ -615,7 +629,7 @@ function DoctorAgendaPage() {
                     {getHeaderTitle()}
                   </h3>
                   <p className="text-xs text-gray-500">
-                    {appointments.length} cita{appointments.length !== 1 ? 's' : ''} en este período
+                    {appointments.length} cita{appointments.length !== 1 ? 's' : ''} {showCancelled ? '(incluyendo historial)' : 'activas en este período'}
                   </p>
                 </div>
                 <button
@@ -663,6 +677,7 @@ function DoctorAgendaPage() {
                       const isPending = apt.status === 'pending';
                       const isConfirmed = apt.status === 'confirmed';
                       const isCancelled = apt.status.startsWith('cancelled');
+                      const isRescheduled = apt.status === 'rescheduled';
 
                       return (
                         <div
@@ -672,6 +687,8 @@ function DoctorAgendaPage() {
                               ? 'border-amber-300 bg-amber-50/20'
                               : isConfirmed
                               ? 'border-green-200 hover:shadow-md'
+                              : isRescheduled
+                              ? 'border-purple-200 bg-purple-50/20 opacity-75'
                               : 'border-gray-200 opacity-75'
                           }`}
                         >
@@ -700,6 +717,11 @@ function DoctorAgendaPage() {
                                   {isCancelled && (
                                     <span className="px-2.5 py-0.5 bg-red-100 text-red-700 border border-red-200 rounded-full text-xs font-semibold">
                                       ✗ Cancelada
+                                    </span>
+                                  )}
+                                  {isRescheduled && (
+                                    <span className="px-2.5 py-0.5 bg-purple-100 text-purple-800 border border-purple-300 rounded-full text-xs font-semibold">
+                                      🔄 Reprogramada a otra fecha
                                     </span>
                                   )}
                                 </div>
@@ -839,13 +861,21 @@ function DoctorAgendaPage() {
                                   ? 'bg-amber-50 border-amber-300 text-amber-900'
                                   : apt.status === 'confirmed'
                                   ? 'bg-green-50 border-green-200 text-green-900'
-                                  : 'bg-gray-50 border-gray-200 text-gray-700'
+                                  : apt.status === 'rescheduled'
+                                  ? 'bg-purple-50 border-purple-200 text-purple-900 opacity-75'
+                                  : 'bg-gray-50 border-gray-200 text-gray-500 opacity-75 line-through'
                               }`}
                             >
                               <div className="flex items-center justify-between font-bold mb-1">
                                 <span>{apt.appointmentTime}</span>
                                 <span className="text-[10px]">
-                                  {apt.status === 'pending' ? '⏳ Pendiente' : '✓ Confirmada'}
+                                  {apt.status === 'pending'
+                                    ? '⏳ Pendiente'
+                                    : apt.status === 'confirmed'
+                                    ? '✓ Confirmada'
+                                    : apt.status === 'rescheduled'
+                                    ? '🔄 Reprog.'
+                                    : '✗ Cancelada'}
                                 </span>
                               </div>
                               <p className="font-semibold truncate">
@@ -926,6 +956,10 @@ function DoctorAgendaPage() {
                               className={`text-[10px] px-1.5 py-0.5 rounded truncate font-medium ${
                                 apt.status === 'pending'
                                   ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                  : apt.status === 'rescheduled'
+                                  ? 'bg-purple-100 text-purple-800 border border-purple-200 line-through opacity-70'
+                                  : apt.status.startsWith('cancelled')
+                                  ? 'bg-gray-100 text-gray-500 border border-gray-200 line-through opacity-70'
                                   : 'bg-green-100 text-green-800 border border-green-200'
                               }`}
                             >

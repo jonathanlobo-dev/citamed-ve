@@ -365,7 +365,7 @@ class AppointmentService {
       locationType: originalAppointment.locationType,
       locationAddress: originalAppointment.locationAddress,
       consultationFee: originalAppointment.consultationFee,
-      status: 'confirmed',
+      status: 'pending',
       rescheduledFrom: originalAppointment.id
     });
 
@@ -382,7 +382,7 @@ class AppointmentService {
    * Obtener citas para un doctor (día, rango de semana o mes)
    */
   async getDoctorAppointments(doctorId, options = {}) {
-    const { date, startDate, endDate } = typeof options === 'string' ? { date: options } : options;
+    const { date, startDate, endDate, includeCancelled } = typeof options === 'string' ? { date: options } : options;
 
     let dateFilter;
     if (startDate && endDate) {
@@ -394,14 +394,19 @@ class AppointmentService {
       dateFilter = new Date().toISOString().split('T')[0];
     }
 
+    const whereClause = {
+      doctorId,
+      appointmentDate: dateFilter
+    };
+
+    if (includeCancelled !== 'true') {
+      whereClause.status = {
+        [Op.notIn]: ['cancelled_patient', 'cancelled_doctor', 'rescheduled']
+      };
+    }
+
     const appointments = await Appointment.findAll({
-      where: {
-        doctorId,
-        appointmentDate: dateFilter,
-        status: {
-          [Op.notIn]: ['cancelled_patient', 'cancelled_doctor']
-        }
-      },
+      where: whereClause,
       include: [
         {
           model: User,

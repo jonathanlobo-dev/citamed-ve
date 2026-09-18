@@ -311,11 +311,11 @@ class AppointmentController {
   async getDoctorToday(req, res) {
     try {
       const doctorId = req.user.id;
-      const { date, startDate, endDate } = req.query;
+      const { date, startDate, endDate, includeCancelled } = req.query;
 
       const appointments = await appointmentService.getDoctorAppointments(
         doctorId,
-        { date, startDate, endDate }
+        { date, startDate, endDate, includeCancelled }
       );
 
       res.json({
