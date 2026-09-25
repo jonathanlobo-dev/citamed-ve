@@ -1,0 +1,252 @@
+.verificar-recipe-page {
+  min-height: 100vh;
+  background-color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  color: #1e293b;
+  font-family: inherit;
+}
+
+.verificar-recipe-header {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 1rem 1.5rem;
+}
+
+.vr-header-content {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.vr-logo {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0d9488;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.vr-subtitle {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.verificar-recipe-main {
+  flex: 1;
+  max-width: 720px;
+  width: 100%;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.vr-card {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.vr-banner {
+  padding: 1.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.vr-banner.valid {
+  background-color: #ecfdf5;
+  border-bottom: 2px solid #10b981;
+}
+
+.vr-banner.voided {
+  background-color: #fef2f2;
+  border-bottom: 2px solid #ef4444;
+}
+
+.vr-banner.not-found {
+  background-color: #fefce8;
+  border-bottom: 2px solid #eab308;
+}
+
+.vr-banner-icon {
+  flex-shrink: 0;
+}
+
+.vr-banner-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.vr-banner.valid .vr-banner-icon {
+  color: #059669;
+}
+
+.vr-banner.voided .vr-banner-icon {
+  color: #dc2626;
+}
+
+.vr-banner.not-found .vr-banner-icon {
+  color: #ca8a04;
+}
+
+.vr-banner-text h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem 0;
+}
+
+.vr-banner.valid .vr-banner-text h2 {
+  color: #065f46;
+}
+
+.vr-banner.voided .vr-banner-text h2 {
+  color: #991b1b;
+}
+
+.vr-banner.not-found .vr-banner-text h2 {
+  color: #854d0e;
+}
+
+.vr-banner-text p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.vr-details {
+  padding: 1.5rem;
+}
+
+.vr-section {
+  margin-bottom: 1.5rem;
+}
+
+.vr-section:last-child {
+  margin-bottom: 0;
+}
+
+.vr-section h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  margin: 0 0 0.75rem 0;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 0.4rem;
+}
+
+.vr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.vr-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.vr-label {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-bottom: 0.2rem;
+}
+
+.vr-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.vr-code-tag {
+  font-family: monospace;
+  background: #f1f5f9;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  color: #0d9488;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.vr-medications-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.vr-med-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.vr-med-name {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.95rem;
+}
+
+.vr-med-pres {
+  font-size: 0.85rem;
+  color: #64748b;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+}
+
+.vr-privacy-notice {
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  padding: 1rem 1.5rem;
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.vr-loading,
+.vr-error {
+  text-align: center;
+  padding: 3rem 1rem;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.vr-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #0d9488;
+  border-radius: 50%;
+  animation: vr-spin 0.8s linear infinite;
+  margin: 0 auto 1rem auto;
+}
+
+@keyframes vr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.vr-footer {
+  text-align: center;
+  padding: 1.5rem;
+  color: #94a3b8;
+  font-size: 0.8rem;
+}

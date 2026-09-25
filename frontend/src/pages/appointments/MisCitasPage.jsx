@@ -24,10 +24,14 @@ import {
   Phone,
   Star,
   FileText,
-  Navigation
+  Navigation,
+  Download,
+  Share2
 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar/Navbar';
 import appointmentService from '../../services/appointmentService';
+import prescriptionAPI from '../../services/prescriptionService';
+import { shareRecipe } from '../../utils/shareRecipe';
 import toast from 'react-hot-toast';
 import './MisCitasPage.css';
 
@@ -37,6 +41,7 @@ const MisCitasPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all'); // all, upcoming, past, cancelled
+  const [recipeLoadingId, setRecipeLoadingId] = useState(null);
 
   useEffect(() => {
     fetchAppointments();
@@ -192,6 +197,66 @@ const MisCitasPage = () => {
     } catch (err) {
       console.error('Error cancelling appointment:', err);
       toast.error('No pudimos cancelar la cita. Por favor intenta de nuevo.');
+    }
+  };
+
+  const handleDownloadPatientRecipe = async (appointment) => {
+    setRecipeLoadingId(appointment.id);
+    try {
+      const res = await prescriptionAPI.getByAppointment(appointment.id);
+      const list = res.data?.data || [];
+      if (list.length === 0) {
+        toast.error('Esta consulta no tiene récipes médicos emitidos.');
+        return;
+      }
+      const prescription = list[0];
+
+      const pdfRes = await prescriptionAPI.downloadPdf(prescription.id);
+      const blob = new Blob([pdfRes.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `recipe-CitaMed-${prescription.id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error al descargar récipe:', err);
+      toast.error('Error al descargar el récipe médico');
+    } finally {
+      setRecipeLoadingId(null);
+    }
+  };
+
+  const handleSharePatientRecipe = async (appointment) => {
+    setRecipeLoadingId(appointment.id);
+    try {
+      const res = await prescriptionAPI.getByAppointment(appointment.id);
+      const list = res.data?.data || [];
+      if (list.length === 0) {
+        toast.error('Esta consulta no tiene récipes médicos emitidos.');
+        return;
+      }
+      const prescription = list[0];
+
+      const pdfRes = await prescriptionAPI.downloadPdf(prescription.id);
+      const blob = new Blob([pdfRes.data], { type: 'application/pdf' });
+      const doctor = appointment.doctor || {};
+      const doctorName = `Dr(a). ${doctor.firstName || ''} ${doctor.lastName || ''}`.trim();
+
+      await shareRecipe({
+        pdfBlob: blob,
+        verificationCode: prescription.verificationCode,
+        doctorName: doctorName || 'tu médico',
+        date: appointment.appointmentDate || 'reciente',
+        isPatientSharing: true
+      });
+    } catch (err) {
+      console.error('Error al compartir récipe:', err);
+      toast.error('Error al compartir récipe');
+    } finally {
+      setRecipeLoadingId(null);
     }
   };
 
@@ -489,17 +554,28 @@ const MisCitasPage = () => {
                       </button>
                     )}
 
-                    {/* Ver receta/documentos si hay */}
-                    {appointment.status === 'completed' && appointment.prescriptionUrl && (
-                      <a
-                        href={appointment.prescriptionUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 border border-purple-300 text-purple-600 px-4 py-2 rounded-lg hover:bg-purple-50 transition"
-                      >
-                        <FileText className="w-4 h-4" />
-                        Ver Receta
-                      </a>
+                    {/* Descargar récipe médico oficial */}
+                    {appointment.status === 'completed' && (
+                      <>
+                        <button
+                          onClick={() => handleDownloadPatientRecipe(appointment)}
+                          disabled={recipeLoadingId === appointment.id}
+                          className="flex items-center gap-2 border border-teal-300 text-teal-700 bg-teal-50/50 px-4 py-2 rounded-lg hover:bg-teal-100 transition font-medium text-sm"
+                          title="Descargar récipe oficial en PDF"
+                        >
+                          <Download className="w-4 h-4 text-teal-600" />
+                          {recipeLoadingId === appointment.id ? 'Descargando...' : 'Descargar Récipe'}
+                        </button>
+                        <button
+                          onClick={() => handleSharePatientRecipe(appointment)}
+                          disabled={recipeLoadingId === appointment.id}
+                          className="flex items-center gap-2 border border-green-300 text-green-700 bg-green-50/50 px-3 py-2 rounded-lg hover:bg-green-100 transition font-medium text-sm"
+                          title="Compartir por WhatsApp"
+                        >
+                          <Share2 className="w-4 h-4 text-green-600" />
+                          Compartir
+                        </button>
+                      </>
                     )}
 
                     {/* Ver perfil del doctor */}

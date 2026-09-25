@@ -10,6 +10,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import DoctorQueueDashboard from '../../components/waitingRoom/DoctorQueueDashboard';
 import useWaitingRoom from '../../hooks/useWaitingRoom';
 import { useAuth } from '../../context/AuthContext';
+import prescriptionAPI from '../../services/prescriptionService';
+import { shareRecipe } from '../../utils/shareRecipe';
 import './DoctorWaitingRoomPage.css';
 
 const API_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
@@ -46,8 +48,15 @@ const DoctorWaitingRoomPage = () => {
   const [endModal, setEndModal] = useState({
     open: false,
     queueEntryId: null,
+    appointmentId: null,
+    patientName: '',
+    patientPhone: '',
     doctorNotes: '',
-    diagnosis: ''
+    diagnosis: '',
+    showRecipe: false,
+    items: [],
+    indications: '',
+    prescriptionSuccess: null
   });
 
   // Cargar cola inicial via API
@@ -169,11 +178,20 @@ const DoctorWaitingRoomPage = () => {
   };
 
   const handleOpenEndModal = (queueEntryId) => {
+    const entry = localQueue.find((q) => q.id === queueEntryId);
+    const patient = entry?.patient;
     setEndModal({
       open: true,
       queueEntryId,
+      appointmentId: entry?.appointmentId || entry?.appointment?.id,
+      patientName: `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim(),
+      patientPhone: patient?.phone || '',
       doctorNotes: '',
-      diagnosis: ''
+      diagnosis: '',
+      showRecipe: false,
+      items: [],
+      indications: '',
+      prescriptionSuccess: null
     });
   };
 
@@ -181,9 +199,78 @@ const DoctorWaitingRoomPage = () => {
     setEndModal({
       open: false,
       queueEntryId: null,
+      appointmentId: null,
+      patientName: '',
+      patientPhone: '',
       doctorNotes: '',
-      diagnosis: ''
+      diagnosis: '',
+      showRecipe: false,
+      items: [],
+      indications: '',
+      prescriptionSuccess: null
     });
+  };
+
+  const handleAddMedication = () => {
+    setEndModal((prev) => ({
+      ...prev,
+      items: [
+        ...prev.items,
+        { medication: '', presentation: '', dose: '', frequency: '', duration: '', instructions: '' }
+      ]
+    }));
+  };
+
+  const handleUpdateMedication = (index, field, value) => {
+    setEndModal((prev) => {
+      const newItems = [...prev.items];
+      newItems[index] = { ...newItems[index], [field]: value };
+      return { ...prev, items: newItems };
+    });
+  };
+
+  const handleRemoveMedication = (index) => {
+    setEndModal((prev) => ({
+      ...prev,
+      items: prev.items.filter((_, idx) => idx !== index)
+    }));
+  };
+
+  const handleDownloadPrescriptionPdf = async (prescriptionId) => {
+    try {
+      const response = await prescriptionAPI.downloadPdf(prescriptionId);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `recipe-CitaMed-${prescriptionId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error al descargar PDF:', err);
+      alert('Error al descargar el PDF del récipe');
+    }
+  };
+
+  const handleSharePrescriptionWhatsApp = async (prescription) => {
+    try {
+      const response = await prescriptionAPI.downloadPdf(prescription.id);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      await shareRecipe({
+        pdfBlob: blob,
+        verificationCode: prescription.verificationCode,
+        patientName: endModal.patientName,
+        patientPhone: endModal.patientPhone,
+        doctorName: `Dr(a). ${user?.firstName || ''} ${user?.lastName || ''}`.trim(),
+        date: new Intl.DateTimeFormat('es-VE', { timeZone: 'America/Caracas', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date()),
+        isPatientSharing: false
+      });
+    } catch (err) {
+      console.error('Error compartiendo récipe:', err);
+      alert('Error al compartir récipe por WhatsApp');
+    }
   };
 
   const handleEndConsultationSubmit = async (e) => {
@@ -207,10 +294,36 @@ const DoctorWaitingRoomPage = () => {
         }
       );
 
-      if (response.ok) {
-        handleCloseEndModal();
-        await refreshQueue();
+      if (!response.ok) {
+        throw new Error('Error al finalizar consulta');
       }
+
+      // Si se configuró récipe médico con medicamentos válidos
+      const validItems = (endModal.items || []).filter((i) => i.medication && i.medication.trim());
+      if (endModal.showRecipe && validItems.length > 0 && endModal.appointmentId) {
+        try {
+          const prescRes = await prescriptionAPI.create({
+            appointmentId: endModal.appointmentId,
+            items: validItems,
+            indications: endModal.indications.trim() || undefined
+          });
+
+          const createdPresc = prescRes.data?.data;
+          setEndModal((prev) => ({
+            ...prev,
+            prescriptionSuccess: createdPresc
+          }));
+          await refreshQueue();
+          setActionLoading(false);
+          return;
+        } catch (prescErr) {
+          console.error('Error emitiendo récipe:', prescErr);
+          alert('Consulta finalizada, pero hubo un error con el récipe: ' + (prescErr.response?.data?.error || prescErr.message));
+        }
+      }
+
+      handleCloseEndModal();
+      await refreshQueue();
     } catch (err) {
       console.error('Error ending consultation:', err);
     } finally {
@@ -396,48 +509,239 @@ const DoctorWaitingRoomPage = () => {
                 &times;
               </button>
             </div>
-            <form onSubmit={handleEndConsultationSubmit}>
-              <div className="wr-modal-body">
-                <div className="wr-modal-field">
-                  <label htmlFor="modal-diagnosis">Diagnóstico (opcional)</label>
-                  <input
-                    id="modal-diagnosis"
-                    type="text"
-                    placeholder="Ej. Rinofaringitis aguda, Control de rutina..."
-                    value={endModal.diagnosis}
-                    onChange={(e) => setEndModal((prev) => ({ ...prev, diagnosis: e.target.value }))}
-                    disabled={actionLoading}
-                  />
+            {endModal.prescriptionSuccess ? (
+              <div className="wr-prescription-success">
+                <div className="wr-success-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="32" height="32">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
                 </div>
-                <div className="wr-modal-field">
-                  <label htmlFor="modal-notes">Notas médicas / Observaciones clínicas (opcional)</label>
-                  <textarea
-                    id="modal-notes"
-                    placeholder="Detalles de la consulta, evolución o indicaciones generales..."
-                    value={endModal.doctorNotes}
-                    onChange={(e) => setEndModal((prev) => ({ ...prev, doctorNotes: e.target.value }))}
-                    disabled={actionLoading}
-                  />
+                <h3>¡Consulta finalizada y récipe emitido!</h3>
+                <p>El récipe médico ha sido registrado y certificado en la plataforma.</p>
+                <div className="wr-code-tag">
+                  Código: <strong>{endModal.prescriptionSuccess.verificationCode}</strong>
+                </div>
+
+                <div className="wr-prescription-actions">
+                  <button
+                    type="button"
+                    className="btn-pdf-download"
+                    onClick={() => handleDownloadPrescriptionPdf(endModal.prescriptionSuccess.id)}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Descargar récipe (PDF)
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-whatsapp-share"
+                    onClick={() => handleSharePrescriptionWhatsApp(endModal.prescriptionSuccess)}
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                      <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.634.084-1.84-.413-1.467-.604-2.42-2.102-2.493-2.2-.074-.098-.592-.787-.592-1.5 0-.713.375-1.063.51-1.206.135-.144.295-.18.393-.18.099 0 .197.001.283.006.09.004.21-.034.328.25.12.288.412 1.008.448 1.082.036.074.06.16.011.258-.049.098-.073.16-.146.246-.073.086-.154.192-.22.258-.074.073-.151.152-.065.3.086.148.382.631.821 1.022.564.502 1.04.658 1.188.732.148.074.234.062.321-.037.086-.099.37-.43.469-.578.099-.148.197-.123.33-.074.133.049.843.398.988.47.145.074.242.111.278.172.036.062.036.357-.108.762z" />
+                    </svg>
+                    Enviar por WhatsApp
+                  </button>
+                </div>
+
+                <div className="wr-modal-footer" style={{ width: '100%', marginTop: '16px' }}>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={handleCloseEndModal}
+                  >
+                    Finalizar y Cerrar
+                  </button>
                 </div>
               </div>
-              <div className="wr-modal-footer">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={handleCloseEndModal}
-                  disabled={actionLoading}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? 'Finalizando...' : 'Finalizar Consulta'}
-                </button>
-              </div>
-            </form>
+            ) : (
+              <form onSubmit={handleEndConsultationSubmit}>
+                <div className="wr-modal-body">
+                  <div className="wr-modal-field">
+                    <label htmlFor="modal-diagnosis">Diagnóstico (opcional)</label>
+                    <input
+                      id="modal-diagnosis"
+                      type="text"
+                      placeholder="Ej. Rinofaringitis aguda, Control de rutina..."
+                      value={endModal.diagnosis}
+                      onChange={(e) => setEndModal((prev) => ({ ...prev, diagnosis: e.target.value }))}
+                      disabled={actionLoading}
+                    />
+                  </div>
+                  <div className="wr-modal-field">
+                    <label htmlFor="modal-notes">Notas médicas / Observaciones clínicas (opcional)</label>
+                    <textarea
+                      id="modal-notes"
+                      placeholder="Detalles de la consulta, evolución o indicaciones generales..."
+                      value={endModal.doctorNotes}
+                      onChange={(e) => setEndModal((prev) => ({ ...prev, doctorNotes: e.target.value }))}
+                      disabled={actionLoading}
+                    />
+                  </div>
+
+                  {/* Sección opcional: Récipe Médico */}
+                  <div className="wr-modal-field">
+                    <label
+                      className="wr-recipe-toggle"
+                      onClick={() =>
+                        setEndModal((prev) => ({
+                          ...prev,
+                          showRecipe: !prev.showRecipe,
+                          items:
+                            !prev.showRecipe && prev.items.length === 0
+                              ? [
+                                  {
+                                    medication: '',
+                                    presentation: '',
+                                    dose: '',
+                                    frequency: '',
+                                    duration: '',
+                                    instructions: ''
+                                  }
+                                ]
+                              : prev.items
+                        }))
+                      }
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input
+                          type="checkbox"
+                          checked={endModal.showRecipe}
+                          onChange={() => {}}
+                          style={{ width: 'auto', margin: 0 }}
+                        />
+                        Emitir Récipe Médico Electrónico
+                      </span>
+                      <small style={{ color: '#0d9488', fontWeight: 600 }}>
+                        {endModal.showRecipe ? 'Ocultar' : 'Agregar medicamentos'}
+                      </small>
+                    </label>
+                  </div>
+
+                  {endModal.showRecipe && (
+                    <div className="wr-recipe-box">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>
+                          Medicamentos Prescritos ({endModal.items.length})
+                        </span>
+                        <button
+                          type="button"
+                          className="btn-add-med"
+                          onClick={handleAddMedication}
+                          disabled={actionLoading}
+                        >
+                          + Agregar Medicamento
+                        </button>
+                      </div>
+
+                      {endModal.items.map((item, idx) => (
+                        <div key={idx} className="wr-med-card">
+                          <div className="wr-med-card-header">
+                            <span>Medicamento #{idx + 1}</span>
+                            {endModal.items.length > 1 && (
+                              <button
+                                type="button"
+                                className="wr-btn-remove-med"
+                                onClick={() => handleRemoveMedication(idx)}
+                              >
+                                Eliminar
+                              </button>
+                            )}
+                          </div>
+                          <div className="wr-med-grid">
+                            <div className="wr-med-grid-full">
+                              <input
+                                type="text"
+                                placeholder="Nombre del medicamento (ej. Amoxicilina + Ác. Clavulánico) *"
+                                value={item.medication}
+                                onChange={(e) => handleUpdateMedication(idx, 'medication', e.target.value)}
+                                disabled={actionLoading}
+                                required
+                              />
+                            </div>
+                            <div>
+                              <input
+                                type="text"
+                                placeholder="Presentación (ej. Tabletas 875/125 mg)"
+                                value={item.presentation}
+                                onChange={(e) => handleUpdateMedication(idx, 'presentation', e.target.value)}
+                                disabled={actionLoading}
+                              />
+                            </div>
+                            <div>
+                              <input
+                                type="text"
+                                placeholder="Dosis (ej. 1 tableta)"
+                                value={item.dose}
+                                onChange={(e) => handleUpdateMedication(idx, 'dose', e.target.value)}
+                                disabled={actionLoading}
+                              />
+                            </div>
+                            <div>
+                              <input
+                                type="text"
+                                placeholder="Frecuencia (ej. Cada 12 horas)"
+                                value={item.frequency}
+                                onChange={(e) => handleUpdateMedication(idx, 'frequency', e.target.value)}
+                                disabled={actionLoading}
+                              />
+                            </div>
+                            <div>
+                              <input
+                                type="text"
+                                placeholder="Duración (ej. 7 días)"
+                                value={item.duration}
+                                onChange={(e) => handleUpdateMedication(idx, 'duration', e.target.value)}
+                                disabled={actionLoading}
+                              />
+                            </div>
+                            <div className="wr-med-grid-full">
+                              <input
+                                type="text"
+                                placeholder="Instrucciones específicas (ej. Tomar con las comidas)"
+                                value={item.instructions}
+                                onChange={(e) => handleUpdateMedication(idx, 'instructions', e.target.value)}
+                                disabled={actionLoading}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      <div className="wr-modal-field" style={{ marginTop: '8px' }}>
+                        <label htmlFor="modal-indications">Indicaciones generales del récipe (opcional)</label>
+                        <textarea
+                          id="modal-indications"
+                          placeholder="Reposo, dieta, abundantes líquidos, signos de alarma..."
+                          value={endModal.indications}
+                          onChange={(e) => setEndModal((prev) => ({ ...prev, indications: e.target.value }))}
+                          disabled={actionLoading}
+                          style={{ minHeight: '60px' }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="wr-modal-footer">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={handleCloseEndModal}
+                    disabled={actionLoading}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    disabled={actionLoading}
+                  >
+                    {actionLoading ? 'Guardando...' : 'Finalizar Consulta'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

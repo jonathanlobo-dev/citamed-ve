@@ -61,3 +61,4 @@ presentacion_*.html
 /*.xlsx
 ~$*
 _archivados/
+backend/scripts/output/

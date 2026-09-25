@@ -12,11 +12,13 @@ import { motion } from 'framer-motion';
 import {
   Calendar, Clock, Plus, X, Save, Loader2, AlertCircle, CheckCircle,
   Users, Check, ChevronLeft, ChevronRight, XCircle, Phone, Mail, Building2,
-  CalendarRange, CalendarDays
+  CalendarRange, CalendarDays, FileText, Download, Share2
 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar/Navbar';
 import doctorService from '../../services/doctorService';
 import appointmentService from '../../services/appointmentService';
+import prescriptionAPI from '../../services/prescriptionService';
+import { shareRecipe } from '../../utils/shareRecipe';
 import toast from 'react-hot-toast';
 
 // Orden de display: Lunes → Domingo (dayOfWeek: 0=Domingo, 1=Lunes, ..., 6=Sábado)
@@ -347,18 +349,97 @@ function DoctorAgendaPage() {
     open: false,
     appointmentId: null,
     patientName: '',
+    patientPhone: '',
     doctorNotes: '',
     diagnosis: '',
+    showRecipe: false,
+    items: [],
+    indications: '',
+    prescriptionSuccess: null,
     submitting: false
   });
+
+  // Cache de récipes por cita en la agenda
+  const [appointmentPrescriptions, setAppointmentPrescriptions] = useState({});
+  const [loadingPrescriptions, setLoadingPrescriptions] = useState({});
+
+  const fetchPrescriptionsForAppointment = async (appointmentId) => {
+    if (appointmentPrescriptions[appointmentId]) return;
+    setLoadingPrescriptions((prev) => ({ ...prev, [appointmentId]: true }));
+    try {
+      const res = await prescriptionAPI.getByAppointment(appointmentId);
+      setAppointmentPrescriptions((prev) => ({ ...prev, [appointmentId]: res.data?.data || [] }));
+    } catch (err) {
+      console.error('Error fetching prescriptions:', err);
+    } finally {
+      setLoadingPrescriptions((prev) => ({ ...prev, [appointmentId]: false }));
+    }
+  };
+
+  const handleVoidPrescription = async (prescriptionId, appointmentId) => {
+    if (!window.confirm('¿Está seguro de anular este récipe médico? Esta acción no se puede deshacer.')) return;
+    try {
+      await prescriptionAPI.void(prescriptionId);
+      toast.success('Récipe anulado exitosamente');
+      const res = await prescriptionAPI.getByAppointment(appointmentId);
+      setAppointmentPrescriptions((prev) => ({ ...prev, [appointmentId]: res.data?.data || [] }));
+    } catch (err) {
+      console.error('Error al anular récipe:', err);
+      toast.error('Error al anular el récipe');
+    }
+  };
+
+  const handleDownloadPrescription = async (prescriptionId) => {
+    try {
+      const response = await prescriptionAPI.downloadPdf(prescriptionId);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `recipe-CitaMed-${prescriptionId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error al descargar PDF:', err);
+      toast.error('Error al descargar el PDF del récipe');
+    }
+  };
+
+  const handleSharePrescription = async (prescription, apt) => {
+    try {
+      const response = await prescriptionAPI.downloadPdf(prescription.id);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const patient = apt.patient || {};
+      const patientName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim();
+      await shareRecipe({
+        pdfBlob: blob,
+        verificationCode: prescription.verificationCode,
+        patientName,
+        patientPhone: patient.phone || '',
+        doctorName: `Dr(a). ${doctorProfile?.firstName || ''} ${doctorProfile?.lastName || ''}`.trim(),
+        date: new Intl.DateTimeFormat('es-VE', { timeZone: 'America/Caracas', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date()),
+        isPatientSharing: false
+      });
+    } catch (err) {
+      console.error('Error compartiendo récipe:', err);
+      toast.error('Error al compartir récipe por WhatsApp');
+    }
+  };
 
   const handleOpenCompleteModal = (apt) => {
     setCompleteModal({
       open: true,
       appointmentId: apt.id,
       patientName: `${apt.patient?.firstName || ''} ${apt.patient?.lastName || ''}`.trim(),
+      patientPhone: apt.patient?.phone || '',
       doctorNotes: apt.doctorNotes || '',
       diagnosis: apt.diagnosis || '',
+      showRecipe: false,
+      items: [],
+      indications: '',
+      prescriptionSuccess: null,
       submitting: false
     });
   };
@@ -368,10 +449,40 @@ function DoctorAgendaPage() {
       open: false,
       appointmentId: null,
       patientName: '',
+      patientPhone: '',
       doctorNotes: '',
       diagnosis: '',
+      showRecipe: false,
+      items: [],
+      indications: '',
+      prescriptionSuccess: null,
       submitting: false
     });
+  };
+
+  const handleAddMedicationToModal = () => {
+    setCompleteModal((prev) => ({
+      ...prev,
+      items: [
+        ...prev.items,
+        { medication: '', presentation: '', dose: '', frequency: '', duration: '', instructions: '' }
+      ]
+    }));
+  };
+
+  const handleUpdateMedicationInModal = (index, field, value) => {
+    setCompleteModal((prev) => {
+      const newItems = [...prev.items];
+      newItems[index] = { ...newItems[index], [field]: value };
+      return { ...prev, items: newItems };
+    });
+  };
+
+  const handleRemoveMedicationFromModal = (index) => {
+    setCompleteModal((prev) => ({
+      ...prev,
+      items: prev.items.filter((_, idx) => idx !== index)
+    }));
   };
 
   const handleSubmitComplete = async (e) => {
@@ -384,7 +495,32 @@ function DoctorAgendaPage() {
         doctorNotes: completeModal.doctorNotes.trim() || undefined,
         diagnosis: completeModal.diagnosis.trim() || undefined
       });
-      toast.success('¡Consulta completada exitosamente!');
+
+      const validItems = (completeModal.items || []).filter((i) => i.medication && i.medication.trim());
+      if (completeModal.showRecipe && validItems.length > 0) {
+        try {
+          const prescRes = await prescriptionAPI.create({
+            appointmentId: completeModal.appointmentId,
+            items: validItems,
+            indications: completeModal.indications.trim() || undefined
+          });
+          const createdPresc = prescRes.data?.data;
+          toast.success('¡Consulta completada y récipe emitido!');
+          setCompleteModal((prev) => ({
+            ...prev,
+            submitting: false,
+            prescriptionSuccess: createdPresc
+          }));
+          fetchAppointments();
+          return;
+        } catch (prescErr) {
+          console.error('Error emitiendo récipe:', prescErr);
+          toast.error('Cita completada, pero falló la emisión del récipe: ' + (prescErr.response?.data?.error || prescErr.message));
+        }
+      } else {
+        toast.success('¡Consulta completada exitosamente!');
+      }
+
       handleCloseCompleteModal();
       fetchAppointments();
     } catch (err) {
@@ -838,9 +974,9 @@ function DoctorAgendaPage() {
                                   )}
                                 </div>
 
-                                {/* Detalle de notas médicas y diagnóstico si la cita está completada */}
-                                {isCompleted && (apt.diagnosis || apt.doctorNotes) && (
-                                  <div className="mt-2.5 p-3 bg-teal-50/60 rounded-lg border border-teal-100 text-xs text-gray-700 space-y-1">
+                                {/* Detalle de notas médicas, diagnóstico y récipes si la cita está completada */}
+                                {isCompleted && (
+                                  <div className="mt-2.5 p-3 bg-teal-50/60 rounded-lg border border-teal-100 text-xs text-gray-700 space-y-2">
                                     {apt.diagnosis && (
                                       <div>
                                         <span className="font-semibold text-teal-900">Diagnóstico:</span> {apt.diagnosis}
@@ -851,6 +987,76 @@ function DoctorAgendaPage() {
                                         <span className="font-semibold text-teal-900">Notas clínicas:</span> {apt.doctorNotes}
                                       </div>
                                     )}
+
+                                    {/* Récipes médicos asociados */}
+                                    <div className="pt-2 border-t border-teal-200/60">
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-semibold text-teal-900 flex items-center gap-1">
+                                          <FileText className="w-3.5 h-3.5" />
+                                          Récipes Médicos
+                                        </span>
+                                        {!appointmentPrescriptions[apt.id] && (
+                                          <button
+                                            type="button"
+                                            onClick={() => fetchPrescriptionsForAppointment(apt.id)}
+                                            className="text-primary hover:underline font-medium text-xs"
+                                          >
+                                            {loadingPrescriptions[apt.id] ? 'Cargando...' : 'Ver récipes'}
+                                          </button>
+                                        )}
+                                      </div>
+
+                                      {appointmentPrescriptions[apt.id] && (
+                                        <div className="mt-2 space-y-1.5">
+                                          {appointmentPrescriptions[apt.id].length === 0 ? (
+                                            <p className="text-gray-500 italic">No se emitieron récipes para esta consulta.</p>
+                                          ) : (
+                                            appointmentPrescriptions[apt.id].map((presc) => (
+                                              <div key={presc.id} className="p-2 bg-white rounded border border-teal-100 flex items-center justify-between gap-2">
+                                                <div>
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="font-mono font-bold text-teal-700">{presc.verificationCode}</span>
+                                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${presc.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                      {presc.status === 'active' ? 'Activo' : 'Anulado'}
+                                                    </span>
+                                                  </div>
+                                                  <span className="text-[11px] text-gray-500 block truncate max-w-xs">
+                                                    {presc.items?.map((i) => i.medication).join(', ')}
+                                                  </span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleDownloadPrescription(presc.id)}
+                                                    className="p-1 text-teal-700 hover:bg-teal-50 rounded"
+                                                    title="Descargar PDF"
+                                                  >
+                                                    <Download className="w-4 h-4" />
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleSharePrescription(presc, apt)}
+                                                    className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                                    title="Enviar por WhatsApp"
+                                                  >
+                                                    <Share2 className="w-4 h-4" />
+                                                  </button>
+                                                  {presc.status === 'active' && (
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => handleVoidPrescription(presc.id, apt.id)}
+                                                      className="text-[11px] text-red-600 hover:underline ml-1"
+                                                    >
+                                                      Anular
+                                                    </button>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            ))
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -1237,65 +1443,250 @@ function DoctorAgendaPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleSubmitComplete}>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label htmlFor="agenda-diagnosis" className="block text-sm font-semibold text-gray-700 mb-1">
-                    Diagnóstico (opcional)
-                  </label>
-                  <input
-                    id="agenda-diagnosis"
-                    type="text"
-                    value={completeModal.diagnosis}
-                    onChange={(e) => setCompleteModal((prev) => ({ ...prev, diagnosis: e.target.value }))}
-                    disabled={completeModal.submitting}
-                    placeholder="Ej. Rinofaringitis aguda, Control de rutina..."
-                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  />
+            {completeModal.prescriptionSuccess ? (
+              <div className="p-6 text-center space-y-4">
+                <div className="w-14 h-14 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
+                  <Check className="w-8 h-8" />
                 </div>
                 <div>
-                  <label htmlFor="agenda-notes" className="block text-sm font-semibold text-gray-700 mb-1">
-                    Notas médicas / Observaciones clínicas (opcional)
-                  </label>
-                  <textarea
-                    id="agenda-notes"
-                    rows={4}
-                    value={completeModal.doctorNotes}
-                    onChange={(e) => setCompleteModal((prev) => ({ ...prev, doctorNotes: e.target.value }))}
-                    disabled={completeModal.submitting}
-                    placeholder="Evolución clínica, indicaciones generales o plan terapéutico..."
-                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  />
+                  <h4 className="text-lg font-bold text-gray-900">¡Consulta completada y récipe emitido!</h4>
+                  <p className="text-sm text-gray-500 mt-1">El récipe médico ha sido registrado y certificado en CitaMed.</p>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 inline-block font-mono text-sm text-teal-700 font-bold">
+                  Código: {completeModal.prescriptionSuccess.verificationCode}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadPrescription(completeModal.prescriptionSuccess.id)}
+                    className="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-xl shadow transition flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    Descargar récipe (PDF)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleSharePrescription(completeModal.prescriptionSuccess, {
+                        patient: { firstName: completeModal.patientName, phone: completeModal.patientPhone }
+                      })
+                    }
+                    className="px-4 py-2.5 bg-[#25d366] hover:bg-[#1ebc59] text-white text-sm font-semibold rounded-xl shadow transition flex items-center gap-2"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    Enviar por WhatsApp
+                  </button>
+                </div>
+
+                <div className="pt-4 border-t border-gray-100 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleCloseCompleteModal}
+                    className="px-5 py-2 bg-gray-900 hover:bg-black text-white text-sm font-semibold rounded-xl transition"
+                  >
+                    Finalizar y Cerrar
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={handleCloseCompleteModal}
-                  disabled={completeModal.submitting}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-100 transition"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={completeModal.submitting}
-                  className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl shadow transition flex items-center gap-1.5"
-                >
-                  {completeModal.submitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Guardando...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-4 h-4" />
-                      Completar Consulta
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
+            ) : (
+              <form onSubmit={handleSubmitComplete}>
+                <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                  <div>
+                    <label htmlFor="agenda-diagnosis" className="block text-sm font-semibold text-gray-700 mb-1">
+                      Diagnóstico (opcional)
+                    </label>
+                    <input
+                      id="agenda-diagnosis"
+                      type="text"
+                      value={completeModal.diagnosis}
+                      onChange={(e) => setCompleteModal((prev) => ({ ...prev, diagnosis: e.target.value }))}
+                      disabled={completeModal.submitting}
+                      placeholder="Ej. Rinofaringitis aguda, Control de rutina..."
+                      className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="agenda-notes" className="block text-sm font-semibold text-gray-700 mb-1">
+                      Notas médicas / Observaciones clínicas (opcional)
+                    </label>
+                    <textarea
+                      id="agenda-notes"
+                      rows={3}
+                      value={completeModal.doctorNotes}
+                      onChange={(e) => setCompleteModal((prev) => ({ ...prev, doctorNotes: e.target.value }))}
+                      disabled={completeModal.submitting}
+                      placeholder="Evolución clínica, indicaciones generales o plan terapéutico..."
+                      className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    />
+                  </div>
+
+                  {/* Sección Récipe Médico */}
+                  <div className="pt-3 border-t border-gray-100">
+                    <label className="flex items-center justify-between p-3 bg-teal-50/60 border border-teal-200 rounded-xl cursor-pointer">
+                      <span className="flex items-center gap-2 text-sm font-semibold text-teal-900">
+                        <input
+                          type="checkbox"
+                          checked={completeModal.showRecipe}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setCompleteModal((prev) => ({
+                              ...prev,
+                              showRecipe: checked,
+                              items:
+                                checked && prev.items.length === 0
+                                  ? [
+                                      {
+                                        medication: '',
+                                        presentation: '',
+                                        dose: '',
+                                        frequency: '',
+                                        duration: '',
+                                        instructions: ''
+                                      }
+                                    ]
+                                  : prev.items
+                            }));
+                          }}
+                          className="w-4 h-4 text-teal-600 rounded border-gray-300 focus:ring-teal-500"
+                        />
+                        Emitir Récipe Médico Electrónico
+                      </span>
+                      <span className="text-xs text-teal-700 font-medium">
+                        {completeModal.showRecipe ? 'Ocultar' : 'Agregar medicamentos'}
+                      </span>
+                    </label>
+
+                    {completeModal.showRecipe && (
+                      <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-gray-700">
+                            Medicamentos ({completeModal.items.length})
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleAddMedicationToModal}
+                            disabled={completeModal.submitting}
+                            className="px-2.5 py-1 text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-200 rounded-lg hover:bg-teal-100 transition"
+                          >
+                            + Agregar medicamento
+                          </button>
+                        </div>
+
+                        {completeModal.items.map((item, idx) => (
+                          <div key={idx} className="p-3 bg-white border border-gray-200 rounded-lg space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-teal-800">Medicamento #{idx + 1}</span>
+                              {completeModal.items.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveMedicationFromModal(idx)}
+                                  className="text-xs text-red-500 hover:text-red-700"
+                                >
+                                  Eliminar
+                                </button>
+                              )}
+                            </div>
+                            <input
+                              type="text"
+                              placeholder="Nombre del medicamento (ej. Amoxicilina) *"
+                              value={item.medication}
+                              onChange={(e) => handleUpdateMedicationInModal(idx, 'medication', e.target.value)}
+                              disabled={completeModal.submitting}
+                              required
+                              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs"
+                            />
+                            <div className="grid grid-cols-2 gap-2">
+                              <input
+                                type="text"
+                                placeholder="Presentación (ej. Caps 500mg)"
+                                value={item.presentation}
+                                onChange={(e) => handleUpdateMedicationInModal(idx, 'presentation', e.target.value)}
+                                disabled={completeModal.submitting}
+                                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs"
+                              />
+                              <input
+                                type="text"
+                                placeholder="Dosis (ej. 1 cápsula)"
+                                value={item.dose}
+                                onChange={(e) => handleUpdateMedicationInModal(idx, 'dose', e.target.value)}
+                                disabled={completeModal.submitting}
+                                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs"
+                              />
+                              <input
+                                type="text"
+                                placeholder="Frecuencia (ej. c/8 horas)"
+                                value={item.frequency}
+                                onChange={(e) => handleUpdateMedicationInModal(idx, 'frequency', e.target.value)}
+                                disabled={completeModal.submitting}
+                                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs"
+                              />
+                              <input
+                                type="text"
+                                placeholder="Duración (ej. 7 días)"
+                                value={item.duration}
+                                onChange={(e) => handleUpdateMedicationInModal(idx, 'duration', e.target.value)}
+                                disabled={completeModal.submitting}
+                                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs"
+                              />
+                            </div>
+                            <input
+                              type="text"
+                              placeholder="Instrucciones específicas (ej. Con las comidas)"
+                              value={item.instructions}
+                              onChange={(e) => handleUpdateMedicationInModal(idx, 'instructions', e.target.value)}
+                              disabled={completeModal.submitting}
+                              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs"
+                            />
+                          </div>
+                        ))}
+
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            Indicaciones generales del récipe (opcional)
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={completeModal.indications}
+                            onChange={(e) => setCompleteModal((prev) => ({ ...prev, indications: e.target.value }))}
+                            disabled={completeModal.submitting}
+                            placeholder="Reposo, dieta, abundantes líquidos o recomendaciones de alarma..."
+                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={handleCloseCompleteModal}
+                    disabled={completeModal.submitting}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-100 transition"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={completeModal.submitting}
+                    className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl shadow transition flex items-center gap-1.5"
+                  >
+                    {completeModal.submitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Guardando...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4" />
+                        Completar Consulta
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

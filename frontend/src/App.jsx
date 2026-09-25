@@ -1,4 +1,4 @@
-﻿import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { PermissionsProvider } from './hooks/usePermissions';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -37,6 +37,7 @@ import DoctorWaitingRoomPage from './pages/waitingRoom/DoctorWaitingRoomPage';
 import SalaEsperaPage from './pages/waitingRoom/SalaEsperaPage';
 import MisCitasPage from './pages/appointments/MisCitasPage';
 import AgendarCitaPage from './pages/appointments/AgendarCitaPage';
+import VerificarRecipePage from './pages/public/VerificarRecipePage';
 
 function AppRoutes() {
   return (
@@ -54,6 +55,7 @@ function AppRoutes() {
       <Route path="/clinicas" element={<ClinicasPage />} />
       <Route path="/clinicas/:clinicId" element={<ClinicProfilePage />} />
       <Route path="/seguros" element={<SegurosPage />} />
+      <Route path="/verificar-recipe/:code" element={<VerificarRecipePage />} />
 
       {/* Module Routes */}
       <Route path="/modulo/agendamiento" element={<AgendamientoPage />} />
