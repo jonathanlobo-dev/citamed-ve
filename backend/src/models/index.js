@@ -168,6 +168,11 @@ try {
   db.AvailabilityOverride = AvailabilityOverrideModel(sequelize);
   console.log('  ✅ AvailabilityOverride cargado');
 
+  // M03 / Semana 5 - Récipes Médicos
+  const PrescriptionModel = require('./Prescription');
+  db.Prescription = PrescriptionModel(sequelize);
+  console.log('  ✅ Prescription cargado');
+
   console.log('✅ Todos los modelos cargados exitosamente\n');
 } catch (error) {
   console.error('❌ Error cargando modelos:', error.message);
@@ -741,6 +746,43 @@ try {
     onDelete: 'CASCADE'
   });
   console.log('  ✅ AvailabilityOverride <-> DoctorProfile');
+
+  // ═══════════════════════════════════════════════════════════════
+  // M03 / Semana 5 - Récipes Médicos
+  // ═══════════════════════════════════════════════════════════════
+
+  // PRESCRIPTION <-> APPOINTMENT (N:1)
+  db.Prescription.belongsTo(db.Appointment, {
+    foreignKey: 'appointmentId',
+    as: 'appointment'
+  });
+  db.Appointment.hasMany(db.Prescription, {
+    foreignKey: 'appointmentId',
+    as: 'prescriptions'
+  });
+  console.log('  ✅ Prescription <-> Appointment');
+
+  // PRESCRIPTION <-> USER (Doctor) (N:1)
+  db.Prescription.belongsTo(db.User, {
+    foreignKey: 'doctorId',
+    as: 'doctor'
+  });
+  db.User.hasMany(db.Prescription, {
+    foreignKey: 'doctorId',
+    as: 'prescriptionsIssued'
+  });
+  console.log('  ✅ Prescription <-> User (Doctor)');
+
+  // PRESCRIPTION <-> USER (Patient) (N:1)
+  db.Prescription.belongsTo(db.User, {
+    foreignKey: 'patientId',
+    as: 'patient'
+  });
+  db.User.hasMany(db.Prescription, {
+    foreignKey: 'patientId',
+    as: 'prescriptionsReceived'
+  });
+  console.log('  ✅ Prescription <-> User (Patient)');
 
   console.log('✅ Asociaciones establecidas correctamente\n');
 } catch (error) {

@@ -103,6 +103,7 @@ const searchRoutes = require("./routes/search");
 const appointmentRoutes = require("./routes/appointments");
 const waitingRoomRoutes = require("./routes/waitingRoom");
 const clinicRoutes = require("./routes/clinics");
+const prescriptionRoutes = require("./routes/prescriptions");
 
 // ==================== USAR RUTAS ====================
 // Auth routes con rate limiting estricto (5 req/15min)
@@ -132,6 +133,7 @@ app.use("/api/search", searchLimiter, searchRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/waiting-room", waitingRoomRoutes);
 app.use("/api/clinics", clinicRoutes);
+app.use("/api/prescriptions", prescriptionRoutes);
 
 // ==================== RUTAS BÁSICAS ====================
 app.get("/", (req, res) => {
