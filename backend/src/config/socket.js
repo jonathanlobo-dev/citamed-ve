@@ -11,6 +11,21 @@
  */
 
 const { Server } = require('socket.io');
+
+let io = null;
+
+/**
+ * Obtener instancia de Socket.io
+ */
+const getIO = () => {
+  if (!io) {
+    throw new Error('[Socket.io] Not initialized. Call initializeSocket first.');
+  }
+  return io;
+};
+
+module.exports.getIO = getIO;
+
 const { socketAuthMiddleware } = require('../middleware/socketAuth');
 const { EVENTS } = require('../socket/events');
 const waitingRoomHandler = require('../socket/handlers/waitingRoom');
@@ -61,8 +76,6 @@ const stats = {
   authFailures: 0,
   rooms: new Map()
 };
-
-let io = null;
 
 /**
  * Inicializar servidor Socket.io
@@ -254,16 +267,6 @@ const cleanupSocketFromRooms = (socketId) => {
       stats.rooms.delete(roomName);
     }
   }
-};
-
-/**
- * Obtener instancia de Socket.io
- */
-const getIO = () => {
-  if (!io) {
-    throw new Error('[Socket.io] Not initialized. Call initializeSocket first.');
-  }
-  return io;
 };
 
 /**
