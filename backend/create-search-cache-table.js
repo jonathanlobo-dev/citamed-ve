@@ -94,6 +94,8 @@ async function runMigration() {
         UNIQUE(doctor_id)
       );
     `);
+    // Supabase expone el esquema public por PostgREST: sin RLS la tabla queda legible con la llave anon.
+    await sequelize.query('ALTER TABLE doctor_search_cache ENABLE ROW LEVEL SECURITY');
     console.log('  doctor_search_cache table created');
 
     // ═══════════════════════════════════════════════════════════════
@@ -272,7 +274,7 @@ async function runMigration() {
           profile_photo = EXCLUDED.profile_photo,
           last_updated = CURRENT_TIMESTAMP;
       END;
-      $$ LANGUAGE plpgsql;
+      $$ LANGUAGE plpgsql SET search_path = public;
     `);
     console.log('  update_doctor_search_cache function created');
 
@@ -304,7 +306,7 @@ async function runMigration() {
 
         RETURN COALESCE(NEW, OLD);
       END;
-      $$ LANGUAGE plpgsql;
+      $$ LANGUAGE plpgsql SET search_path = public;
     `);
     console.log('  trigger_update_search_cache function created');
 

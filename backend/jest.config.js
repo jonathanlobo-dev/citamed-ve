@@ -1,5 +1,6 @@
 module.exports = {
   testEnvironment: 'node',
+  setupFiles: ['<rootDir>/jest.guard.js'],
   coverageDirectory: 'coverage',
   collectCoverageFrom: [
     'src/**/*.js',

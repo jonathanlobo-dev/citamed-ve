@@ -280,7 +280,7 @@ function VerificationCard({
             </div>
 
             {/* Nota sobre código en desarrollo */}
-            {process.env.NODE_ENV === 'development' && (
+            {import.meta.env.DEV && (
               <div className="bg-yellow-50 rounded-lg p-3 mt-4">
                 <p className="text-xs text-yellow-800 text-center">
                   <strong>Modo desarrollo:</strong> Usa el código <span className="font-mono font-bold">123456</span>

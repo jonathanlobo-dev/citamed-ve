@@ -45,3 +45,19 @@ temp/
 # Backups
 *.backup
 CLAUDE.md
+
+# Documentos de negocio y planificacion (no se versionan)
+INFORME_*
+ROADMAP*
+PLAN_*
+PROPUESTAS_*
+Q1_AUDITORIA*
+CITAMED_VE_PLAN_*
+CONTROL_*
+PLANIFICACION*
+presentacion_*.html
+/*.docx
+/*.pdf
+/*.xlsx
+~$*
+_archivados/
