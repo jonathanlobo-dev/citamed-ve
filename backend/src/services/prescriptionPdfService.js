@@ -27,6 +27,12 @@ function formatCaracasDate(date) {
   }
 }
 
+function doctorTitle(gender) {
+  if (gender === 'female') return 'Dra.';
+  if (gender === 'male') return 'Dr.';
+  return 'Dr(a).';
+}
+
 /**
  * Calcula la edad a partir de la fecha de nacimiento
  */
@@ -60,7 +66,7 @@ async function generatePrescriptionPdf(prescription) {
   const clinic = appointment.clinic || {};
   const clinicLocation = appointment.clinicLocation || {};
 
-  const doctorFullName = `Dr(a). ${doctorProfile.firstName || doctor.firstName || ''} ${doctorProfile.lastName || doctor.lastName || ''}`.trim();
+  const doctorFullName = `${doctorTitle(doctor.gender)} ${doctorProfile.firstName || doctor.firstName || ''} ${doctorProfile.lastName || doctor.lastName || ''}`.trim();
   const patientFullName = `${patientProfile.firstName || patient.firstName || ''} ${patientProfile.lastName || patient.lastName || ''}`.trim();
   
   const mpps = doctorProfile.mppsNumber || doctorProfile.mpps_number || 'N/A';
@@ -161,6 +167,7 @@ async function generatePrescriptionPdf(prescription) {
       .font('Helvetica').text(ageDisplay, 380, patientY + 24);
 
     doc.y = patientY + 50;
+    doc.x = 40;
 
     // Sección "Rp." (Récipe)
     doc.moveDown(0.6);
@@ -209,6 +216,9 @@ async function generatePrescriptionPdf(prescription) {
 
     // Pie de página fijo al final
     const footerTop = 640;
+    if (doc.y > footerTop - 10) {
+      doc.addPage();
+    }
     
     // Línea separadora pie
     doc.strokeColor('#e2e8f0').lineWidth(0.8).moveTo(40, footerTop).lineTo(572, footerTop).stroke();
@@ -242,5 +252,6 @@ async function generatePrescriptionPdf(prescription) {
 
 module.exports = {
   generatePrescriptionPdf,
+  doctorTitle,
   formatCaracasDate
 };

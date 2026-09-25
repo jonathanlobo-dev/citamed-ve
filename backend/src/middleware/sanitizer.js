@@ -16,24 +16,18 @@ const hpp = require('hpp');
  * @param {string} str - String a sanitizar
  * @returns {string} - String sanitizado
  */
+// No se codifican entidades HTML al guardar: el texto se almacena tal cual y React lo escapa al mostrarlo.
+// Codificar en la entrada corrompía datos legítimos ("875/125 mg" -> "875&#x2F;125 mg").
 const sanitizeXSS = (str) => {
   if (typeof str !== 'string') return str;
 
   return str
-    // Remover tags HTML/script
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<[^>]*>/g, '')
-    // Encode caracteres peligrosos
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;')
-    // Remover javascript: URLs
-    .replace(/javascript:/gi, '')
-    .replace(/on\w+=/gi, '');
+    .replace(/<\/?[a-zA-Z!][^>]*>/g, '')
+    .replace(/javascript:/gi, '');
 };
+
+const PASSWORD_KEYS = new Set(['password', 'confirmPassword', 'currentPassword', 'newPassword', 'oldPassword']);
 
 /**
  * Sanitizar objeto recursivamente
@@ -54,9 +48,8 @@ const sanitizeObject = (obj) => {
   if (typeof obj === 'object') {
     const sanitized = {};
     for (const [key, value] of Object.entries(obj)) {
-      // También sanitizar keys
       const sanitizedKey = sanitizeXSS(key);
-      sanitized[sanitizedKey] = sanitizeObject(value);
+      sanitized[sanitizedKey] = PASSWORD_KEYS.has(key) ? value : sanitizeObject(value);
     }
     return sanitized;
   }

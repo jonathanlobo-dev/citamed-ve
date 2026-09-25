@@ -4,8 +4,14 @@
  */
 
 const crypto = require('crypto');
+const { doctorTitle } = require('./prescriptionPdfService');
 const db = require('../models');
 const { Prescription, Appointment, User, DoctorProfile, PatientProfile, Specialty, Clinic, ClinicLocation } = db;
+
+const MAX_ITEMS = 20;
+const MAX_FIELD_LENGTH = 300;
+const MAX_INDICATIONS_LENGTH = 2000;
+const ITEM_FIELDS = ['medication', 'presentation', 'quantity', 'dose', 'frequency', 'duration', 'instructions'];
 
 /**
  * Helper para obtener iniciales del paciente
@@ -34,13 +40,32 @@ async function createPrescription({ appointmentId, user, items, indications }) {
     throw error;
   }
 
+  if (items.length > MAX_ITEMS) {
+    const error = new Error(`El récipe admite máximo ${MAX_ITEMS} medicamentos`);
+    error.status = 400;
+    throw error;
+  }
+
   for (const item of items) {
-    if (!item.medication || typeof item.medication !== 'string' || !item.medication.trim()) {
+    if (!item || typeof item.medication !== 'string' || !item.medication.trim()) {
       const error = new Error('Cada medicamento debe tener un nombre válido');
       error.status = 400;
       throw error;
     }
   }
+
+  const cleanItems = items.map((item) => {
+    const clean = {};
+    for (const field of ITEM_FIELDS) {
+      if (typeof item[field] === 'string' && item[field].trim()) {
+        clean[field] = item[field].trim().slice(0, MAX_FIELD_LENGTH);
+      }
+    }
+    return clean;
+  });
+  const cleanIndications = typeof indications === 'string' && indications.trim()
+    ? indications.trim().slice(0, MAX_INDICATIONS_LENGTH)
+    : null;
 
   const appointment = await Appointment.findByPk(appointmentId);
   if (!appointment) {
@@ -69,8 +94,8 @@ async function createPrescription({ appointmentId, user, items, indications }) {
     appointmentId: appointment.id,
     doctorId: appointment.doctorId,
     patientId: appointment.patientId,
-    items,
-    indications: indications || null,
+    items: cleanItems,
+    indications: cleanIndications,
     verificationCode,
     status: 'active'
   });
@@ -87,7 +112,7 @@ async function getPrescriptionWithDetails(id) {
       {
         model: User,
         as: 'doctor',
-        attributes: ['id', 'firstName', 'lastName', 'email', 'phone'],
+        attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'gender'],
         include: [
           {
             model: DoctorProfile,
@@ -201,7 +226,7 @@ async function verifyPrescription(code) {
       {
         model: User,
         as: 'doctor',
-        attributes: ['id', 'firstName', 'lastName'],
+        attributes: ['id', 'firstName', 'lastName', 'gender'],
         include: [
           {
             model: DoctorProfile,
@@ -235,7 +260,7 @@ async function verifyPrescription(code) {
 
   const doctor = prescription.doctor || {};
   const docProfile = doctor.doctorProfile || {};
-  const doctorName = `Dr(a). ${docProfile.firstName || doctor.firstName || ''} ${docProfile.lastName || doctor.lastName || ''}`.trim();
+  const doctorName = `${doctorTitle(doctor.gender)} ${docProfile.firstName || doctor.firstName || ''} ${docProfile.lastName || doctor.lastName || ''}`.trim();
   const specialty = docProfile.specialty?.name || 'Medicina General';
   const mpps = docProfile.mppsNumber || docProfile.mpps_number || 'N/A';
 
