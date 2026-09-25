@@ -31,7 +31,7 @@ import {
 import Navbar from '../../components/common/Navbar/Navbar';
 import appointmentService from '../../services/appointmentService';
 import prescriptionAPI from '../../services/prescriptionService';
-import { shareRecipe } from '../../utils/shareRecipe';
+import { shareRecipe, prefetchRecipePdf } from '../../utils/shareRecipe';
 import toast from 'react-hot-toast';
 import './MisCitasPage.css';
 
@@ -42,10 +42,25 @@ const MisCitasPage = () => {
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all'); // all, upcoming, past, cancelled
   const [recipeLoadingId, setRecipeLoadingId] = useState(null);
+  const [recipesByAppointment, setRecipesByAppointment] = useState({});
 
   useEffect(() => {
     fetchAppointments();
   }, []);
+
+  useEffect(() => {
+    appointments
+      .filter((apt) => apt.status === 'completed' && !(apt.id in recipesByAppointment))
+      .forEach((apt) => {
+        prescriptionAPI.getByAppointment(apt.id)
+          .then((res) => {
+            const prescription = (res.data?.data || [])[0] || null;
+            setRecipesByAppointment((prev) => ({ ...prev, [apt.id]: prescription }));
+            if (prescription) prefetchRecipePdf(prescription.id, prescriptionAPI.downloadPdf);
+          })
+          .catch(() => setRecipesByAppointment((prev) => ({ ...prev, [apt.id]: null })));
+      });
+  }, [appointments]);
 
   const fetchAppointments = async () => {
     try {
@@ -229,35 +244,25 @@ const MisCitasPage = () => {
     }
   };
 
-  const handleSharePatientRecipe = async (appointment) => {
-    setRecipeLoadingId(appointment.id);
-    try {
-      const res = await prescriptionAPI.getByAppointment(appointment.id);
-      const list = res.data?.data || [];
-      if (list.length === 0) {
-        toast.error('Esta consulta no tiene récipes médicos emitidos.');
-        return;
-      }
-      const prescription = list[0];
-
-      const pdfRes = await prescriptionAPI.downloadPdf(prescription.id);
-      const blob = new Blob([pdfRes.data], { type: 'application/pdf' });
-      const doctor = appointment.doctor || {};
-      const doctorName = `Dr(a). ${doctor.firstName || ''} ${doctor.lastName || ''}`.trim();
-
-      await shareRecipe({
-        pdfBlob: blob,
-        verificationCode: prescription.verificationCode,
-        doctorName: doctorName || 'tu médico',
-        date: appointment.appointmentDate || 'reciente',
-        isPatientSharing: true
-      });
-    } catch (err) {
-      console.error('Error al compartir récipe:', err);
-      toast.error('Error al compartir récipe');
-    } finally {
-      setRecipeLoadingId(null);
+  const handleSharePatientRecipe = (appointment) => {
+    if (!(appointment.id in recipesByAppointment)) {
+      toast('Preparando tu récipe, intenta de nuevo en un momento.');
+      return;
     }
+    const prescription = recipesByAppointment[appointment.id];
+    if (!prescription) {
+      toast.error('Esta consulta no tiene récipes médicos emitidos.');
+      return;
+    }
+    const doctor = appointment.doctor || {};
+    const doctorName = `Dr(a). ${doctor.firstName || ''} ${doctor.lastName || ''}`.trim();
+    shareRecipe({
+      prescriptionId: prescription.id,
+      verificationCode: prescription.verificationCode,
+      doctorName: doctorName || 'tu médico',
+      date: appointment.appointmentDate || 'reciente',
+      isPatientSharing: true
+    });
   };
 
   const formatDate = (dateStr) => {

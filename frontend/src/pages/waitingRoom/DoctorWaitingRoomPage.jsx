@@ -12,7 +12,7 @@ import useWaitingRoom from '../../hooks/useWaitingRoom';
 import { useAuth } from '../../context/AuthContext';
 import appointmentService from '../../services/appointmentService';
 import prescriptionAPI from '../../services/prescriptionService';
-import { shareRecipe } from '../../utils/shareRecipe';
+import { shareRecipe, prefetchRecipePdf } from '../../utils/shareRecipe';
 import './DoctorWaitingRoomPage.css';
 
 const API_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
@@ -298,12 +298,16 @@ const DoctorWaitingRoomPage = () => {
     }
   };
 
-  const handleSharePrescriptionWhatsApp = async (prescription) => {
+  useEffect(() => {
+    if (endModal.prescriptionSuccess?.id) {
+      prefetchRecipePdf(endModal.prescriptionSuccess.id, prescriptionAPI.downloadPdf);
+    }
+  }, [endModal.prescriptionSuccess?.id]);
+
+  const handleSharePrescriptionWhatsApp = (prescription) => {
     try {
-      const response = await prescriptionAPI.downloadPdf(prescription.id);
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      await shareRecipe({
-        pdfBlob: blob,
+      shareRecipe({
+        prescriptionId: prescription.id,
         verificationCode: prescription.verificationCode,
         patientName: endModal.patientName,
         patientPhone: endModal.patientPhone,

@@ -21,21 +21,40 @@ export function normalizePhone58(phone) {
   return '58' + digits;
 }
 
+// Los navegadores solo permiten abrir ventanas o el menú de compartir durante el clic.
+// Por eso el PDF se descarga por adelantado y shareRecipe nunca espera una petición antes de compartir.
+const pdfCache = new Map();
+const pendingPdf = new Map();
+
+export function prefetchRecipePdf(prescriptionId, downloadPdf) {
+  if (!prescriptionId || pdfCache.has(prescriptionId) || pendingPdf.has(prescriptionId)) return;
+  const request = downloadPdf(prescriptionId)
+    .then((res) => pdfCache.set(prescriptionId, new Blob([res.data], { type: 'application/pdf' })))
+    .catch(() => {})
+    .finally(() => pendingPdf.delete(prescriptionId));
+  pendingPdf.set(prescriptionId, request);
+}
+
+export function getCachedRecipePdf(prescriptionId) {
+  return pdfCache.get(prescriptionId) || null;
+}
+
+function openWhatsApp(waUrl) {
+  const win = window.open(waUrl, '_blank');
+  if (win) {
+    win.opener = null;
+  } else {
+    window.location.href = waUrl;
+  }
+}
+
 /**
- * Comparte el récipe médico:
- * 1. Intenta Web Share API con archivo adjunto (móviles)
- * 2. Si no se soporta o falla, abre WhatsApp con mensaje y enlace de verificación
- *
- * @param {Object} params
- * @param {Blob} params.pdfBlob - Blob del archivo PDF
- * @param {string} params.verificationCode - Código único de verificación
- * @param {string} params.patientName - Nombre del paciente
- * @param {string} params.doctorName - Nombre del doctor (con Dr/Dra)
- * @param {string} params.date - Fecha formateada de emisión
- * @param {string} [params.patientPhone] - Teléfono del paciente (si comparte el médico)
- * @param {boolean} [params.isPatientSharing=false] - True si el paciente lo comparte
+ * Comparte el récipe médico. Debe llamarse directamente desde el clic, sin await previos.
+ * En teléfonos con el PDF ya descargado, adjunta el archivo con el menú de compartir;
+ * en los demás casos abre WhatsApp con el mensaje y el enlace de verificación.
  */
-export async function shareRecipe({
+export function shareRecipe({
+  prescriptionId,
   pdfBlob,
   verificationCode,
   patientName = 'Paciente',
@@ -49,36 +68,28 @@ export async function shareRecipe({
     ? `Hola, comparto mi récipe médico emitido por ${doctorName} el ${date}. Puedes verificar su autenticidad aquí: ${verifyLink}`
     : `Hola ${patientName}, te envío tu récipe médico emitido por ${doctorName} el ${date}. Puedes verificar que es auténtico aquí: ${verifyLink}`;
 
-  // 1. Probar Web Share API con archivos si está disponible
-  if (pdfBlob && navigator.canShare) {
-    try {
-      const file = new File([pdfBlob], `recipe-CitaMed-${verificationCode}.pdf`, {
-        type: 'application/pdf'
-      });
-
-      if (navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: `Récipe Médico CitaMed - ${patientName}`,
-          text: shareText
-        });
-        return { success: true, method: 'web-share' };
-      }
-    } catch (err) {
-      if (err.name === 'AbortError') {
-        // El usuario canceló el diálogo de compartir
-        return { success: false, aborted: true };
-      }
-      console.warn('Web Share API falló, usando fallback de WhatsApp:', err);
-    }
-  }
-
-  // 2. Fallback a WhatsApp
   const phoneDigits = !isPatientSharing && patientPhone ? normalizePhone58(patientPhone) : '';
   const waUrl = phoneDigits
     ? `https://wa.me/${phoneDigits}?text=${encodeURIComponent(shareText)}`
     : `https://wa.me/?text=${encodeURIComponent(shareText)}`;
 
-  window.open(waUrl, '_blank', 'noopener,noreferrer');
-  return { success: true, method: 'whatsapp' };
+  const blob = pdfBlob || getCachedRecipePdf(prescriptionId);
+  const isTouchDevice = window.matchMedia?.('(pointer: coarse)').matches;
+
+  if (blob && isTouchDevice && navigator.canShare) {
+    const file = new File([blob], `recipe-CitaMed-${verificationCode}.pdf`, { type: 'application/pdf' });
+    if (navigator.canShare({ files: [file] })) {
+      return navigator
+        .share({ files: [file], title: `Récipe Médico CitaMed - ${patientName}`, text: shareText })
+        .then(() => ({ success: true, method: 'web-share' }))
+        .catch((err) => {
+          if (err.name === 'AbortError') return { success: false, aborted: true };
+          window.location.href = waUrl;
+          return { success: true, method: 'whatsapp' };
+        });
+    }
+  }
+
+  openWhatsApp(waUrl);
+  return Promise.resolve({ success: true, method: 'whatsapp' });
 }

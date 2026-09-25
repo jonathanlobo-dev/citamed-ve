@@ -18,8 +18,9 @@ import Navbar from '../../components/common/Navbar/Navbar';
 import doctorService from '../../services/doctorService';
 import appointmentService from '../../services/appointmentService';
 import prescriptionAPI from '../../services/prescriptionService';
-import { shareRecipe } from '../../utils/shareRecipe';
+import { shareRecipe, prefetchRecipePdf } from '../../utils/shareRecipe';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
 
 // Orden de display: Lunes → Domingo (dayOfWeek: 0=Domingo, 1=Lunes, ..., 6=Sábado)
 const DISPLAY_DAYS = [1, 2, 3, 4, 5, 6, 0];
@@ -186,6 +187,7 @@ function DayRow({ day, onToggle, onAddBlock, onRemoveBlock, onUpdateBlock }) {
 
 function DoctorAgendaPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // Pestaña activa: 'appointments' (citas) o 'availability' (horarios)
   const [activeTab, setActiveTab] = useState('appointments');
@@ -396,7 +398,9 @@ function DoctorAgendaPage() {
     setLoadingPrescriptions((prev) => ({ ...prev, [appointmentId]: true }));
     try {
       const res = await prescriptionAPI.getByAppointment(appointmentId);
-      setAppointmentPrescriptions((prev) => ({ ...prev, [appointmentId]: res.data?.data || [] }));
+      const list = res.data?.data || [];
+      setAppointmentPrescriptions((prev) => ({ ...prev, [appointmentId]: list }));
+      list.forEach((presc) => prefetchRecipePdf(presc.id, prescriptionAPI.downloadPdf));
     } catch (err) {
       console.error('Error fetching prescriptions:', err);
     } finally {
@@ -435,18 +439,16 @@ function DoctorAgendaPage() {
     }
   };
 
-  const handleSharePrescription = async (prescription, apt) => {
+  const handleSharePrescription = (prescription, apt) => {
     try {
-      const response = await prescriptionAPI.downloadPdf(prescription.id);
-      const blob = new Blob([response.data], { type: 'application/pdf' });
       const patient = apt.patient || {};
       const patientName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim();
-      await shareRecipe({
-        pdfBlob: blob,
+      shareRecipe({
+        prescriptionId: prescription.id,
         verificationCode: prescription.verificationCode,
         patientName,
         patientPhone: patient.phone || '',
-        doctorName: `Dr(a). ${doctorProfile?.firstName || ''} ${doctorProfile?.lastName || ''}`.trim(),
+        doctorName: `Dr(a). ${user?.firstName || ''} ${user?.lastName || ''}`.trim(),
         date: new Intl.DateTimeFormat('es-VE', { timeZone: 'America/Caracas', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date()),
         isPatientSharing: false
       });
@@ -546,6 +548,7 @@ function DoctorAgendaPage() {
             indications: completeModal.indications.trim() || undefined
           });
           const createdPresc = prescRes.data?.data;
+          if (createdPresc?.id) prefetchRecipePdf(createdPresc.id, prescriptionAPI.downloadPdf);
           toast.success('¡Consulta completada y récipe emitido!');
           setCompleteModal((prev) => ({
             ...prev,
