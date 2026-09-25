@@ -779,6 +779,12 @@ class AppointmentService {
 
     this._assertDoctorOwnership(appointment, user);
 
+    if (appointment.status !== 'confirmed') {
+      const err = new Error('Solo se puede marcar inasistencia en citas confirmadas');
+      err.statusCode = 400;
+      throw err;
+    }
+
     appointment.status = 'no_show';
     await appointment.addStatusHistory('no_show', 'Paciente no asistió');
     await appointment.save();

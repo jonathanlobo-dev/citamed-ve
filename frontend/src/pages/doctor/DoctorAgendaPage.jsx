@@ -900,14 +900,14 @@ function DoctorAgendaPage() {
                                     <CheckCircle className="w-4 h-4" />
                                     Completar
                                   </button>
-                                  <button
+                                  {isConfirmed && <button
                                     type="button"
                                     onClick={() => handleMarkNoShow(apt.id)}
                                     className="px-3 py-2 border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium rounded-lg transition flex items-center gap-1"
                                     title="Marcar paciente como no asistió"
                                   >
                                     No asistió
-                                  </button>
+                                  </button>}
                                   <button
                                     type="button"
                                     onClick={() => handleCancelAppointment(apt.id)}
