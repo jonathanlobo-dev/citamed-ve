@@ -28,8 +28,8 @@ function formatCaracasDate(date) {
 }
 
 function doctorTitle(gender) {
-  if (gender === 'female') return 'Dra.';
-  if (gender === 'male') return 'Dr.';
+  if (gender === 'femenino' || gender === 'female') return 'Dra.';
+  if (gender === 'masculino' || gender === 'male') return 'Dr.';
   return 'Dr(a).';
 }
 
