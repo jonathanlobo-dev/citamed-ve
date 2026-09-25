@@ -331,6 +331,84 @@ class AppointmentController {
       });
     }
   }
+
+  /**
+   * PUT /api/appointments/:id/complete
+   * Completar una consulta con notas y diagnóstico
+   */
+  async complete(req, res) {
+    try {
+      const { id } = req.params;
+      const { doctorNotes, diagnosis, actualDuration } = req.body;
+      const appointment = await appointmentService.completeAppointment(id, req.user, {
+        doctorNotes,
+        diagnosis,
+        actualDuration
+      });
+      res.json({
+        success: true,
+        message: 'Consulta completada exitosamente',
+        data: appointment
+      });
+    } catch (error) {
+      console.error('[AppointmentController] complete error:', error);
+      const status = error.statusCode || 400;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * PUT /api/appointments/:id/no-show
+   * Marcar inasistencia del paciente
+   */
+  async noShow(req, res) {
+    try {
+      const { id } = req.params;
+      const appointment = await appointmentService.markAppointmentNoShow(id, req.user);
+      res.json({
+        success: true,
+        message: 'Cita marcada como no asistió',
+        data: appointment
+      });
+    } catch (error) {
+      console.error('[AppointmentController] noShow error:', error);
+      const status = error.statusCode || 400;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * PUT /api/appointments/:id/notes
+   * Actualizar notas y diagnóstico de la cita
+   */
+  async updateNotes(req, res) {
+    try {
+      const { id } = req.params;
+      const { doctorNotes, diagnosis } = req.body;
+      const appointment = await appointmentService.updateAppointmentNotes(id, req.user, {
+        doctorNotes,
+        diagnosis
+      });
+      res.json({
+        success: true,
+        message: 'Notas de la cita actualizadas',
+        data: appointment
+      });
+    } catch (error) {
+      console.error('[AppointmentController] updateNotes error:', error);
+      const status = error.statusCode || 400;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 }
 
 module.exports = new AppointmentController();

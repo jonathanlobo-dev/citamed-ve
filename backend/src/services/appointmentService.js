@@ -7,6 +7,7 @@
 
 const { Op } = require('sequelize');
 const db = require('../models');
+const { todayCaracas, nowTimeCaracas } = require('../utils/dateCaracas');
 
 const {
   Appointment,
@@ -89,21 +90,9 @@ class AppointmentService {
       return { start, end };
     });
 
-    // Calcular fecha y hora actual en Venezuela (UTC-4)
-    const now = new Date();
-    const veDateParts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/Caracas',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    }).formatToParts(now);
-
-    const getPart = (type) => veDateParts.find(p => p.type === type)?.value;
-    const todayStr = `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
-    const currentTimeStr = `${getPart('hour')}:${getPart('minute')}`;
+    // Calcular fecha y hora actual en Venezuela (UTC-4) con helper centralizado
+    const todayStr = todayCaracas();
+    const currentTimeStr = nowTimeCaracas();
 
     // 4. Generar slots disponibles
     const allSlots = [];
@@ -309,10 +298,41 @@ class AppointmentService {
 
     await appointment.save();
 
-    // Remover de la cola si existe
-    await WaitingQueue.destroy({
+    // Actualizar estado en la cola si existe y sincronizar posiciones
+    const queueEntry = await WaitingQueue.findOne({
       where: { appointmentId }
     });
+
+    if (queueEntry) {
+      const { doctorId, position } = queueEntry;
+      queueEntry.status = 'cancelled';
+      await queueEntry.save();
+
+      // Recalcular posiciones del día
+      const today = todayCaracas();
+      const entriesToShift = await WaitingQueue.findAll({
+        where: {
+          doctorId,
+          position: { [Op.gt]: position },
+          status: { [Op.in]: ['waiting', 'checked_in'] }
+        },
+        include: [{
+          model: Appointment,
+          as: 'appointment',
+          where: { appointmentDate: today },
+          required: true,
+          attributes: ['id']
+        }]
+      });
+
+      const shiftIds = entriesToShift.map(e => e.id);
+      if (shiftIds.length > 0) {
+        await WaitingQueue.update(
+          { position: db.sequelize.literal('position - 1') },
+          { where: { id: { [Op.in]: shiftIds } } }
+        );
+      }
+    }
 
     return appointment;
   }
@@ -388,10 +408,10 @@ class AppointmentService {
     if (startDate && endDate) {
       dateFilter = { [Op.between]: [startDate, endDate] };
     } else if (date) {
-      const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0];
+      const dateStr = typeof date === 'string' ? date : todayCaracas(date);
       dateFilter = dateStr;
     } else {
-      dateFilter = new Date().toISOString().split('T')[0];
+      dateFilter = todayCaracas();
     }
 
     const whereClause = {
@@ -441,7 +461,7 @@ class AppointmentService {
    * Obtener proximas citas de un paciente
    */
   async getPatientUpcomingAppointments(patientId) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayCaracas();
 
     const appointments = await Appointment.findAll({
       where: {
@@ -652,6 +672,175 @@ class AppointmentService {
       customHours: true,
       reason: override.reason
     };
+  }
+
+  _assertDoctorOwnership(appointment, user) {
+    if (!user) {
+      const err = new Error('No autenticado');
+      err.statusCode = 401;
+      throw err;
+    }
+    if (user.role === 'admin') return true;
+    if (user.role === 'doctor' && appointment.doctorId === user.id) return true;
+    const err = new Error('No tienes permiso para gestionar esta cita');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  /**
+   * Completar una cita con notas y diagnóstico
+   */
+  async completeAppointment(appointmentId, user, { doctorNotes, diagnosis, actualDuration } = {}) {
+    const appointment = await Appointment.findByPk(appointmentId);
+
+    if (!appointment) {
+      const err = new Error('Cita no encontrada');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    this._assertDoctorOwnership(appointment, user);
+
+    if (!['confirmed', 'in_progress'].includes(appointment.status)) {
+      const err = new Error('Solo se pueden completar citas confirmadas o en curso');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    appointment.status = 'completed';
+    appointment.checkOutTime = new Date();
+    if (doctorNotes !== undefined) appointment.doctorNotes = doctorNotes;
+    if (diagnosis !== undefined) appointment.diagnosis = diagnosis;
+    if (actualDuration) appointment.actualDuration = actualDuration;
+
+    await appointment.addStatusHistory('completed', 'Consulta finalizada por el médico');
+    await appointment.save();
+
+    // Sincronizar entrada en cola si existe
+    const queueEntry = await WaitingQueue.findOne({
+      where: { appointmentId }
+    });
+
+    if (queueEntry && queueEntry.status !== 'completed') {
+      const duration = queueEntry.consultationStart
+        ? Math.round((new Date() - new Date(queueEntry.consultationStart)) / 60000)
+        : (appointment.actualDuration || 20);
+
+      queueEntry.status = 'completed';
+      queueEntry.consultationEnd = new Date();
+      queueEntry.consultationDurationMinutes = duration;
+      await queueEntry.save();
+
+      if (!appointment.actualDuration) {
+        appointment.actualDuration = duration;
+        await appointment.save();
+      }
+
+      // Recalcular posiciones del día
+      const today = todayCaracas();
+      const entriesToShift = await WaitingQueue.findAll({
+        where: {
+          doctorId: queueEntry.doctorId,
+          position: { [Op.gt]: queueEntry.position },
+          status: { [Op.in]: ['waiting', 'checked_in'] }
+        },
+        include: [{
+          model: Appointment,
+          as: 'appointment',
+          where: { appointmentDate: today },
+          required: true,
+          attributes: ['id']
+        }]
+      });
+
+      const shiftIds = entriesToShift.map(e => e.id);
+      if (shiftIds.length > 0) {
+        await WaitingQueue.update(
+          { position: db.sequelize.literal('position - 1') },
+          { where: { id: { [Op.in]: shiftIds } } }
+        );
+      }
+    }
+
+    return appointment;
+  }
+
+  /**
+   * Marcar cita como no asistió (no-show)
+   */
+  async markAppointmentNoShow(appointmentId, user) {
+    const appointment = await Appointment.findByPk(appointmentId);
+
+    if (!appointment) {
+      const err = new Error('Cita no encontrada');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    this._assertDoctorOwnership(appointment, user);
+
+    appointment.status = 'no_show';
+    await appointment.addStatusHistory('no_show', 'Paciente no asistió');
+    await appointment.save();
+
+    // Sincronizar cola si existe
+    const queueEntry = await WaitingQueue.findOne({
+      where: { appointmentId }
+    });
+
+    if (queueEntry && queueEntry.status !== 'no_show') {
+      const { doctorId, position } = queueEntry;
+      queueEntry.status = 'no_show';
+      await queueEntry.save();
+
+      // Recalcular posiciones del día
+      const today = todayCaracas();
+      const entriesToShift = await WaitingQueue.findAll({
+        where: {
+          doctorId,
+          position: { [Op.gt]: position },
+          status: { [Op.in]: ['waiting', 'checked_in'] }
+        },
+        include: [{
+          model: Appointment,
+          as: 'appointment',
+          where: { appointmentDate: today },
+          required: true,
+          attributes: ['id']
+        }]
+      });
+
+      const shiftIds = entriesToShift.map(e => e.id);
+      if (shiftIds.length > 0) {
+        await WaitingQueue.update(
+          { position: db.sequelize.literal('position - 1') },
+          { where: { id: { [Op.in]: shiftIds } } }
+        );
+      }
+    }
+
+    return appointment;
+  }
+
+  /**
+   * Actualizar notas y diagnóstico de una cita
+   */
+  async updateAppointmentNotes(appointmentId, user, { doctorNotes, diagnosis } = {}) {
+    const appointment = await Appointment.findByPk(appointmentId);
+
+    if (!appointment) {
+      const err = new Error('Cita no encontrada');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    this._assertDoctorOwnership(appointment, user);
+
+    if (doctorNotes !== undefined) appointment.doctorNotes = doctorNotes;
+    if (diagnosis !== undefined) appointment.diagnosis = diagnosis;
+    await appointment.save();
+
+    return appointment;
   }
 }
 

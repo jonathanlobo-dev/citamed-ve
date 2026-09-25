@@ -10,6 +10,8 @@ const { Op } = require('sequelize');
 const db = require('../models');
 const { getIO } = require('../config/socket');
 const { WAITING_ROOM_EVENTS } = require('../socket/events');
+const { todayCaracas, nowMinutesCaracas } = require('../utils/dateCaracas');
+const appointmentService = require('./appointmentService');
 
 const { WaitingQueue, Appointment, User, DoctorProfile } = db;
 
@@ -20,11 +22,37 @@ class WaitingRoomService {
   }
 
   /**
-   * Check-in de paciente - Activar entrada en cola existente o crear nueva
-   * Con el nuevo sistema, la cola ya se crea al agendar (estado 'scheduled')
-   * El check-in cambia el estado a 'waiting' (cola activa)
+   * Helper privado para control de pertenencia (A4)
    */
-  async checkIn(appointmentId) {
+  _assertAccess(entry, user, allowedRoles = []) {
+    if (!user) {
+      const err = new Error('No autenticado');
+      err.statusCode = 401;
+      throw err;
+    }
+    if (user.role === 'admin') return true;
+
+    if (allowedRoles.includes('patient') && user.role === 'patient') {
+      const patientId = entry.patientId || (entry.patient && entry.patient.id);
+      if (patientId && patientId === user.id) return true;
+    }
+
+    if (allowedRoles.includes('doctor') && user.role === 'doctor') {
+      const doctorId = entry.doctorId || (entry.doctor && entry.doctor.id);
+      if (doctorId && doctorId === user.id) return true;
+    }
+
+    const err = new Error('No tienes permiso para acceder a este recurso');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  /**
+   * Check-in de paciente - Activar entrada en cola existente o crear nueva
+   * Solo el paciente dueño de la cita puede hacer check-in.
+   * La cita debe ser de hoy (Venezuela) y estar confirmed.
+   */
+  async checkIn(appointmentId, user = null) {
     const appointment = await Appointment.findByPk(appointmentId, {
       include: [
         { model: User, as: 'patient' },
@@ -34,19 +62,39 @@ class WaitingRoomService {
     });
 
     if (!appointment) {
-      throw new Error('Cita no encontrada');
+      const err = new Error('Cita no encontrada');
+      err.statusCode = 404;
+      throw err;
     }
 
-    // Verificar que es el dia correcto
-    const today = new Date().toISOString().split('T')[0];
-    const appointmentDateStr = new Date(appointment.appointmentDate).toISOString().split('T')[0];
+    // A4: Validar pertenencia del paciente
+    if (user) {
+      this._assertAccess(appointment, user, ['patient']);
+    }
+
+    // A3 & D5: Verificar que es el día correcto en hora de Caracas
+    const today = todayCaracas();
+    const appointmentDateStr = typeof appointment.appointmentDate === 'string'
+      ? appointment.appointmentDate.slice(0, 10)
+      : todayCaracas(new Date(appointment.appointmentDate));
+
     if (appointmentDateStr !== today) {
-      throw new Error('Solo puedes hacer check-in el dia de tu cita');
+      const err = new Error('Solo puedes hacer check-in el día de tu cita');
+      err.statusCode = 400;
+      throw err;
     }
 
-    // Verificar estado de la cita
-    if (!['pending', 'confirmed'].includes(appointment.status)) {
-      throw new Error('Esta cita no puede hacer check-in');
+    // A3 & D6: Verificar estado de la cita (exactamente confirmed)
+    if (appointment.status === 'pending') {
+      const err = new Error('Tu cita aún no ha sido confirmada por el médico');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (appointment.status !== 'confirmed') {
+      const err = new Error('Esta cita no puede hacer check-in');
+      err.statusCode = 400;
+      throw err;
     }
 
     // Buscar entrada existente en cola (creada al agendar)
@@ -78,7 +126,7 @@ class WaitingRoomService {
       }
     } else {
       // No tiene entrada en cola (cita legacy) - crear una nueva
-      const stats = await WaitingQueue.getDayStats(appointment.doctorId);
+      const stats = await WaitingQueue.getDayStats(appointment.doctorId, today);
       const avgTime = stats.avgConsultationTime || this.defaultConsultationTime;
 
       queueEntry = await WaitingQueue.addToQueue(
@@ -89,8 +137,7 @@ class WaitingRoomService {
       );
     }
 
-    // Actualizar estado de la cita
-    appointment.status = 'confirmed';
+    // No cambiar estado de la cita, solo registrar hora de check-in
     appointment.checkInTime = new Date();
     await appointment.save();
 
@@ -99,8 +146,8 @@ class WaitingRoomService {
 
     // Notificar via WebSocket
     this._emitQueueUpdate(appointment.doctorId);
+    this._emitPublicQueue(appointment.doctorId);
 
-    // Retornar informacion completa
     return {
       queueEntry,
       position: queueEntry.position,
@@ -118,11 +165,17 @@ class WaitingRoomService {
   /**
    * Marcar paciente como "en camino" (detectado por GPS)
    */
-  async markEnRoute(queueEntryId) {
+  async markEnRoute(queueEntryId, user = null) {
     const entry = await WaitingQueue.findByPk(queueEntryId);
 
     if (!entry) {
-      throw new Error('Entrada de cola no encontrada');
+      const err = new Error('Entrada de cola no encontrada');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (user) {
+      this._assertAccess(entry, user, ['patient']);
     }
 
     if (entry.status !== 'waiting') {
@@ -132,8 +185,9 @@ class WaitingRoomService {
     entry.status = 'en_route';
     await entry.save();
 
-    // Notificar al doctor que el paciente viene en camino
+    // Notificar al doctor y cola pública
     this._emitQueueUpdate(entry.doctorId);
+    this._emitPublicQueue(entry.doctorId);
 
     return entry;
   }
@@ -141,41 +195,56 @@ class WaitingRoomService {
   /**
    * Confirmar llegada física (FASE 3 - cuando el paciente llega al consultorio)
    */
-  async confirmArrival(queueEntryId) {
+  async confirmArrival(queueEntryId, user = null) {
     const entry = await WaitingQueue.findByPk(queueEntryId);
 
     if (!entry) {
-      throw new Error('Entrada de cola no encontrada');
+      const err = new Error('Entrada de cola no encontrada');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (user) {
+      this._assertAccess(entry, user, ['patient', 'doctor']);
     }
 
     if (!['waiting', 'en_route'].includes(entry.status)) {
-      throw new Error('El paciente debe estar en cola o en camino');
+      const err = new Error('El paciente debe estar en cola o en camino');
+      err.statusCode = 400;
+      throw err;
     }
 
     entry.status = 'checked_in';
     entry.checkInTime = new Date();
     await entry.save();
 
-    // Notificar al doctor que el paciente llegó
+    // Notificar al doctor y sala pública
     this._emitQueueUpdate(entry.doctorId);
+    this._emitPublicQueue(entry.doctorId);
 
     return entry;
   }
 
   /**
    * @deprecated Use confirmArrival instead
-   * Check-in físico (cuando el paciente llega al consultorio)
    */
-  async physicalCheckIn(queueEntryId) {
-    return this.confirmArrival(queueEntryId);
+  async physicalCheckIn(queueEntryId, user = null) {
+    return this.confirmArrival(queueEntryId, user);
   }
 
   /**
-   * Obtener cola actual del doctor
+   * Obtener cola actual del doctor (A2: solo citas de hoy)
    */
-  async getDoctorQueue(doctorId) {
-    const queue = await WaitingQueue.getActiveQueue(doctorId);
-    const stats = await WaitingQueue.getDayStats(doctorId);
+  async getDoctorQueue(doctorId, user = null) {
+    if (user && user.role !== 'admin' && (user.role !== 'doctor' || user.id !== parseInt(doctorId, 10))) {
+      const err = new Error('No tienes permiso para ver esta cola médica');
+      err.statusCode = 403;
+      throw err;
+    }
+
+    const today = todayCaracas();
+    const queue = await WaitingQueue.getActiveQueue(doctorId, true, today);
+    const stats = await WaitingQueue.getDayStats(doctorId, today);
 
     // Formatear para frontend
     const formattedQueue = queue.map((entry, index) => ({
@@ -212,9 +281,22 @@ class WaitingRoomService {
   }
 
   /**
-   * Obtener posicion del paciente
+   * Obtener posición del paciente (A4: solo el paciente dueño o médico)
    */
-  async getPatientPosition(appointmentId) {
+  async getPatientPosition(appointmentId, user = null) {
+    const appointment = await Appointment.findByPk(appointmentId);
+    if (!appointment) {
+      const err = new Error('Cita no encontrada');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (user && user.role !== 'admin' && appointment.patientId !== user.id && appointment.doctorId !== user.id) {
+      const err = new Error('No tienes permiso para consultar esta posición');
+      err.statusCode = 403;
+      throw err;
+    }
+
     const positionInfo = await WaitingQueue.getPatientPosition(appointmentId);
 
     if (!positionInfo) {
@@ -234,39 +316,53 @@ class WaitingRoomService {
   }
 
   /**
-   * Llamar al siguiente paciente
+   * Llamar al siguiente paciente (A4 & D1)
    */
-  async callNextPatient(doctorId) {
-    const nextEntry = await WaitingQueue.callNext(doctorId);
+  async callNextPatient(doctorId, user = null) {
+    if (user && user.role !== 'admin' && (user.role !== 'doctor' || user.id !== parseInt(doctorId, 10))) {
+      const err = new Error('No tienes permiso para llamar pacientes en esta cola');
+      err.statusCode = 403;
+      throw err;
+    }
+
+    const today = todayCaracas();
+    const nextEntry = await WaitingQueue.callNext(doctorId, null, today);
 
     if (!nextEntry) {
       return null;
     }
 
-    // Emitir notificacion al paciente
+    // A5: Emitir notificación al paciente directamente en /waiting-room a su room user:{id}
     this._emitToPatient(nextEntry.patientId, WAITING_ROOM_EVENTS.WR_YOUR_TURN, {
-      message: 'Es tu turno! Por favor dirigete al consultorio.',
+      message: '¡Es tu turno! Por favor dirígete al consultorio.',
       appointmentId: nextEntry.appointmentId,
       queueEntryId: nextEntry.id
     });
 
-    // Actualizar cola
+    // Actualizar colas
     this._emitQueueUpdate(doctorId);
+    this._emitPublicQueue(doctorId);
 
-    // Recalcular tiempos para los demas
+    // Recalcular tiempos para los demás
     await this._recalculateAndNotify(doctorId);
 
     return nextEntry;
   }
 
   /**
-   * Llamar a un paciente especifico
+   * Llamar a un paciente específico (A4 & D1)
    */
-  async callSpecificPatient(queueEntryId) {
+  async callSpecificPatient(queueEntryId, user = null) {
     const entry = await WaitingQueue.findByPk(queueEntryId);
 
     if (!entry) {
-      throw new Error('Paciente no encontrado en la cola');
+      const err = new Error('Paciente no encontrado en la cola');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (user) {
+      this._assertAccess(entry, user, ['doctor']);
     }
 
     entry.status = 'called';
@@ -274,141 +370,135 @@ class WaitingRoomService {
     entry.notificationTurnSent = true;
     await entry.save();
 
-    // Notificar al paciente
+    // A5: Emitir notificación al paciente a su room user:{id}
     this._emitToPatient(entry.patientId, WAITING_ROOM_EVENTS.WR_YOUR_TURN, {
-      message: 'Es tu turno! Por favor dirigete al consultorio.',
+      message: '¡Es tu turno! Por favor dirígete al consultorio.',
       appointmentId: entry.appointmentId,
       queueEntryId: entry.id
     });
 
     this._emitQueueUpdate(entry.doctorId);
+    this._emitPublicQueue(entry.doctorId);
+    await this._recalculateAndNotify(entry.doctorId);
 
     return entry;
   }
 
   /**
-   * Iniciar consulta
+   * Iniciar consulta (A4 & A6)
    */
-  async startConsultation(queueEntryId) {
-    const entry = await WaitingQueue.startConsultation(queueEntryId);
-
+  async startConsultation(queueEntryId, user = null) {
+    const entry = await WaitingQueue.findByPk(queueEntryId);
     if (!entry) {
-      throw new Error('Entrada no encontrada');
+      const err = new Error('Entrada no encontrada');
+      err.statusCode = 404;
+      throw err;
     }
 
-    // Actualizar cita
+    if (user) {
+      this._assertAccess(entry, user, ['doctor']);
+    }
+
+    const updatedEntry = await WaitingQueue.startConsultation(queueEntryId);
+
+    // Actualizar cita a in_progress
     const appointment = await Appointment.findByPk(entry.appointmentId);
     if (appointment) {
       await appointment.addStatusHistory('in_progress', 'Consulta iniciada');
     }
 
     this._emitQueueUpdate(entry.doctorId);
+    this._emitPublicQueue(entry.doctorId);
 
-    return entry;
+    return updatedEntry;
   }
 
   /**
-   * Finalizar consulta
+   * Finalizar consulta (A6: sincronizado con appointmentService.completeAppointment)
    */
-  async endConsultation(queueEntryId) {
-    const entry = await WaitingQueue.endConsultation(queueEntryId);
+  async endConsultation(queueEntryId, user = null, notesData = {}) {
+    const entry = await WaitingQueue.findByPk(queueEntryId);
 
     if (!entry) {
-      throw new Error('Entrada no encontrada');
+      const err = new Error('Entrada no encontrada');
+      err.statusCode = 404;
+      throw err;
     }
 
-    // Actualizar cita
-    const appointment = await Appointment.findByPk(entry.appointmentId);
-    if (appointment) {
-      appointment.status = 'completed';
-      appointment.checkOutTime = new Date();
-      appointment.actualDuration = entry.consultationDurationMinutes;
-      await appointment.save();
+    if (user) {
+      this._assertAccess(entry, user, ['doctor']);
     }
+
+    // A6: Delegar en appointmentService.completeAppointment para guardar notas y cerrar estado
+    await appointmentService.completeAppointment(entry.appointmentId, user || { id: entry.doctorId, role: 'doctor' }, notesData);
 
     // Actualizar cola y notificar
     this._emitQueueUpdate(entry.doctorId);
+    this._emitPublicQueue(entry.doctorId);
     await this._recalculateAndNotify(entry.doctorId);
 
-    return entry;
+    const freshEntry = await WaitingQueue.findByPk(queueEntryId);
+    return freshEntry;
   }
 
   /**
-   * Marcar paciente como no-show
+   * Marcar paciente como no-show (A6: sincronizado con appointmentService.markAppointmentNoShow)
    */
-  async markNoShow(queueEntryId) {
+  async markNoShow(queueEntryId, user = null) {
     const entry = await WaitingQueue.findByPk(queueEntryId);
 
     if (!entry) {
-      throw new Error('Entrada no encontrada');
+      const err = new Error('Entrada no encontrada');
+      err.statusCode = 404;
+      throw err;
     }
 
-    entry.status = 'no_show';
-    await entry.save();
-
-    // Actualizar cita
-    const appointment = await Appointment.findByPk(entry.appointmentId);
-    if (appointment) {
-      await appointment.addStatusHistory('no_show', 'Paciente no se presento');
+    if (user) {
+      this._assertAccess(entry, user, ['doctor']);
     }
 
-    // Recalcular posiciones
-    await WaitingQueue.update(
-      { position: db.sequelize.literal('position - 1') },
-      {
-        where: {
-          doctorId: entry.doctorId,
-          position: { [Op.gt]: entry.position },
-          status: { [Op.in]: ['waiting', 'checked_in'] }
-        }
-      }
-    );
+    await appointmentService.markAppointmentNoShow(entry.appointmentId, user || { id: entry.doctorId, role: 'doctor' });
 
     this._emitQueueUpdate(entry.doctorId);
+    this._emitPublicQueue(entry.doctorId);
     await this._recalculateAndNotify(entry.doctorId);
 
-    return entry;
+    const freshEntry = await WaitingQueue.findByPk(queueEntryId);
+    return freshEntry;
   }
 
   /**
-   * Cancelar turno
+   * Cancelar turno (A6: cancela también la cita con cancelAppointment)
    */
-  async cancelTurn(queueEntryId, reason = 'Cancelado por el paciente') {
+  async cancelTurn(queueEntryId, user = null, reason = 'Cancelado por el paciente') {
     const entry = await WaitingQueue.findByPk(queueEntryId);
 
     if (!entry) {
-      throw new Error('Entrada no encontrada');
+      const err = new Error('Entrada no encontrada');
+      err.statusCode = 404;
+      throw err;
     }
 
-    const doctorId = entry.doctorId;
-    const position = entry.position;
+    if (user) {
+      this._assertAccess(entry, user, ['patient', 'doctor']);
+    }
 
-    entry.status = 'cancelled';
-    await entry.save();
+    const cancelledBy = user && user.role === 'doctor' ? 'doctor' : 'patient';
+    await appointmentService.cancelAppointment(entry.appointmentId, cancelledBy, reason);
 
-    // Recalcular posiciones
-    await WaitingQueue.update(
-      { position: db.sequelize.literal('position - 1') },
-      {
-        where: {
-          doctorId,
-          position: { [Op.gt]: position },
-          status: { [Op.in]: ['waiting', 'checked_in'] }
-        }
-      }
-    );
+    this._emitQueueUpdate(entry.doctorId);
+    this._emitPublicQueue(entry.doctorId);
+    await this._recalculateAndNotify(entry.doctorId);
 
-    this._emitQueueUpdate(doctorId);
-    await this._recalculateAndNotify(doctorId);
-
-    return entry;
+    const freshEntry = await WaitingQueue.findByPk(queueEntryId);
+    return freshEntry;
   }
 
   /**
-   * Obtener estadisticas del dia
+   * Obtener estadísticas del día
    */
-  async getDayStats(doctorId, date = new Date()) {
-    return await WaitingQueue.getDayStats(doctorId, date);
+  async getDayStats(doctorId, date = null) {
+    return await WaitingQueue.getDayStats(doctorId, date || todayCaracas());
   }
 
   // ==========================================
@@ -416,14 +506,14 @@ class WaitingRoomService {
   // ==========================================
 
   /**
-   * Emitir actualizacion de cola via WebSocket
+   * Emitir actualización de cola privada al doctor via WebSocket (con nombres completos)
    */
   async _emitQueueUpdate(doctorId) {
     try {
       const io = getIO();
       const queueData = await this.getDoctorQueue(doctorId);
 
-      // Emitir a la room del doctor
+      // Emitir solo a la room privada del doctor
       io.of('/waiting-room')
         .to(`doctor:${doctorId}`)
         .emit(WAITING_ROOM_EVENTS.WR_QUEUE_UPDATE, queueData);
@@ -434,27 +524,63 @@ class WaitingRoomService {
   }
 
   /**
-   * Emitir a un paciente especifico
+   * A5: Emitir actualización de cola pública a la sala queue-public:{doctorId}
+   * Solo incluye iniciales, posición, estado y tiempo estimado (sin datos personales)
+   */
+  async _emitPublicQueue(doctorId) {
+    try {
+      const io = getIO();
+      const queueData = await this.getDoctorQueue(doctorId);
+
+      const publicQueue = {
+        queue: queueData.queue.map(entry => ({
+          position: entry.position,
+          status: entry.status,
+          patient: {
+            initials: entry.patient.initials
+          },
+          estimatedWaitMinutes: entry.estimatedWaitMinutes
+        })),
+        stats: {
+          totalWaiting: queueData.stats.totalWaiting,
+          avgWaitTime: queueData.stats.avgWaitTime
+        }
+      };
+
+      io.of('/waiting-room')
+        .to(`queue-public:${doctorId}`)
+        .emit(WAITING_ROOM_EVENTS.WR_QUEUE_UPDATE, publicQueue);
+
+      const chairs = await this.getChairsVisualization(doctorId);
+      io.of('/waiting-room')
+        .to(`queue-public:${doctorId}`)
+        .emit('chairs_update', chairs);
+
+    } catch (error) {
+      console.error('[WaitingRoomService] Error emitting public queue:', error.message);
+    }
+  }
+
+  /**
+   * A5: Emitir directamente al paciente por su room personal en /waiting-room
    */
   _emitToPatient(patientId, event, data) {
     try {
       const io = getIO();
-      io.of('/notifications').emit(event, {
-        ...data,
-        targetUserId: patientId
-      });
+      io.of('/waiting-room')
+        .to(`user:${patientId}`)
+        .emit(event, data);
     } catch (error) {
       console.error('[WaitingRoomService] Error emitting to patient:', error.message);
     }
   }
 
   /**
-   * Recalcular tiempos DINÁMICAMENTE basándose en el progreso real del día
-   * Si las consultas están tardando menos, actualiza las estimaciones hacia abajo
-   * Si están tardando más, actualiza hacia arriba
+   * Recalcular tiempos DINÁMICAMENTE basándose en el progreso real del día (A2)
    */
   async _recalculateDynamicTimes(doctorId) {
-    const stats = await WaitingQueue.getDayStats(doctorId);
+    const today = todayCaracas();
+    const stats = await WaitingQueue.getDayStats(doctorId, today);
 
     // Obtener todas las entradas activas del día ordenadas por hora de cita
     const activeEntries = await WaitingQueue.findAll({
@@ -465,6 +591,8 @@ class WaitingRoomService {
       include: [{
         model: Appointment,
         as: 'appointment',
+        where: { appointmentDate: today },
+        required: true,
         attributes: ['appointmentTime', 'duration']
       }],
       order: [['position', 'ASC']]
@@ -472,30 +600,29 @@ class WaitingRoomService {
 
     if (activeEntries.length === 0) return;
 
-    // Calcular el tiempo promedio REAL basado en consultas completadas hoy
     const avgRealTime = stats.avgConsultationTime || this.defaultConsultationTime;
+    const currentTime = nowMinutesCaracas();
 
-    // Obtener la hora actual
-    const now = new Date();
-    const currentTime = now.getHours() * 60 + now.getMinutes();
-
-    // Calcular tiempo acumulado basándose en consultas anteriores
     let accumulatedDelay = 0;
 
-    // Verificar si hay consulta en progreso
+    // Verificar si hay consulta en progreso hoy
     const inProgress = await WaitingQueue.findOne({
       where: {
         doctorId,
         status: 'in_consultation'
-      }
+      },
+      include: [{
+        model: Appointment,
+        as: 'appointment',
+        where: { appointmentDate: today },
+        required: true
+      }]
     });
 
     if (inProgress && inProgress.consultationStart) {
-      // Calcular cuánto tiempo lleva la consulta actual
-      const consultationMinutes = Math.round((now - new Date(inProgress.consultationStart)) / 60000);
+      const consultationMinutes = Math.round((new Date() - new Date(inProgress.consultationStart)) / 60000);
       const expectedDuration = inProgress.appointment?.duration || avgRealTime;
 
-      // Si la consulta lleva más del tiempo esperado, hay retraso
       if (consultationMinutes > expectedDuration) {
         accumulatedDelay = consultationMinutes - expectedDuration;
       }
@@ -508,11 +635,8 @@ class WaitingRoomService {
       const [hours, minutes] = appointmentTimeStr.split(':').map(Number);
       const appointmentMinutes = hours * 60 + minutes;
 
-      // Calcular tiempo estimado basado en posición actual + retraso acumulado
       const waitMinutesFromPosition = position * avgRealTime;
       const estimatedStartTime = appointmentMinutes + waitMinutesFromPosition + accumulatedDelay;
-
-      // Calcular cuántos minutos faltan desde ahora
       const minutesFromNow = Math.max(0, estimatedStartTime - currentTime);
 
       entry.estimatedWaitMinutes = minutesFromNow;
@@ -523,27 +647,31 @@ class WaitingRoomService {
   }
 
   /**
-   * Recalcular tiempos y enviar notificaciones progresivas
+   * Recalcular tiempos y enviar notificaciones progresivas (A2 & A5)
    */
   async _recalculateAndNotify(doctorId) {
-    // Primero recalcular tiempos dinámicamente
     await this._recalculateDynamicTimes(doctorId);
 
-    const stats = await WaitingQueue.getDayStats(doctorId);
+    const today = todayCaracas();
+    const stats = await WaitingQueue.getDayStats(doctorId, today);
     const avgTime = stats.avgConsultationTime || this.defaultConsultationTime;
 
-    // Obtener cola actualizada
     const queue = await WaitingQueue.findAll({
       where: {
         doctorId,
         status: { [Op.in]: ['waiting', 'en_route', 'checked_in'] }
       },
+      include: [{
+        model: Appointment,
+        as: 'appointment',
+        where: { appointmentDate: today },
+        required: true
+      }],
       order: [['position', 'ASC']]
     });
 
     // Enviar notificaciones progresivas
     for (const entry of queue) {
-      // Notificacion "Faltan 5"
       if (entry.position === 5 && !entry.notification5Sent) {
         entry.notification5Sent = true;
         await entry.save();
@@ -555,30 +683,27 @@ class WaitingRoomService {
         });
       }
 
-      // Notificacion "Faltan 2"
       if (entry.position === 2 && !entry.notification2Sent) {
         entry.notification2Sent = true;
         await entry.save();
         this._emitToPatient(entry.patientId, WAITING_ROOM_EVENTS.WR_ALMOST_YOUR_TURN, {
-          message: 'Faltan 2 personas. Preparate para tu consulta!',
+          message: 'Faltan 2 personas. ¡Prepárate para tu consulta!',
           position: 2,
           estimatedMinutes: entry.estimatedWaitMinutes,
           type: '2_remaining'
         });
       }
 
-      // Notificacion "Eres el siguiente"
       if (entry.position === 1 && !entry.notificationNextSent) {
         entry.notificationNextSent = true;
         await entry.save();
         this._emitToPatient(entry.patientId, WAITING_ROOM_EVENTS.WR_ALMOST_YOUR_TURN, {
-          message: 'Eres el siguiente! Dirigete al consultorio.',
+          message: '¡Eres el siguiente! Dirígete al consultorio.',
           position: 1,
           type: 'next'
         });
       }
 
-      // Emitir posicion actualizada a cada paciente
       this._emitToPatient(entry.patientId, WAITING_ROOM_EVENTS.WR_POSITION_UPDATE, {
         position: entry.position,
         estimatedMinutes: entry.estimatedWaitMinutes,
@@ -588,15 +713,19 @@ class WaitingRoomService {
   }
 
   /**
-   * Generar visualizacion de "sillitas"
+   * Generar visualización de "sillitas" (A2: solo citas de hoy)
    */
   async getChairsVisualization(doctorId, maxChairs = 10) {
+    const today = todayCaracas();
     const queue = await WaitingQueue.findAll({
       where: {
         doctorId,
         status: { [Op.in]: ['waiting', 'checked_in', 'called', 'in_consultation'] }
       },
-      include: [{ model: User, as: 'patient', attributes: ['firstName', 'lastName'] }],
+      include: [
+        { model: User, as: 'patient', attributes: ['firstName', 'lastName'] },
+        { model: Appointment, as: 'appointment', where: { appointmentDate: today }, required: true }
+      ],
       order: [['position', 'ASC']],
       limit: maxChairs
     });

@@ -7,6 +7,15 @@
 
 const waitingRoomService = require('../services/waitingRoomService');
 
+const sendError = (res, error, defaultMessage = 'Error en sala de espera', defaultCode = 400) => {
+  console.error(`[WaitingRoomController] ${defaultMessage}:`, error.message);
+  const status = error.statusCode || (error.message && error.message.includes('No tienes permiso') ? 403 : defaultCode);
+  return res.status(status).json({
+    success: false,
+    message: error.message || defaultMessage
+  });
+};
+
 class WaitingRoomController {
   /**
    * POST /api/waiting-room/check-in
@@ -15,7 +24,6 @@ class WaitingRoomController {
   async checkIn(req, res) {
     try {
       const { appointmentId } = req.body;
-      const patientId = req.user.id;
 
       if (!appointmentId) {
         return res.status(400).json({
@@ -24,43 +32,34 @@ class WaitingRoomController {
         });
       }
 
-      const result = await waitingRoomService.checkIn(appointmentId);
+      const result = await waitingRoomService.checkIn(appointmentId, req.user);
 
       res.json({
         success: true,
-        message: 'Check-in exitoso! Ya estas en la cola virtual.',
+        message: '¡Check-in exitoso! Ya estás en la cola virtual.',
         data: result
       });
     } catch (error) {
-      console.error('[WaitingRoomController] checkIn error:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      sendError(res, error, 'checkIn error', 400);
     }
   }
 
   /**
    * PUT /api/waiting-room/physical-check-in/:queueEntryId
-   * Check-in fisico (deprecated - usar confirm-arrival)
+   * Check-in físico (deprecated - usar confirm-arrival)
    */
   async physicalCheckIn(req, res) {
     try {
       const { queueEntryId } = req.params;
-
-      const entry = await waitingRoomService.physicalCheckIn(queueEntryId);
+      const entry = await waitingRoomService.physicalCheckIn(queueEntryId, req.user);
 
       res.json({
         success: true,
-        message: 'Check-in fisico registrado',
+        message: 'Check-in físico registrado',
         data: entry
       });
     } catch (error) {
-      console.error('[WaitingRoomController] physicalCheckIn error:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      sendError(res, error, 'physicalCheckIn error', 400);
     }
   }
 
@@ -71,9 +70,7 @@ class WaitingRoomController {
   async markEnRoute(req, res) {
     try {
       const { queueEntryId } = req.params;
-      const patientId = req.user.id;
-
-      const entry = await waitingRoomService.markEnRoute(queueEntryId);
+      const entry = await waitingRoomService.markEnRoute(queueEntryId, req.user);
 
       res.json({
         success: true,
@@ -84,11 +81,7 @@ class WaitingRoomController {
         }
       });
     } catch (error) {
-      console.error('[WaitingRoomController] markEnRoute error:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      sendError(res, error, 'markEnRoute error', 400);
     }
   }
 
@@ -99,8 +92,7 @@ class WaitingRoomController {
   async confirmArrival(req, res) {
     try {
       const { queueEntryId } = req.params;
-
-      const entry = await waitingRoomService.confirmArrival(queueEntryId);
+      const entry = await waitingRoomService.confirmArrival(queueEntryId, req.user);
 
       res.json({
         success: true,
@@ -113,11 +105,7 @@ class WaitingRoomController {
         }
       });
     } catch (error) {
-      console.error('[WaitingRoomController] confirmArrival error:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      sendError(res, error, 'confirmArrival error', 400);
     }
   }
 
@@ -128,34 +116,27 @@ class WaitingRoomController {
   async getDoctorQueue(req, res) {
     try {
       const doctorId = req.user.id;
-
-      const queueData = await waitingRoomService.getDoctorQueue(doctorId);
+      const queueData = await waitingRoomService.getDoctorQueue(doctorId, req.user);
 
       res.json({
         success: true,
         data: queueData
       });
     } catch (error) {
-      console.error('[WaitingRoomController] getDoctorQueue error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error obteniendo cola',
-        error: error.message
-      });
+      sendError(res, error, 'getDoctorQueue error', 500);
     }
   }
 
   /**
    * GET /api/waiting-room/queue/:doctorId
-   * Obtener cola de un doctor especifico (para pacientes)
+   * Obtener cola de un doctor específico (vista pública para pacientes)
    */
   async getQueueByDoctor(req, res) {
     try {
       const { doctorId } = req.params;
-
       const queueData = await waitingRoomService.getDoctorQueue(doctorId);
 
-      // Para pacientes, ocultar informacion sensible
+      // Para pacientes, ocultar información sensible (solo iniciales)
       const publicQueue = {
         queue: queueData.queue.map(entry => ({
           position: entry.position,
@@ -176,18 +157,13 @@ class WaitingRoomController {
         data: publicQueue
       });
     } catch (error) {
-      console.error('[WaitingRoomController] getQueueByDoctor error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error obteniendo cola',
-        error: error.message
-      });
+      sendError(res, error, 'getQueueByDoctor error', 500);
     }
   }
 
   /**
    * GET /api/waiting-room/my-position
-   * Obtener posicion del paciente actual
+   * Obtener posición del paciente actual
    */
   async getMyPosition(req, res) {
     try {
@@ -200,12 +176,12 @@ class WaitingRoomController {
         });
       }
 
-      const position = await waitingRoomService.getPatientPosition(appointmentId);
+      const position = await waitingRoomService.getPatientPosition(appointmentId, req.user);
 
       if (!position) {
         return res.status(404).json({
           success: false,
-          message: 'No estas en ninguna cola'
+          message: 'No estás en ninguna cola'
         });
       }
 
@@ -214,12 +190,7 @@ class WaitingRoomController {
         data: position
       });
     } catch (error) {
-      console.error('[WaitingRoomController] getMyPosition error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error obteniendo posicion',
-        error: error.message
-      });
+      sendError(res, error, 'getMyPosition error', 500);
     }
   }
 
@@ -238,7 +209,7 @@ class WaitingRoomController {
         });
       }
 
-      const position = await waitingRoomService.getPatientPosition(appointmentId);
+      const position = await waitingRoomService.getPatientPosition(appointmentId, req.user);
 
       if (!position) {
         return res.status(404).json({
@@ -247,7 +218,6 @@ class WaitingRoomController {
         });
       }
 
-      // Retornar datos enriquecidos
       res.json({
         success: true,
         data: {
@@ -261,12 +231,7 @@ class WaitingRoomController {
         }
       });
     } catch (error) {
-      console.error('[WaitingRoomController] getMyPositionByAppointment error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error obteniendo posicion',
-        error: error.message
-      });
+      sendError(res, error, 'getMyPositionByAppointment error', 500);
     }
   }
 
@@ -277,13 +242,12 @@ class WaitingRoomController {
   async callNext(req, res) {
     try {
       const doctorId = req.user.id;
-
-      const entry = await waitingRoomService.callNextPatient(doctorId);
+      const entry = await waitingRoomService.callNextPatient(doctorId, req.user);
 
       if (!entry) {
         return res.json({
           success: true,
-          message: 'No hay mas pacientes en la cola',
+          message: 'No hay más pacientes en la cola',
           data: null
         });
       }
@@ -294,23 +258,18 @@ class WaitingRoomController {
         data: entry
       });
     } catch (error) {
-      console.error('[WaitingRoomController] callNext error:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      sendError(res, error, 'callNext error', 400);
     }
   }
 
   /**
    * POST /api/waiting-room/call/:queueEntryId
-   * Llamar a un paciente especifico
+   * Llamar a un paciente específico
    */
   async callPatient(req, res) {
     try {
       const { queueEntryId } = req.params;
-
-      const entry = await waitingRoomService.callSpecificPatient(queueEntryId);
+      const entry = await waitingRoomService.callSpecificPatient(queueEntryId, req.user);
 
       res.json({
         success: true,
@@ -318,11 +277,7 @@ class WaitingRoomController {
         data: entry
       });
     } catch (error) {
-      console.error('[WaitingRoomController] callPatient error:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      sendError(res, error, 'callPatient error', 400);
     }
   }
 
@@ -333,8 +288,7 @@ class WaitingRoomController {
   async startConsultation(req, res) {
     try {
       const { queueEntryId } = req.params;
-
-      const entry = await waitingRoomService.startConsultation(queueEntryId);
+      const entry = await waitingRoomService.startConsultation(queueEntryId, req.user);
 
       res.json({
         success: true,
@@ -342,35 +296,32 @@ class WaitingRoomController {
         data: entry
       });
     } catch (error) {
-      console.error('[WaitingRoomController] startConsultation error:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      sendError(res, error, 'startConsultation error', 400);
     }
   }
 
   /**
    * POST /api/waiting-room/end-consultation/:queueEntryId
-   * Finalizar consulta
+   * Finalizar consulta (acepta notas y diagnóstico)
    */
   async endConsultation(req, res) {
     try {
       const { queueEntryId } = req.params;
+      const { doctorNotes, diagnosis, actualDuration } = req.body || {};
 
-      const entry = await waitingRoomService.endConsultation(queueEntryId);
+      const entry = await waitingRoomService.endConsultation(queueEntryId, req.user, {
+        doctorNotes,
+        diagnosis,
+        actualDuration
+      });
 
       res.json({
         success: true,
-        message: 'Consulta finalizada',
+        message: 'Consulta finalizada exitosamente',
         data: entry
       });
     } catch (error) {
-      console.error('[WaitingRoomController] endConsultation error:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      sendError(res, error, 'endConsultation error', 400);
     }
   }
 
@@ -381,8 +332,7 @@ class WaitingRoomController {
   async markNoShow(req, res) {
     try {
       const { queueEntryId } = req.params;
-
-      const entry = await waitingRoomService.markNoShow(queueEntryId);
+      const entry = await waitingRoomService.markNoShow(queueEntryId, req.user);
 
       res.json({
         success: true,
@@ -390,11 +340,7 @@ class WaitingRoomController {
         data: entry
       });
     } catch (error) {
-      console.error('[WaitingRoomController] markNoShow error:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      sendError(res, error, 'markNoShow error', 400);
     }
   }
 
@@ -405,9 +351,9 @@ class WaitingRoomController {
   async cancelTurn(req, res) {
     try {
       const { queueEntryId } = req.params;
-      const { reason } = req.body;
+      const { reason } = req.body || {};
 
-      const entry = await waitingRoomService.cancelTurn(queueEntryId, reason);
+      const entry = await waitingRoomService.cancelTurn(queueEntryId, req.user, reason);
 
       res.json({
         success: true,
@@ -415,42 +361,33 @@ class WaitingRoomController {
         data: entry
       });
     } catch (error) {
-      console.error('[WaitingRoomController] cancelTurn error:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      sendError(res, error, 'cancelTurn error', 400);
     }
   }
 
   /**
    * GET /api/waiting-room/stats
-   * Estadisticas del dia
+   * Estadísticas del día
    */
   async getDayStats(req, res) {
     try {
       const doctorId = req.user.id;
       const { date } = req.query;
 
-      const stats = await waitingRoomService.getDayStats(doctorId, date ? new Date(date) : new Date());
+      const stats = await waitingRoomService.getDayStats(doctorId, date ? new Date(date) : null);
 
       res.json({
         success: true,
         data: stats
       });
     } catch (error) {
-      console.error('[WaitingRoomController] getDayStats error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error obteniendo estadisticas',
-        error: error.message
-      });
+      sendError(res, error, 'getDayStats error', 500);
     }
   }
 
   /**
-   * GET /api/waiting-room/chairs
-   * Visualizacion de "las sillitas"
+   * GET /api/waiting-room/chairs/:doctorId
+   * Visualización de "las sillitas"
    */
   async getChairs(req, res) {
     try {
@@ -467,12 +404,7 @@ class WaitingRoomController {
         data: chairs
       });
     } catch (error) {
-      console.error('[WaitingRoomController] getChairs error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error obteniendo visualizacion',
-        error: error.message
-      });
+      sendError(res, error, 'getChairs error', 500);
     }
   }
 }

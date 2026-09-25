@@ -215,7 +215,10 @@ module.exports = (sequelize) => {
    * Obtiene la cola activa de un doctor
    * Incluye citas 'scheduled' (agendadas) y estados activos
    */
-  WaitingQueue.getActiveQueue = async function(doctorId, includeScheduled = true) {
+  WaitingQueue.getActiveQueue = async function(doctorId, includeScheduled = true, targetDate = null) {
+    const { todayCaracas } = require('../utils/dateCaracas');
+    const dateToFilter = targetDate || todayCaracas();
+
     const activeStatuses = ['waiting', 'en_route', 'checked_in', 'called', 'in_consultation'];
     if (includeScheduled) {
       activeStatuses.unshift('scheduled');
@@ -233,7 +236,9 @@ module.exports = (sequelize) => {
         {
           model: sequelize.models.Appointment,
           as: 'appointment',
-          attributes: ['appointmentTime', 'appointmentDate', 'appointmentType', 'reasonForVisit', 'duration']
+          where: { appointmentDate: dateToFilter },
+          required: true,
+          attributes: ['id', 'appointmentTime', 'appointmentDate', 'appointmentType', 'reasonForVisit', 'duration', 'status']
         },
         {
           model: sequelize.models.User,
@@ -248,6 +253,7 @@ module.exports = (sequelize) => {
    * Obtiene la posicion de un paciente en la cola
    */
   WaitingQueue.getPatientPosition = async function(appointmentId) {
+    const { todayCaracas } = require('../utils/dateCaracas');
     const entry = await this.findOne({
       where: { appointmentId },
       include: [
@@ -260,12 +266,20 @@ module.exports = (sequelize) => {
 
     if (!entry) return null;
 
+    const aptDate = entry.appointment?.appointmentDate || todayCaracas();
+
     const aheadCount = await this.count({
       where: {
         doctorId: entry.doctorId,
         position: { [Op.lt]: entry.position },
         status: { [Op.in]: ['waiting', 'en_route', 'checked_in', 'called'] }
-      }
+      },
+      include: [{
+        model: sequelize.models.Appointment,
+        as: 'appointment',
+        where: { appointmentDate: aptDate },
+        required: true
+      }]
     });
 
     return {
@@ -481,22 +495,31 @@ module.exports = (sequelize) => {
   /**
    * Llamar al siguiente paciente
    */
-  WaitingQueue.callNext = async function(doctorId) {
-    const transaction = await sequelize.transaction();
+  WaitingQueue.callNext = async function(doctorId, existingTransaction = null, targetDate = null) {
+    const { todayCaracas } = require('../utils/dateCaracas');
+    const dateToFilter = targetDate || todayCaracas();
+    const transaction = existingTransaction || await sequelize.transaction();
+    const shouldCommit = !existingTransaction;
 
     try {
-      // Obtener el siguiente en la cola
+      // Obtener el siguiente en la cola (filtrado por la cita del día de hoy)
       const next = await this.findOne({
         where: {
           doctorId,
           status: { [Op.in]: ['waiting', 'checked_in'] }
         },
+        include: [{
+          model: sequelize.models.Appointment,
+          as: 'appointment',
+          where: { appointmentDate: dateToFilter },
+          required: true
+        }],
         order: [['position', 'ASC']],
         transaction
       });
 
       if (!next) {
-        await transaction.rollback();
+        if (shouldCommit) await transaction.rollback();
         return null;
       }
 
@@ -506,10 +529,10 @@ module.exports = (sequelize) => {
       next.notificationTurnSent = true;
       await next.save({ transaction });
 
-      await transaction.commit();
+      if (shouldCommit) await transaction.commit();
       return next;
     } catch (error) {
-      await transaction.rollback();
+      if (shouldCommit) await transaction.rollback();
       throw error;
     }
   };
@@ -557,18 +580,34 @@ module.exports = (sequelize) => {
       entry.consultationDurationMinutes = duration;
       await entry.save({ transaction });
 
-      // Recalcular posiciones de los demas en la cola
-      await this.update(
-        { position: sequelize.literal('position - 1') },
-        {
-          where: {
-            doctorId: entry.doctorId,
-            position: { [Op.gt]: entry.position },
-            status: { [Op.in]: ['waiting', 'checked_in'] }
-          },
-          transaction
-        }
-      );
+      // Recalcular posiciones de los demas en la cola para el día de hoy
+      const { todayCaracas } = require('../utils/dateCaracas');
+      const today = todayCaracas();
+      const entriesToShift = await this.findAll({
+        where: {
+          doctorId: entry.doctorId,
+          position: { [Op.gt]: entry.position },
+          status: { [Op.in]: ['waiting', 'checked_in'] }
+        },
+        include: [{
+          model: sequelize.models.Appointment,
+          as: 'appointment',
+          where: { appointmentDate: today },
+          required: true,
+          attributes: ['id']
+        }],
+        transaction
+      });
+      const shiftIds = entriesToShift.map(e => e.id);
+      if (shiftIds.length > 0) {
+        await this.update(
+          { position: sequelize.literal('position - 1') },
+          {
+            where: { id: { [Op.in]: shiftIds } },
+            transaction
+          }
+        );
+      }
 
       await transaction.commit();
       return entry;
@@ -652,20 +691,20 @@ module.exports = (sequelize) => {
   /**
    * Estadisticas de la cola del dia
    */
-  WaitingQueue.getDayStats = async function(doctorId, date = new Date()) {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+  WaitingQueue.getDayStats = async function(doctorId, date = null) {
+    const { todayCaracas } = require('../utils/dateCaracas');
+    const dateToFilter = date ? (typeof date === 'string' ? date : todayCaracas(date)) : todayCaracas();
 
     const entries = await this.findAll({
       where: {
-        doctorId,
-        joinedQueueAt: {
-          [Op.between]: [startOfDay, endOfDay]
-        }
-      }
+        doctorId
+      },
+      include: [{
+        model: sequelize.models.Appointment,
+        as: 'appointment',
+        where: { appointmentDate: dateToFilter },
+        required: true
+      }]
     });
 
     const completed = entries.filter(e => e.status === 'completed');

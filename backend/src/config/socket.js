@@ -157,7 +157,16 @@ const initializeSocket = (httpServer) => {
   const waitingRoomNsp = io.of('/waiting-room');
   waitingRoomNsp.use(socketAuthMiddleware);
   waitingRoomNsp.on('connection', (socket) => {
-    console.log(`[Socket.io] /waiting-room connected: ${socket.id}`);
+    console.log(`[Socket.io] /waiting-room connected: ${socket.id} (user: ${socket.userId}, role: ${socket.userRole})`);
+
+    // A5: Unir automáticamente cada socket a su room personal user:{userId}
+    socket.join(`user:${socket.userId}`);
+
+    // Si es médico, además a doctor:{userId}
+    if (socket.userRole === 'doctor') {
+      socket.join(`doctor:${socket.userId}`);
+    }
+
     socket.emit(EVENTS.AUTHENTICATED, {
       userId: socket.userId,
       role: socket.userRole,
@@ -191,23 +200,28 @@ const initializeSocket = (httpServer) => {
  * Validar si el socket puede unirse a una room
  */
 const isValidRoom = (roomName, socket) => {
-  // Formato esperado: "doctor:{id}" o "patient:{id}"
   const [type, id] = roomName.split(':');
 
   if (!type || !id) return false;
 
-  // Doctors pueden unirse a su propia room
-  if (type === 'doctor' && socket.userRole === 'doctor') {
-    return true; // En producción, verificar que id === socket.userId
-  }
-
-  // Pacientes pueden unirse a rooms de doctores (para ver sala de espera)
-  if (type === 'doctor' && socket.userRole === 'patient') {
+  // Admins pueden unirse a cualquier room
+  if (socket.userRole === 'admin') {
     return true;
   }
 
-  // Admins pueden unirse a cualquier room
-  if (socket.userRole === 'admin') {
+  // Su propia sala de usuario
+  if (type === 'user' && parseInt(id, 10) === socket.userId) {
+    return true;
+  }
+
+  // A5 & D3: Médicos solo pueden unirse a su propia room doctor:{su propio id}
+  // Los pacientes NO pueden unirse a salas doctor:*
+  if (type === 'doctor') {
+    return socket.userRole === 'doctor' && parseInt(id, 10) === socket.userId;
+  }
+
+  // Pacientes pueden unirse a queue-public:{doctorId}
+  if (type === 'queue-public') {
     return true;
   }
 

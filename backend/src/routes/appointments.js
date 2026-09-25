@@ -7,7 +7,7 @@ const express = require('express');
 const router = express.Router();
 const appointmentController = require('../controllers/appointmentController');
 const { authenticateToken } = require('../middleware/auth');
-const { requirePermission } = require('../middleware/rbacMiddleware');
+const { requirePermission, requireRoles } = require('../middleware/rbacMiddleware');
 
 // ==========================================
 // RUTAS PUBLICAS (requieren autenticacion basica)
@@ -128,6 +128,48 @@ router.put(
   authenticateToken,
   requirePermission('appointments.update'),
   appointmentController.confirm.bind(appointmentController)
+);
+
+/**
+ * @swagger
+ * /api/appointments/{id}/complete:
+ *   put:
+ *     tags: [Appointments]
+ *     summary: Finalizar una consulta con notas y diagnóstico
+ */
+router.put(
+  '/:id/complete',
+  authenticateToken,
+  requireRoles(['doctor', 'admin']),
+  appointmentController.complete.bind(appointmentController)
+);
+
+/**
+ * @swagger
+ * /api/appointments/{id}/no-show:
+ *   put:
+ *     tags: [Appointments]
+ *     summary: Marcar inasistencia del paciente
+ */
+router.put(
+  '/:id/no-show',
+  authenticateToken,
+  requireRoles(['doctor', 'admin']),
+  appointmentController.noShow.bind(appointmentController)
+);
+
+/**
+ * @swagger
+ * /api/appointments/{id}/notes:
+ *   put:
+ *     tags: [Appointments]
+ *     summary: Actualizar notas médicas y diagnóstico
+ */
+router.put(
+  '/:id/notes',
+  authenticateToken,
+  requireRoles(['doctor', 'admin']),
+  appointmentController.updateNotes.bind(appointmentController)
 );
 
 /**
