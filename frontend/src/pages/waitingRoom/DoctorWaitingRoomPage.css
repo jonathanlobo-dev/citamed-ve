@@ -548,8 +548,35 @@
   gap: 8px;
 }
 
+.wr-med-grid > div {
+  min-width: 0;
+}
+
+.wr-med-grid input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #0f172a;
+  background: #fff;
+}
+
+.wr-med-grid input:focus {
+  outline: none;
+  border-color: #0d9488;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+}
+
 .wr-med-grid-full {
   grid-column: 1 / -1;
+}
+
+@media (max-width: 560px) {
+  .wr-med-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .btn-add-med {

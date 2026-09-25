@@ -777,7 +777,7 @@ const DoctorWaitingRoomPage = () => {
                             <div>
                               <input
                                 type="text"
-                                placeholder="Presentación (ej. Tabletas 875/125 mg)"
+                                placeholder="Presentación (ej. Tab. 500 mg)"
                                 value={item.presentation}
                                 onChange={(e) => handleUpdateMedication(idx, 'presentation', e.target.value)}
                                 disabled={actionLoading}
@@ -795,7 +795,7 @@ const DoctorWaitingRoomPage = () => {
                             <div>
                               <input
                                 type="text"
-                                placeholder="Frecuencia (ej. Cada 12 horas)"
+                                placeholder="Frecuencia (ej. c/12 h)"
                                 value={item.frequency}
                                 onChange={(e) => handleUpdateMedication(idx, 'frequency', e.target.value)}
                                 disabled={actionLoading}
