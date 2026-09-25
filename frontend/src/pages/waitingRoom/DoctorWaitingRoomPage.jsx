@@ -10,6 +10,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import DoctorQueueDashboard from '../../components/waitingRoom/DoctorQueueDashboard';
 import useWaitingRoom from '../../hooks/useWaitingRoom';
 import { useAuth } from '../../context/AuthContext';
+import appointmentService from '../../services/appointmentService';
 import prescriptionAPI from '../../services/prescriptionService';
 import { shareRecipe } from '../../utils/shareRecipe';
 import './DoctorWaitingRoomPage.css';
@@ -58,6 +59,32 @@ const DoctorWaitingRoomPage = () => {
     indications: '',
     prescriptionSuccess: null
   });
+
+  // Expediente mínimo y alergias del paciente
+  const [currentPatientHistory, setCurrentPatientHistory] = useState(null);
+  const [loadingCurrentHistory, setLoadingCurrentHistory] = useState(false);
+  const [modalHistory, setModalHistory] = useState(null);
+  const [loadingModalHistory, setLoadingModalHistory] = useState(false);
+  const [showModalHistory, setShowModalHistory] = useState(false);
+
+  // Sincronizar historial del paciente actualmente en consulta
+  useEffect(() => {
+    const inConsultation = localQueue.find((p) => p.status === 'in_consultation');
+    const pId = inConsultation?.patientId || inConsultation?.patient?.id;
+    if (pId) {
+      setLoadingCurrentHistory(true);
+      appointmentService
+        .getPatientHistory(pId)
+        .then((res) => setCurrentPatientHistory(res.data))
+        .catch((err) => {
+          console.error('Error cargando historial de paciente en consulta:', err);
+          setCurrentPatientHistory(null);
+        })
+        .finally(() => setLoadingCurrentHistory(false));
+    } else {
+      setCurrentPatientHistory(null);
+    }
+  }, [localQueue]);
 
   // Cargar cola inicial via API
   useEffect(() => {
@@ -180,6 +207,7 @@ const DoctorWaitingRoomPage = () => {
   const handleOpenEndModal = (queueEntryId) => {
     const entry = localQueue.find((q) => q.id === queueEntryId);
     const patient = entry?.patient;
+    const pId = entry?.patientId || patient?.id;
     setEndModal({
       open: true,
       queueEntryId,
@@ -193,6 +221,20 @@ const DoctorWaitingRoomPage = () => {
       indications: '',
       prescriptionSuccess: null
     });
+
+    setModalHistory(null);
+    setShowModalHistory(false);
+    if (pId) {
+      setLoadingModalHistory(true);
+      appointmentService
+        .getPatientHistory(pId)
+        .then((res) => setModalHistory(res.data))
+        .catch((err) => {
+          console.error('Error cargando historial de paciente en modal:', err);
+          setModalHistory(null);
+        })
+        .finally(() => setLoadingModalHistory(false));
+    }
   };
 
   const handleCloseEndModal = () => {
@@ -209,6 +251,8 @@ const DoctorWaitingRoomPage = () => {
       indications: '',
       prescriptionSuccess: null
     });
+    setModalHistory(null);
+    setShowModalHistory(false);
   };
 
   const handleAddMedication = () => {
@@ -491,6 +535,9 @@ const DoctorWaitingRoomPage = () => {
           onStartConsultation={handleStartConsultation}
           onEndConsultation={handleOpenEndModal}
           onMarkNoShow={handleMarkNoShow}
+          currentPatientHistory={currentPatientHistory}
+          loadingCurrentHistory={loadingCurrentHistory}
+          onDownloadPrescriptionPdf={handleDownloadPrescriptionPdf}
         />
       </main>
 
@@ -558,6 +605,65 @@ const DoctorWaitingRoomPage = () => {
             ) : (
               <form onSubmit={handleEndConsultationSubmit}>
                 <div className="wr-modal-body">
+                  {/* Expediente mínimo: Consultas anteriores con este paciente */}
+                  <div className="wr-modal-history-box">
+                    <button
+                      type="button"
+                      className="wr-modal-history-toggle"
+                      onClick={() => setShowModalHistory(!showModalHistory)}
+                    >
+                      <span>📋 Consultas anteriores con este paciente {modalHistory ? `(${modalHistory.history?.length || 0})` : ''}</span>
+                      <span>{showModalHistory ? '▲ Ocultar' : '▼ Ver'}</span>
+                    </button>
+                    {showModalHistory && (
+                      <div className="wr-modal-history-content">
+                        {loadingModalHistory ? (
+                          <p className="wr-history-note">Cargando consultas anteriores...</p>
+                        ) : !modalHistory || modalHistory.history?.length === 0 ? (
+                          <p className="wr-history-note empty">Primera consulta con este paciente</p>
+                        ) : (
+                          <div className="wr-history-items-list">
+                            {modalHistory.history.map((past) => (
+                              <div key={past.id} className="wr-past-item">
+                                <div className="wr-past-head">
+                                  <strong>{past.appointmentDate} · {past.appointmentTime}</strong>
+                                  <span>{past.reasonForVisit || 'Consulta general'}</span>
+                                </div>
+                                {past.diagnosis && (
+                                  <div className="wr-past-row">
+                                    <strong>Diagnóstico:</strong> {past.diagnosis}
+                                  </div>
+                                )}
+                                {past.doctorNotes && (
+                                  <div className="wr-past-row">
+                                    <strong>Notas:</strong> {past.doctorNotes}
+                                  </div>
+                                )}
+                                {past.prescriptions?.length > 0 && (
+                                  <div className="wr-past-recipes">
+                                    <strong>Récipes:</strong>
+                                    {past.prescriptions.map((p) => (
+                                      <div key={p.id} className="wr-past-recipe-chip">
+                                        <span>{p.verificationCode} ({p.items?.map((i) => i.medication).join(', ')})</span>
+                                        <button
+                                          type="button"
+                                          className="wr-btn-mini-pdf"
+                                          onClick={() => handleDownloadPrescriptionPdf(p.id)}
+                                        >
+                                          PDF
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="wr-modal-field">
                     <label htmlFor="modal-diagnosis">Diagnóstico (opcional)</label>
                     <input
@@ -579,6 +685,14 @@ const DoctorWaitingRoomPage = () => {
                       disabled={actionLoading}
                     />
                   </div>
+
+                  {/* Alerta de alergias registradas del paciente */}
+                  {modalHistory?.allergies?.length > 0 && (
+                    <div className="wr-allergy-alert">
+                      <strong>⚠️ Alergias del paciente:</strong>{' '}
+                      {modalHistory.allergies.map(a => `${a.allergen}${a.severity ? ` (${a.severity}${a.reaction ? `: ${a.reaction}` : ''})` : ''}`).join(', ')}
+                    </div>
+                  )}
 
                   {/* Sección opcional: Récipe Médico */}
                   <div className="wr-modal-field">

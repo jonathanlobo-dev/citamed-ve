@@ -75,6 +75,20 @@ router.get(
 
 /**
  * @swagger
+ * /api/appointments/patient-history/{patientId}:
+ *   get:
+ *     tags: [Appointments]
+ *     summary: Obtener expediente mínimo del paciente para el médico
+ */
+router.get(
+  '/patient-history/:patientId',
+  authenticateToken,
+  requireRoles(['doctor', 'admin']),
+  appointmentController.getPatientHistory.bind(appointmentController)
+);
+
+/**
+ * @swagger
  * /api/appointments/{id}:
  *   get:
  *     tags: [Appointments]

@@ -848,6 +848,114 @@ class AppointmentService {
 
     return appointment;
   }
+
+  /**
+   * Obtiene el expediente mínimo del paciente:
+   * Solo las citas 'completed' con el médico solicitante (o todas si es admin).
+   * Si el médico nunca ha tenido una cita con ese paciente, retorna 403.
+   * Incluye alergias y edad del paciente.
+   */
+  async getPatientHistory(patientId, user) {
+    const pId = parseInt(patientId, 10);
+
+    // 1. Validar relación previa con el paciente si el rol es doctor
+    if (user.role !== 'admin') {
+      const hasRelationship = await Appointment.findOne({
+        where: {
+          patientId: pId,
+          doctorId: user.id
+        }
+      });
+
+      if (!hasRelationship) {
+        const err = new Error('No autorizado para ver el historial de este paciente: no tiene citas registradas con usted');
+        err.statusCode = 403;
+        throw err;
+      }
+    }
+
+    // 2. Buscar últimas 10 consultas completadas con este médico
+    const whereApts = {
+      patientId: pId,
+      status: 'completed'
+    };
+    if (user.role !== 'admin') {
+      whereApts.doctorId = user.id;
+    }
+
+    const pastAppointments = await Appointment.findAll({
+      where: whereApts,
+      order: [
+        ['appointmentDate', 'DESC'],
+        ['appointmentTime', 'DESC']
+      ],
+      limit: 10,
+      include: [
+        {
+          model: db.Prescription,
+          as: 'prescriptions',
+          attributes: ['id', 'verificationCode', 'items', 'indications', 'status', 'createdAt']
+        }
+      ]
+    });
+
+    // 3. Buscar perfil del paciente y alergias
+    const patientProfile = await db.PatientProfile.findOne({
+      where: { userId: pId },
+      include: [
+        {
+          model: db.PatientAllergy,
+          as: 'patientAllergies'
+        }
+      ]
+    });
+
+    // 4. Calcular edad si hay fecha de nacimiento
+    let age = null;
+    if (patientProfile?.dateOfBirth) {
+      const birth = new Date(patientProfile.dateOfBirth);
+      const today = new Date();
+      age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      if (age < 0) age = 0;
+    }
+
+    const allergies = (patientProfile?.patientAllergies || []).map((a) => ({
+      id: a.id,
+      allergen: a.allergen,
+      allergyType: a.allergyType,
+      severity: a.severity,
+      reaction: a.reaction
+    }));
+
+    const history = pastAppointments.map((apt) => ({
+      id: apt.id,
+      appointmentDate: apt.appointmentDate,
+      appointmentTime: apt.appointmentTime,
+      reasonForVisit: apt.reasonForVisit,
+      doctorNotes: apt.doctorNotes,
+      diagnosis: apt.diagnosis,
+      prescriptions: (apt.prescriptions || []).map((p) => ({
+        id: p.id,
+        verificationCode: p.verificationCode,
+        status: p.status,
+        createdAt: p.createdAt,
+        items: p.items,
+        indications: p.indications,
+        downloadUrl: `/api/prescriptions/${p.id}/pdf`
+      }))
+    }));
+
+    return {
+      patientId: pId,
+      age,
+      allergies,
+      history
+    };
+  }
 }
 
 module.exports = new AppointmentService();

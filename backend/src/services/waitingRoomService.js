@@ -249,12 +249,15 @@ class WaitingRoomService {
     // Formatear para frontend
     const formattedQueue = queue.map((entry, index) => ({
       id: entry.id,
+      appointmentId: entry.appointmentId || entry.appointment?.id,
+      patientId: entry.patientId || entry.patient?.id,
       position: entry.position,
       status: entry.status,
       patient: {
         id: entry.patient.id,
         name: `${entry.patient.firstName} ${entry.patient.lastName}`,
-        initials: `${entry.patient.firstName[0]}${entry.patient.lastName[0]}`
+        initials: `${entry.patient.firstName[0]}${entry.patient.lastName[0]}`,
+        phone: entry.patient.phone || ''
       },
       appointmentTime: entry.appointment.appointmentTime,
       estimatedWaitMinutes: index * (stats.avgConsultationTime || 20),

@@ -458,13 +458,158 @@ async function runTest() {
     }
 
     // ----------------------------------------------------
-    // RESUMEN FINAL BLOQUE D
+    // PASO 10: Expediente mínimo del paciente (E3)
+    // ----------------------------------------------------
+    logStep(10, 'Expediente médico: Doctor A atiende 2da cita de Paciente 1, consulta historial y Doctor B recibe 403...');
+    try {
+      // 10.1 Paciente 1 agenda segunda cita con Doctor A
+      const slotsRes = await axios.get(`${API_BASE}/appointments/available-slots`, {
+        params: { doctorProfileId: docAProfileId, date: today },
+        headers: { Authorization: `Bearer ${p1Token}` }
+      });
+      const slots = slotsRes.data.data?.slots || [];
+      const availableSlots = slots.filter((s) => s.available);
+      if (availableSlots.length === 0) {
+        throw new Error('No hay slots disponibles para agendar la 2da cita de prueba');
+      }
+      const secondSlotTime = availableSlots[0].start;
+
+      const apt2Res = await axios.post(
+        `${API_BASE}/appointments`,
+        {
+          doctorId: docAId,
+          doctorProfileId: docAProfileId,
+          specialtyId: 1,
+          appointmentDate: today,
+          appointmentTime: secondSlotTime,
+          appointmentType: 'first_consultation',
+          reasonForVisit: 'Control post-tratamiento de faringitis'
+        },
+        { headers: { Authorization: `Bearer ${p1Token}` } }
+      );
+      const appointment2Id = apt2Res.data.data?.id || apt2Res.data.appointment?.id || apt2Res.data.id;
+      pass(`Segunda cita creada para Paciente 1 (ID: ${appointment2Id}) a las ${secondSlotTime}`);
+
+      // 10.2 Doctor A confirma la segunda cita
+      await axios.put(
+        `${API_BASE}/appointments/${appointment2Id}/confirm`,
+        {},
+        { headers: { Authorization: `Bearer ${docAToken}` } }
+      );
+      pass(`Segunda cita confirmada por Doctor A`);
+
+      // 10.3 Doctor A completa la segunda cita con diagnóstico y notas
+      const diag2 = 'Evolución clínica satisfactoria - Alta médica';
+      const notes2 = 'Paciente asintomático, sin fiebre ni odinofagia. Completó tratamiento.';
+      await axios.put(
+        `${API_BASE}/appointments/${appointment2Id}/complete`,
+        {
+          diagnosis: diag2,
+          doctorNotes: notes2
+        },
+        { headers: { Authorization: `Bearer ${docAToken}` } }
+      );
+      pass(`Segunda cita completada con notas y diagnóstico`);
+
+      // 10.4 Doctor A consulta el expediente mínimo de Paciente 1
+      const historyRes = await axios.get(
+        `${API_BASE}/appointments/patient-history/${p1Id}`,
+        { headers: { Authorization: `Bearer ${docAToken}` } }
+      );
+
+      const histData = historyRes.data.data;
+      if (!histData || !Array.isArray(histData.history)) {
+        throw new Error('Respuesta de patient-history con formato inválido');
+      }
+
+      if (histData.history.length < 2) {
+        throw new Error(`Se esperaban al menos 2 consultas en el historial, recibidas: ${histData.history.length}`);
+      }
+
+      // Validar que la primera consulta contiene sus notas, diagnóstico y récipe
+      const firstAptInHistory = histData.history.find((h) => h.id === appointment1Id);
+      if (!firstAptInHistory) {
+        throw new Error(`La primera cita (ID: ${appointment1Id}) no aparece en el historial`);
+      }
+      if (!firstAptInHistory.diagnosis || !firstAptInHistory.doctorNotes) {
+        throw new Error('La primera cita en el historial no incluye diagnóstico o notas médicas');
+      }
+      if (!firstAptInHistory.prescriptions || firstAptInHistory.prescriptions.length === 0) {
+        throw new Error('La primera cita en el historial no incluye sus récipes asociados');
+      }
+      const histPrescription = firstAptInHistory.prescriptions[0];
+      if (!histPrescription.verificationCode || !histPrescription.downloadUrl) {
+        throw new Error('El récipe en el historial no incluye verificationCode o downloadUrl');
+      }
+      pass('Doctor A ve el historial de Paciente 1 con notas, diagnóstico y récipes de la primera consulta');
+
+      // Validar edad y alergias (estructura presente)
+      if (typeof histData.age === 'number') {
+        pass(`Edad del paciente calculada: ${histData.age} años`);
+      }
+      if (Array.isArray(histData.allergies)) {
+        pass(`Alergias del paciente recuperadas: ${histData.allergies.length} registrada(s)`);
+      }
+
+      // 10.5 Registrar Doctor B (sin relación previa con Paciente 1)
+      const docBEmail = `dr.b.${uid}@citamed.ve`;
+      const docBRes = await axios.post(`${API_BASE}/auth/register/doctor`, {
+        email: docBEmail,
+        password: 'Password123!',
+        confirmPassword: 'Password123!',
+        acceptTerms: true,
+        firstName: 'Beatriz',
+        lastName: 'Méndez',
+        identificationNumber: `V-${uid}88`,
+        dateOfBirth: '1985-08-20',
+        gender: 'female',
+        phone: '+584145550099',
+        mppsNumber: `MPPSB${uid}`,
+        specialtyId: 1,
+        university: 'LUZ',
+        graduationYear: 2011,
+        clinicName: `Consultorio Los Samanes ${uid}`,
+        consultationAddress: 'Av. Principal Los Samanes',
+        city: 'Caracas',
+        state: 'Distrito Capital',
+        availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+        startTime: '08:00',
+        endTime: '16:00',
+        slotDuration: 30,
+        consultationType: 'presencial'
+      });
+      const docBToken = docBRes.data.token || docBRes.data.data?.token;
+      pass(`Doctor B registrado exitosamente (${docBEmail})`);
+
+      // 10.6 Doctor B intenta consultar el historial de Paciente 1 (debe retornar 403 Forbidden)
+      try {
+        await axios.get(
+          `${API_BASE}/appointments/patient-history/${p1Id}`,
+          { headers: { Authorization: `Bearer ${docBToken}` } }
+        );
+        fail('Doctor B pudo consultar el historial de Paciente 1 sin tener citas con él (esperaba 403)');
+        allPassed = false;
+      } catch (err) {
+        if (err.response && err.response.status === 403) {
+          pass('Privacidad médica estricta: Doctor B recibió 403 Forbidden al intentar ver paciente ajeno');
+        } else {
+          fail('Respuesta inesperada al consultar historial por médico ajeno', err);
+          allPassed = false;
+        }
+      }
+    } catch (err) {
+      fail('Expediente médico mínimo del paciente (E3)', err);
+      allPassed = false;
+    }
+
+    // ----------------------------------------------------
+    // RESUMEN FINAL BLOQUES D Y E
     // ----------------------------------------------------
     console.log(`\n======================================================`);
     if (allPassed) {
-      console.log(`🎉 TODOS LOS TESTS DE RÉCIPES MÉDICOS (BLOQUE D) PASARON CON ÉXITO`);
+      console.log(`🎉 TODOS LOS TESTS DE RÉCIPES Y EXPEDIENTE (BLOQUES D Y E) PASARON CON ÉXITO`);
     } else {
-      console.log(`❌ SE ENCONTRARON FALLOS EN LA VERIFICACIÓN DE RÉCIPES`);
+      console.log(`❌ SE ENCONTRARON FALLOS EN LA VERIFICACIÓN`);
     }
     console.log(`======================================================\n`);
   } catch (globalErr) {

@@ -409,6 +409,28 @@ class AppointmentController {
       });
     }
   }
+
+  /**
+   * GET /api/appointments/patient-history/:patientId
+   * Obtener expediente mínimo del paciente para el médico
+   */
+  async getPatientHistory(req, res) {
+    try {
+      const { patientId } = req.params;
+      const history = await appointmentService.getPatientHistory(patientId, req.user);
+      res.json({
+        success: true,
+        data: history
+      });
+    } catch (error) {
+      console.error('[AppointmentController] getPatientHistory error:', error);
+      const status = error.statusCode || 400;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 }
 
 module.exports = new AppointmentController();

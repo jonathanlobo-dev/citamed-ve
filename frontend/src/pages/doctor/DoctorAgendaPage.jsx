@@ -359,6 +359,34 @@ function DoctorAgendaPage() {
     submitting: false
   });
 
+  // Expediente mínimo y alergias del paciente (modal y detalle)
+  const [completeModalHistory, setCompleteModalHistory] = useState(null);
+  const [loadingCompleteHistory, setLoadingCompleteHistory] = useState(false);
+  const [showCompleteHistory, setShowCompleteHistory] = useState(false);
+  const [patientHistories, setPatientHistories] = useState({});
+  const [expandedHistoryAptId, setExpandedHistoryAptId] = useState(null);
+  const [loadingAptHistory, setLoadingAptHistory] = useState({});
+
+  const togglePatientHistoryForApt = async (apt) => {
+    if (expandedHistoryAptId === apt.id) {
+      setExpandedHistoryAptId(null);
+      return;
+    }
+    setExpandedHistoryAptId(apt.id);
+    const pId = apt.patientId || apt.patient?.id;
+    if (pId && !patientHistories[pId]) {
+      setLoadingAptHistory((prev) => ({ ...prev, [apt.id]: true }));
+      try {
+        const res = await appointmentService.getPatientHistory(pId);
+        setPatientHistories((prev) => ({ ...prev, [pId]: res.data }));
+      } catch (err) {
+        console.error('Error fetching patient history:', err);
+      } finally {
+        setLoadingAptHistory((prev) => ({ ...prev, [apt.id]: false }));
+      }
+    }
+  };
+
   // Cache de récipes por cita en la agenda
   const [appointmentPrescriptions, setAppointmentPrescriptions] = useState({});
   const [loadingPrescriptions, setLoadingPrescriptions] = useState({});
@@ -429,6 +457,7 @@ function DoctorAgendaPage() {
   };
 
   const handleOpenCompleteModal = (apt) => {
+    const pId = apt.patientId || apt.patient?.id;
     setCompleteModal({
       open: true,
       appointmentId: apt.id,
@@ -442,6 +471,16 @@ function DoctorAgendaPage() {
       prescriptionSuccess: null,
       submitting: false
     });
+    setCompleteModalHistory(null);
+    setShowCompleteHistory(false);
+    if (pId) {
+      setLoadingCompleteHistory(true);
+      appointmentService
+        .getPatientHistory(pId)
+        .then((res) => setCompleteModalHistory(res.data))
+        .catch((err) => console.error('Error fetching history for complete modal:', err))
+        .finally(() => setLoadingCompleteHistory(false));
+    }
   };
 
   const handleCloseCompleteModal = () => {
@@ -458,6 +497,8 @@ function DoctorAgendaPage() {
       prescriptionSuccess: null,
       submitting: false
     });
+    setCompleteModalHistory(null);
+    setShowCompleteHistory(false);
   };
 
   const handleAddMedicationToModal = () => {
@@ -1059,6 +1100,86 @@ function DoctorAgendaPage() {
                                     </div>
                                   </div>
                                 )}
+
+                                {/* Sección Expediente / Consultas anteriores con este paciente */}
+                                <div className="mt-2.5 pt-2 border-t border-gray-100">
+                                  <button
+                                    type="button"
+                                    onClick={() => togglePatientHistoryForApt(apt)}
+                                    className="text-xs text-primary hover:text-primary/80 font-semibold flex items-center gap-1.5"
+                                  >
+                                    <FileText className="w-3.5 h-3.5" />
+                                    <span>Consultas anteriores con este paciente</span>
+                                    <span className="text-[10px] text-gray-500">
+                                      {expandedHistoryAptId === apt.id ? '▲ Ocultar' : '▼ Ver'}
+                                    </span>
+                                  </button>
+
+                                  {expandedHistoryAptId === apt.id && (
+                                    <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200 text-xs space-y-2">
+                                      {loadingAptHistory[apt.id] ? (
+                                        <p className="text-gray-500 text-center py-1">Cargando consultas anteriores...</p>
+                                      ) : (() => {
+                                        const hist = patientHistories[apt.patientId || apt.patient?.id];
+                                        if (!hist) return <p className="text-gray-400 italic">No se pudo cargar el historial.</p>;
+
+                                        return (
+                                          <>
+                                            {hist.allergies?.length > 0 && (
+                                              <div className="p-2 bg-red-50 border border-red-200 rounded text-red-800">
+                                                <strong>⚠️ Alergias del paciente:</strong>{' '}
+                                                {hist.allergies.map((a) => `${a.allergen}${a.severity ? ` (${a.severity})` : ''}`).join(', ')}
+                                              </div>
+                                            )}
+                                            {hist.history?.length === 0 ? (
+                                              <p className="text-gray-500 italic">Primera consulta con este paciente</p>
+                                            ) : (
+                                              <div className="space-y-2">
+                                                {hist.history.map((past) => (
+                                                  <div key={past.id} className="p-2 bg-white rounded border border-gray-200 space-y-1">
+                                                    <div className="flex items-center justify-between font-bold text-gray-800">
+                                                      <span>{past.appointmentDate} · {past.appointmentTime}</span>
+                                                      <span className="text-gray-500 font-normal italic">{past.reasonForVisit || 'Consulta general'}</span>
+                                                    </div>
+                                                    {past.diagnosis && (
+                                                      <div className="text-gray-700">
+                                                        <span className="font-semibold text-teal-800">Diagnóstico:</span> {past.diagnosis}
+                                                      </div>
+                                                    )}
+                                                    {past.doctorNotes && (
+                                                      <div className="text-gray-700">
+                                                        <span className="font-semibold text-teal-800">Notas:</span> {past.doctorNotes}
+                                                      </div>
+                                                    )}
+                                                    {past.prescriptions?.length > 0 && (
+                                                      <div className="pt-1 border-t border-gray-100 flex items-center justify-between gap-1 flex-wrap">
+                                                        <span className="font-semibold text-teal-800">Récipes:</span>
+                                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                                          {past.prescriptions.map((p) => (
+                                                            <div key={p.id} className="flex items-center gap-1 bg-teal-50 px-2 py-0.5 rounded text-[11px]">
+                                                              <span className="font-mono text-teal-700">{p.verificationCode}</span>
+                                                              <button
+                                                                type="button"
+                                                                onClick={() => handleDownloadPrescription(p.id)}
+                                                                className="text-teal-700 hover:underline font-bold"
+                                                              >
+                                                                PDF
+                                                              </button>
+                                                            </div>
+                                                          ))}
+                                                        </div>
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            )}
+                                          </>
+                                        );
+                                      })()}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
 
@@ -1492,6 +1613,69 @@ function DoctorAgendaPage() {
             ) : (
               <form onSubmit={handleSubmitComplete}>
                 <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                  {/* Consultas anteriores con este paciente */}
+                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => setShowCompleteHistory(!showCompleteHistory)}
+                      className="w-full flex items-center justify-between text-xs font-semibold text-gray-700"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-primary" />
+                        Consultas anteriores con este paciente {completeModalHistory ? `(${completeModalHistory.history?.length || 0})` : ''}
+                      </span>
+                      <span className="text-[11px] text-gray-500">{showCompleteHistory ? '▲ Ocultar' : '▼ Ver'}</span>
+                    </button>
+
+                    {showCompleteHistory && (
+                      <div className="mt-2.5 pt-2.5 border-t border-gray-200 max-h-48 overflow-y-auto space-y-2 text-xs">
+                        {loadingCompleteHistory ? (
+                          <p className="text-gray-500 text-center py-2">Cargando consultas anteriores...</p>
+                        ) : !completeModalHistory || completeModalHistory.history?.length === 0 ? (
+                          <p className="text-gray-500 italic text-center py-2">Primera consulta con este paciente</p>
+                        ) : (
+                          completeModalHistory.history.map((past) => (
+                            <div key={past.id} className="p-2 bg-white rounded-lg border border-gray-200 space-y-1">
+                              <div className="flex items-center justify-between font-bold text-gray-800">
+                                <span>{past.appointmentDate} · {past.appointmentTime}</span>
+                                <span className="text-gray-500 font-normal italic">{past.reasonForVisit || 'Consulta general'}</span>
+                              </div>
+                              {past.diagnosis && (
+                                <div className="text-gray-700">
+                                  <span className="font-semibold text-teal-800">Diagnóstico:</span> {past.diagnosis}
+                                </div>
+                              )}
+                              {past.doctorNotes && (
+                                <div className="text-gray-700">
+                                  <span className="font-semibold text-teal-800">Notas:</span> {past.doctorNotes}
+                                </div>
+                              )}
+                              {past.prescriptions?.length > 0 && (
+                                <div className="pt-1 border-t border-gray-100 flex items-center justify-between gap-1 flex-wrap">
+                                  <span className="font-semibold text-teal-800">Récipes:</span>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {past.prescriptions.map((p) => (
+                                      <div key={p.id} className="flex items-center gap-1 bg-teal-50 px-2 py-0.5 rounded text-[11px]">
+                                        <span className="font-mono text-teal-700">{p.verificationCode}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDownloadPrescription(p.id)}
+                                          className="text-teal-700 hover:underline font-bold"
+                                        >
+                                          PDF
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <div>
                     <label htmlFor="agenda-diagnosis" className="block text-sm font-semibold text-gray-700 mb-1">
                       Diagnóstico (opcional)
@@ -1520,6 +1704,17 @@ function DoctorAgendaPage() {
                       className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     />
                   </div>
+
+                  {/* Alerta de alergias registradas */}
+                  {completeModalHistory?.allergies?.length > 0 && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold">⚠️ Alergias del paciente:</span>{' '}
+                        {completeModalHistory.allergies.map(a => `${a.allergen}${a.severity ? ` (${a.severity}${a.reaction ? `: ${a.reaction}` : ''})` : ''}`).join(', ')}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Sección Récipe Médico */}
                   <div className="pt-3 border-t border-gray-100">

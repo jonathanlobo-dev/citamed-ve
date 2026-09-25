@@ -110,6 +110,14 @@ const appointmentService = {
    */
   updateNotes: (id, data) =>
     api.put(`/appointments/${id}/notes`, data).then((res) => res.data),
+
+  /**
+   * Obtener expediente mínimo del paciente (solo citas con el médico autenticado).
+   * @param {number|string} patientId
+   * @returns {Promise<{success: boolean, data: {patientId: number, age: number|null, allergies: Array, history: Array}}>}
+   */
+  getPatientHistory: (patientId) =>
+    api.get(`/appointments/patient-history/${patientId}`).then((res) => res.data),
 };
 
 export default appointmentService;

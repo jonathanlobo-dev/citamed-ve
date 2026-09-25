@@ -637,3 +637,131 @@
 .btn-whatsapp-share:hover {
   background: #1ebc59;
 }
+
+/* =====================================================
+   BLOQUE E: ALERGIAS Y EXPEDIENTE EN MODAL DE CONSULTA
+   ===================================================== */
+.wr-allergy-alert {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.wr-modal-history-box {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.wr-modal-history-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.wr-modal-history-toggle:hover {
+  background: #f1f5f9;
+}
+
+.wr-modal-history-content {
+  padding: 12px 14px;
+  border-top: 1px solid #e2e8f0;
+  background: #fafafa;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.wr-history-note {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 6px 0;
+  text-align: center;
+}
+
+.wr-history-note.empty {
+  font-style: italic;
+  color: #94a3b8;
+}
+
+.wr-history-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wr-past-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 0.825rem;
+}
+
+.wr-past-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  color: #1e293b;
+}
+
+.wr-past-head span {
+  color: #64748b;
+  font-style: italic;
+  font-size: 0.775rem;
+}
+
+.wr-past-row {
+  margin-top: 4px;
+  color: #475569;
+}
+
+.wr-past-recipes {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed #cbd5e1;
+}
+
+.wr-past-recipe-chip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f0fdfa;
+  border: 1px solid #ccfbf1;
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin-top: 4px;
+  font-size: 0.775rem;
+  color: #115e59;
+}
+
+.wr-btn-mini-pdf {
+  background: #0d9488;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.wr-btn-mini-pdf:hover {
+  background: #0f766e;
+}
+

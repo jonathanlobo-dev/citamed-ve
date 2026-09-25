@@ -563,3 +563,138 @@
     flex-wrap: nowrap;
   }
 }
+
+/* =====================================================
+   BLOQUE E: ALERGIAS Y EXPEDIENTE MÍNIMO DEL PACIENTE
+   ===================================================== */
+.current-patient-allergies-box {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  margin-bottom: 14px;
+  line-height: 1.4;
+}
+
+.current-patient-history-drawer {
+  margin-bottom: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.btn-history-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-history-toggle:hover {
+  background: #f1f5f9;
+}
+
+.past-consultations-panel {
+  padding: 12px 14px;
+  border-top: 1px solid #e2e8f0;
+  background: #fafafa;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.history-msg {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 6px 0;
+  text-align: center;
+}
+
+.history-msg.empty {
+  font-style: italic;
+  color: #94a3b8;
+}
+
+.past-consultations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.past-consultation-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 0.825rem;
+}
+
+.past-consultation-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  color: #1e293b;
+}
+
+.past-reason {
+  color: #64748b;
+  font-style: italic;
+  font-size: 0.775rem;
+}
+
+.past-field {
+  margin-top: 4px;
+  color: #475569;
+}
+
+.field-lbl {
+  font-weight: 600;
+  color: #0f766e;
+}
+
+.past-prescriptions-wrap {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed #cbd5e1;
+}
+
+.past-prescription-chip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f0fdfa;
+  border: 1px solid #ccfbf1;
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin-top: 4px;
+  font-size: 0.775rem;
+  color: #115e59;
+}
+
+.btn-mini-pdf {
+  background: #0d9488;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn-mini-pdf:hover {
+  background: #0f766e;
+}
+

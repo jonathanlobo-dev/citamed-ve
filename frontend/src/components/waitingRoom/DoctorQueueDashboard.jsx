@@ -19,9 +19,13 @@ const DoctorQueueDashboard = ({
   isOnline = false,
   onGoOnline,
   onGoOffline,
-  actionLoading = false
+  actionLoading = false,
+  currentPatientHistory = null,
+  loadingCurrentHistory = false,
+  onDownloadPrescriptionPdf = null
 }) => {
   const [currentPatient, setCurrentPatient] = useState(null);
+  const [showPastConsultations, setShowPastConsultations] = useState(false);
 
   useEffect(() => {
     const inConsultation = queue.find(p => p.status === 'in_consultation');
@@ -158,6 +162,77 @@ const DoctorQueueDashboard = ({
                   {formatTime(currentPatient.joinedAt || new Date())}
                 </span>
               </div>
+
+              {/* Alergias registradas del paciente */}
+              {currentPatientHistory?.allergies?.length > 0 && (
+                <div className="current-patient-allergies-box">
+                  <strong>⚠️ Alergias del paciente:</strong>{' '}
+                  {currentPatientHistory.allergies.map(a => `${a.allergen}${a.severity ? ` (${a.severity}${a.reaction ? `: ${a.reaction}` : ''})` : ''}`).join(', ')}
+                </div>
+              )}
+
+              {/* Consultas anteriores (Expediente mínimo) */}
+              <div className="current-patient-history-drawer">
+                <button
+                  type="button"
+                  className="btn-history-toggle"
+                  onClick={() => setShowPastConsultations(!showPastConsultations)}
+                >
+                  <span>📋 Consultas anteriores con este paciente {currentPatientHistory ? `(${currentPatientHistory.history?.length || 0})` : ''}</span>
+                  <span>{showPastConsultations ? '▲ Ocultar' : '▼ Ver'}</span>
+                </button>
+
+                {showPastConsultations && (
+                  <div className="past-consultations-panel">
+                    {loadingCurrentHistory ? (
+                      <p className="history-msg">Cargando consultas anteriores...</p>
+                    ) : !currentPatientHistory || currentPatientHistory.history?.length === 0 ? (
+                      <p className="history-msg empty">Primera consulta con este paciente</p>
+                    ) : (
+                      <div className="past-consultations-list">
+                        {currentPatientHistory.history.map((past) => (
+                          <div key={past.id} className="past-consultation-item">
+                            <div className="past-consultation-top">
+                              <strong>{past.appointmentDate} · {past.appointmentTime}</strong>
+                              <span className="past-reason">{past.reasonForVisit || 'Consulta general'}</span>
+                            </div>
+                            {past.diagnosis && (
+                              <div className="past-field">
+                                <span className="field-lbl">Diagnóstico:</span> {past.diagnosis}
+                              </div>
+                            )}
+                            {past.doctorNotes && (
+                              <div className="past-field">
+                                <span className="field-lbl">Notas:</span> {past.doctorNotes}
+                              </div>
+                            )}
+                            {past.prescriptions?.length > 0 && (
+                              <div className="past-prescriptions-wrap">
+                                <span className="field-lbl">Récipes:</span>
+                                {past.prescriptions.map((pr) => (
+                                  <div key={pr.id} className="past-prescription-chip">
+                                    <span>{pr.verificationCode} ({pr.items?.map(i => i.medication).join(', ')})</span>
+                                    {onDownloadPrescriptionPdf && (
+                                      <button
+                                        type="button"
+                                        className="btn-mini-pdf"
+                                        onClick={() => onDownloadPrescriptionPdf(pr.id)}
+                                      >
+                                        PDF
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <button
                 type="button"
                 className="btn btn-success btn-end-consultation"
