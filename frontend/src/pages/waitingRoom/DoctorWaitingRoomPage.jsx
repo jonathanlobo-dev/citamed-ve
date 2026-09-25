@@ -22,6 +22,7 @@ const DoctorWaitingRoomPage = () => {
 
   const {
     connected,
+    reconnecting,
     error,
     queue,
     stats,
@@ -37,8 +38,17 @@ const DoctorWaitingRoomPage = () => {
     return saved === 'true';
   });
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   const [localQueue, setLocalQueue] = useState([]);
   const [localStats, setLocalStats] = useState({});
+
+  // Modal de finalizar consulta
+  const [endModal, setEndModal] = useState({
+    open: false,
+    queueEntryId: null,
+    doctorNotes: '',
+    diagnosis: ''
+  });
 
   // Cargar cola inicial via API
   useEffect(() => {
@@ -100,6 +110,7 @@ const DoctorWaitingRoomPage = () => {
   }, [connected]);
 
   const handleCallNext = async () => {
+    setActionLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/waiting-room/call-next`, {
         method: 'POST',
@@ -108,14 +119,17 @@ const DoctorWaitingRoomPage = () => {
 
       if (response.ok) {
         callNextPatient();
-        refreshQueue();
+        await refreshQueue();
       }
     } catch (err) {
       console.error('Error calling next:', err);
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleCallPatient = async (queueEntryId) => {
+    setActionLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/waiting-room/call/${queueEntryId}`, {
         method: 'POST',
@@ -124,14 +138,17 @@ const DoctorWaitingRoomPage = () => {
 
       if (response.ok) {
         callSpecificPatient(queueEntryId);
-        refreshQueue();
+        await refreshQueue();
       }
     } catch (err) {
       console.error('Error calling patient:', err);
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleStartConsultation = async (queueEntryId) => {
+    setActionLoading(true);
     try {
       const response = await fetch(
         `${API_URL}/api/waiting-room/start-consultation/${queueEntryId}`,
@@ -142,34 +159,69 @@ const DoctorWaitingRoomPage = () => {
       );
 
       if (response.ok) {
-        refreshQueue();
+        await refreshQueue();
       }
     } catch (err) {
       console.error('Error starting consultation:', err);
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const handleEndConsultation = async (queueEntryId) => {
+  const handleOpenEndModal = (queueEntryId) => {
+    setEndModal({
+      open: true,
+      queueEntryId,
+      doctorNotes: '',
+      diagnosis: ''
+    });
+  };
+
+  const handleCloseEndModal = () => {
+    setEndModal({
+      open: false,
+      queueEntryId: null,
+      doctorNotes: '',
+      diagnosis: ''
+    });
+  };
+
+  const handleEndConsultationSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!endModal.queueEntryId) return;
+
+    setActionLoading(true);
     try {
       const response = await fetch(
-        `${API_URL}/api/waiting-room/end-consultation/${queueEntryId}`,
+        `${API_URL}/api/waiting-room/end-consultation/${endModal.queueEntryId}`,
         {
           method: 'POST',
-          headers: { Authorization: `Bearer ${token}` }
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            doctorNotes: endModal.doctorNotes.trim() || undefined,
+            diagnosis: endModal.diagnosis.trim() || undefined
+          })
         }
       );
 
       if (response.ok) {
-        refreshQueue();
+        handleCloseEndModal();
+        await refreshQueue();
       }
     } catch (err) {
       console.error('Error ending consultation:', err);
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleMarkNoShow = async (queueEntryId) => {
-    if (!confirm('Marcar paciente como no presentado?')) return;
+    if (!confirm('¿Marcar paciente como no presentado?')) return;
 
+    setActionLoading(true);
     try {
       const response = await fetch(
         `${API_URL}/api/waiting-room/no-show/${queueEntryId}`,
@@ -180,10 +232,12 @@ const DoctorWaitingRoomPage = () => {
       );
 
       if (response.ok) {
-        refreshQueue();
+        await refreshQueue();
       }
     } catch (err) {
       console.error('Error marking no-show:', err);
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -245,9 +299,9 @@ const DoctorWaitingRoomPage = () => {
         </div>
 
         <div className="header-center">
-          <div className={`connection-status ${connected ? 'connected' : 'disconnected'}`}>
+          <div className={`connection-status ${connected ? 'connected' : reconnecting ? 'reconnecting' : 'disconnected'}`}>
             <span className="status-dot"></span>
-            <span className="status-text">{connected ? 'Conectado' : 'Desconectado'}</span>
+            <span className="status-text">{connected ? 'Conectado' : reconnecting ? 'Reconectando...' : 'Sin conexión'}</span>
           </div>
         </div>
 
@@ -291,7 +345,7 @@ const DoctorWaitingRoomPage = () => {
         </div>
       )}
 
-      {!connected && (
+      {reconnecting && (
         <div className="connection-warning">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -301,20 +355,92 @@ const DoctorWaitingRoomPage = () => {
         </div>
       )}
 
+      {!connected && !reconnecting && (
+        <div className="connection-warning">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+          </svg>
+          Sin conexión en tiempo real. Mostrando datos actualizados periódicamente.
+        </div>
+      )}
+
       <main className="doctor-wr-content">
         <DoctorQueueDashboard
           queue={localQueue}
           stats={localStats}
           isOnline={isOnline}
+          actionLoading={actionLoading}
           onGoOnline={handleGoOnline}
           onGoOffline={handleGoOffline}
           onCallNext={handleCallNext}
           onCallPatient={handleCallPatient}
           onStartConsultation={handleStartConsultation}
-          onEndConsultation={handleEndConsultation}
+          onEndConsultation={handleOpenEndModal}
           onMarkNoShow={handleMarkNoShow}
         />
       </main>
+
+      {/* Modal de Finalizar Consulta con Notas y Diagnóstico */}
+      {endModal.open && (
+        <div className="wr-modal-overlay" onClick={handleCloseEndModal}>
+          <div className="wr-modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="wr-modal-header">
+              <h3>Finalizar Consulta</h3>
+              <button
+                type="button"
+                className="wr-modal-close"
+                onClick={handleCloseEndModal}
+                disabled={actionLoading}
+              >
+                &times;
+              </button>
+            </div>
+            <form onSubmit={handleEndConsultationSubmit}>
+              <div className="wr-modal-body">
+                <div className="wr-modal-field">
+                  <label htmlFor="modal-diagnosis">Diagnóstico (opcional)</label>
+                  <input
+                    id="modal-diagnosis"
+                    type="text"
+                    placeholder="Ej. Rinofaringitis aguda, Control de rutina..."
+                    value={endModal.diagnosis}
+                    onChange={(e) => setEndModal((prev) => ({ ...prev, diagnosis: e.target.value }))}
+                    disabled={actionLoading}
+                  />
+                </div>
+                <div className="wr-modal-field">
+                  <label htmlFor="modal-notes">Notas médicas / Observaciones clínicas (opcional)</label>
+                  <textarea
+                    id="modal-notes"
+                    placeholder="Detalles de la consulta, evolución o indicaciones generales..."
+                    value={endModal.doctorNotes}
+                    onChange={(e) => setEndModal((prev) => ({ ...prev, doctorNotes: e.target.value }))}
+                    disabled={actionLoading}
+                  />
+                </div>
+              </div>
+              <div className="wr-modal-footer">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={handleCloseEndModal}
+                  disabled={actionLoading}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? 'Finalizando...' : 'Finalizar Consulta'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

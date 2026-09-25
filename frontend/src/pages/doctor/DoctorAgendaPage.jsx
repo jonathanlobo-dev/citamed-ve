@@ -342,6 +342,70 @@ function DoctorAgendaPage() {
     }
   };
 
+  // Estado Modal de Completar Cita
+  const [completeModal, setCompleteModal] = useState({
+    open: false,
+    appointmentId: null,
+    patientName: '',
+    doctorNotes: '',
+    diagnosis: '',
+    submitting: false
+  });
+
+  const handleOpenCompleteModal = (apt) => {
+    setCompleteModal({
+      open: true,
+      appointmentId: apt.id,
+      patientName: `${apt.patient?.firstName || ''} ${apt.patient?.lastName || ''}`.trim(),
+      doctorNotes: apt.doctorNotes || '',
+      diagnosis: apt.diagnosis || '',
+      submitting: false
+    });
+  };
+
+  const handleCloseCompleteModal = () => {
+    setCompleteModal({
+      open: false,
+      appointmentId: null,
+      patientName: '',
+      doctorNotes: '',
+      diagnosis: '',
+      submitting: false
+    });
+  };
+
+  const handleSubmitComplete = async (e) => {
+    if (e) e.preventDefault();
+    if (!completeModal.appointmentId) return;
+
+    setCompleteModal((prev) => ({ ...prev, submitting: true }));
+    try {
+      await appointmentService.complete(completeModal.appointmentId, {
+        doctorNotes: completeModal.doctorNotes.trim() || undefined,
+        diagnosis: completeModal.diagnosis.trim() || undefined
+      });
+      toast.success('¡Consulta completada exitosamente!');
+      handleCloseCompleteModal();
+      fetchAppointments();
+    } catch (err) {
+      console.error('Error completing appointment:', err);
+      toast.error(err.response?.data?.message || 'Error al completar la cita');
+      setCompleteModal((prev) => ({ ...prev, submitting: false }));
+    }
+  };
+
+  const handleMarkNoShow = async (id) => {
+    if (!window.confirm('¿Marcar al paciente como no asistió a esta cita?')) return;
+    try {
+      await appointmentService.markNoShow(id);
+      toast.success('Cita marcada como no asistió');
+      fetchAppointments();
+    } catch (err) {
+      console.error('Error marking no show:', err);
+      toast.error(err.response?.data?.message || 'Error al marcar como no asistió');
+    }
+  };
+
   // Navegación de fechas según el modo de visualización activo
   const changeDateByDelta = (delta) => {
     const [year, month, day] = selectedDate.split('-').map(Number);
@@ -674,8 +738,16 @@ function DoctorAgendaPage() {
                 ) : (
                   <div className="space-y-4">
                     {appointments.map((apt) => {
+                      const todayCaracasStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Caracas' }).format(new Date());
+                      const aptDateStr = typeof apt.appointmentDate === 'string'
+                        ? apt.appointmentDate.split('T')[0]
+                        : '';
+                      const isAptToday = aptDateStr === todayCaracasStr;
                       const isPending = apt.status === 'pending';
                       const isConfirmed = apt.status === 'confirmed';
+                      const isInProgress = apt.status === 'in-progress' || apt.status === 'in_consultation';
+                      const isCompleted = apt.status === 'completed';
+                      const isNoShow = apt.status === 'no_show' || apt.status === 'no-show';
                       const isCancelled = apt.status.startsWith('cancelled');
                       const isRescheduled = apt.status === 'rescheduled';
 
@@ -685,8 +757,10 @@ function DoctorAgendaPage() {
                           className={`bg-white rounded-xl p-5 shadow-sm border transition-all ${
                             isPending
                               ? 'border-amber-300 bg-amber-50/20'
-                              : isConfirmed
+                              : isConfirmed || isInProgress
                               ? 'border-green-200 hover:shadow-md'
+                              : isCompleted
+                              ? 'border-teal-200 bg-teal-50/10'
                               : isRescheduled
                               ? 'border-purple-200 bg-purple-50/20 opacity-75'
                               : 'border-gray-200 opacity-75'
@@ -712,6 +786,21 @@ function DoctorAgendaPage() {
                                   {isConfirmed && (
                                     <span className="px-2.5 py-0.5 bg-green-100 text-green-800 border border-green-300 rounded-full text-xs font-semibold">
                                       ✓ Confirmada
+                                    </span>
+                                  )}
+                                  {isInProgress && (
+                                    <span className="px-2.5 py-0.5 bg-blue-100 text-blue-800 border border-blue-300 rounded-full text-xs font-semibold">
+                                      👨‍⚕️ En Consulta
+                                    </span>
+                                  )}
+                                  {isCompleted && (
+                                    <span className="px-2.5 py-0.5 bg-teal-100 text-teal-800 border border-teal-300 rounded-full text-xs font-semibold">
+                                      ✓ Atendida / Completada
+                                    </span>
+                                  )}
+                                  {isNoShow && (
+                                    <span className="px-2.5 py-0.5 bg-gray-100 text-gray-700 border border-gray-300 rounded-full text-xs font-semibold">
+                                      ✗ No Asistió
                                     </span>
                                   )}
                                   {isCancelled && (
@@ -748,11 +837,27 @@ function DoctorAgendaPage() {
                                     </span>
                                   )}
                                 </div>
+
+                                {/* Detalle de notas médicas y diagnóstico si la cita está completada */}
+                                {isCompleted && (apt.diagnosis || apt.doctorNotes) && (
+                                  <div className="mt-2.5 p-3 bg-teal-50/60 rounded-lg border border-teal-100 text-xs text-gray-700 space-y-1">
+                                    {apt.diagnosis && (
+                                      <div>
+                                        <span className="font-semibold text-teal-900">Diagnóstico:</span> {apt.diagnosis}
+                                      </div>
+                                    )}
+                                    {apt.doctorNotes && (
+                                      <div>
+                                        <span className="font-semibold text-teal-900">Notas clínicas:</span> {apt.doctorNotes}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
 
                             {/* Botones de acción */}
-                            <div className="flex items-center gap-2 self-end sm:self-center">
+                            <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
                               {isPending && (
                                 <>
                                   <button
@@ -773,15 +878,35 @@ function DoctorAgendaPage() {
                                   </button>
                                 </>
                               )}
-                              {isConfirmed && (
+                              {(isConfirmed || isInProgress) && (
                                 <>
+                                  {isAptToday && (
+                                    <button
+                                      type="button"
+                                      onClick={() => navigate('/medico/sala-espera')}
+                                      className="px-3.5 py-2 bg-primary text-white hover:bg-primary/90 text-sm font-semibold rounded-lg shadow transition flex items-center gap-1.5"
+                                      title="Ir a atender a la Sala de Espera"
+                                    >
+                                      <Users className="w-4 h-4" />
+                                      Atender
+                                    </button>
+                                  )}
                                   <button
                                     type="button"
-                                    onClick={() => navigate('/medico/sala-espera')}
-                                    className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-sm font-semibold rounded-lg transition flex items-center gap-1.5"
+                                    onClick={() => handleOpenCompleteModal(apt)}
+                                    className="px-3 py-2 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 text-sm font-semibold rounded-lg transition flex items-center gap-1.5"
+                                    title="Finalizar y registrar notas de la consulta"
                                   >
-                                    <Users className="w-4 h-4" />
-                                    Sala de Espera
+                                    <CheckCircle className="w-4 h-4" />
+                                    Completar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMarkNoShow(apt.id)}
+                                    className="px-3 py-2 border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium rounded-lg transition flex items-center gap-1"
+                                    title="Marcar paciente como no asistió"
+                                  >
+                                    No asistió
                                   </button>
                                   <button
                                     type="button"
@@ -1094,6 +1219,86 @@ function DoctorAgendaPage() {
           </div>
         )}
       </div>
+
+      {/* Modal Completar Cita */}
+      {completeModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h3 className="font-bold text-gray-900 text-lg">
+                Completar Consulta {completeModal.patientName ? `— ${completeModal.patientName}` : ''}
+              </h3>
+              <button
+                type="button"
+                onClick={handleCloseCompleteModal}
+                disabled={completeModal.submitting}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleSubmitComplete}>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label htmlFor="agenda-diagnosis" className="block text-sm font-semibold text-gray-700 mb-1">
+                    Diagnóstico (opcional)
+                  </label>
+                  <input
+                    id="agenda-diagnosis"
+                    type="text"
+                    value={completeModal.diagnosis}
+                    onChange={(e) => setCompleteModal((prev) => ({ ...prev, diagnosis: e.target.value }))}
+                    disabled={completeModal.submitting}
+                    placeholder="Ej. Rinofaringitis aguda, Control de rutina..."
+                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="agenda-notes" className="block text-sm font-semibold text-gray-700 mb-1">
+                    Notas médicas / Observaciones clínicas (opcional)
+                  </label>
+                  <textarea
+                    id="agenda-notes"
+                    rows={4}
+                    value={completeModal.doctorNotes}
+                    onChange={(e) => setCompleteModal((prev) => ({ ...prev, doctorNotes: e.target.value }))}
+                    disabled={completeModal.submitting}
+                    placeholder="Evolución clínica, indicaciones generales o plan terapéutico..."
+                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={handleCloseCompleteModal}
+                  disabled={completeModal.submitting}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-100 transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={completeModal.submitting}
+                  className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl shadow transition flex items-center gap-1.5"
+                >
+                  {completeModal.submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Completar Consulta
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

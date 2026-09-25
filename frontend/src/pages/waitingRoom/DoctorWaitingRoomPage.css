@@ -94,6 +94,11 @@
   color: #86efac;
 }
 
+.connection-status.reconnecting {
+  background: rgba(234, 179, 8, 0.2);
+  color: #fde047;
+}
+
 .connection-status.disconnected {
   background: rgba(239, 68, 68, 0.2);
   color: #fca5a5;
@@ -109,6 +114,12 @@
   background: #22c55e;
   box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
   animation: pulse-dot 2s infinite;
+}
+
+.connection-status.reconnecting .status-dot {
+  background: #eab308;
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.6);
+  animation: pulse-dot 1s infinite;
 }
 
 .connection-status.disconnected .status-dot {
@@ -286,4 +297,166 @@
   .doctor-wr-content {
     padding: 16px;
   }
+}
+
+/* ========================================
+   MODAL DE FINALIZAR CONSULTA
+======================================== */
+
+.wr-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.wr-modal-container {
+  background: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  animation: modal-enter 0.2s ease-out;
+}
+
+@keyframes modal-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.wr-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.wr-modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.wr-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.wr-modal-close:hover {
+  color: #475569;
+  background: #f1f5f9;
+}
+
+.wr-modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.wr-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wr-modal-field label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.wr-modal-field input,
+.wr-modal-field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #1e293b;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.wr-modal-field input:focus,
+.wr-modal-field textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.wr-modal-field textarea {
+  resize: vertical;
+  min-height: 90px;
+}
+
+.wr-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.wr-modal-footer .btn-secondary {
+  padding: 8px 16px;
+  background: #e2e8f0;
+  border: none;
+  border-radius: 8px;
+  color: #475569;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wr-modal-footer .btn-secondary:hover {
+  background: #cbd5e1;
+}
+
+.wr-modal-footer .btn-primary {
+  padding: 8px 18px;
+  background: #16a34a;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wr-modal-footer .btn-primary:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.wr-modal-footer .btn-primary:disabled,
+.wr-modal-footer .btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

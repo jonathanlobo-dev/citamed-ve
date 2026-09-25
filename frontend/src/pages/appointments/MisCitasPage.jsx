@@ -116,7 +116,7 @@ const MisCitasPage = () => {
         icon: Calendar
       },
       completed: {
-        label: '✓ Completada',
+        label: '✓ Consulta finalizada',
         color: 'bg-green-50 text-green-700 border border-green-300',
         icon: CheckCircle
       },
@@ -209,22 +209,20 @@ const MisCitasPage = () => {
 
   const isToday = (dateStr) => {
     if (!dateStr) return false;
-    const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-    const today = new Date();
-    return date.toDateString() === today.toDateString();
+    const cleanDateStr = typeof dateStr === 'string' ? dateStr.split('T')[0] : '';
+    const todayCaracas = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Caracas' }).format(new Date());
+    return cleanDateStr === todayCaracas;
   };
 
   const canEnterWaitingRoom = (appointment) => {
     if (['cancelled', 'cancelled_patient', 'cancelled_doctor', 'rescheduled', 'completed', 'no_show'].includes(appointment.status)) {
       return false;
     }
-    // Puede entrar si tiene entrada en cola (ya sea para monitorear o participar)
-    if (appointment.queueEntryId) {
-      return true;
-    }
-    // O si es una cita programada/confirmada
-    return ['scheduled', 'confirmed', 'pending'].includes(appointment.status);
+    // Cita de hoy confirmada o con turno activo
+    return isToday(appointment.appointmentDate) && (
+      appointment.status === 'confirmed' ||
+      ['checked_in', 'waiting', 'called', 'in_consultation'].includes(appointment.queueStatus)
+    );
   };
 
   const filteredAppointments = filterAppointments(appointments);
@@ -425,16 +423,24 @@ const MisCitasPage = () => {
                       </span>
                     )}
 
-                    {/* Botón principal: Sala de Espera */}
+                    {/* Botón principal: Sala de Espera para citas confirmadas de hoy */}
                     {canEnterWaitingRoom(appointment) && (
                       <button
                         onClick={() => handleGoToWaitingRoom(appointment.id)}
-                        className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition"
+                        className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition font-semibold"
                       >
                         <Users className="w-4 h-4" />
-                        {appointment.queuePosition ? `Ver Cola (#${appointment.queuePosition})` : 'Ver Sala de Espera'}
+                        Ir a Sala de Espera
                         <ChevronRight className="w-4 h-4" />
                       </button>
+                    )}
+
+                    {/* Cita de hoy pending: Esperando confirmación del médico */}
+                    {isToday(appointment.appointmentDate) && appointment.status === 'pending' && (
+                      <span className="inline-flex items-center gap-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-300 px-3 py-2 rounded-lg font-medium">
+                        <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
+                        Esperando confirmación del médico
+                      </span>
                     )}
 
                     {/* Reprogramar cita */}

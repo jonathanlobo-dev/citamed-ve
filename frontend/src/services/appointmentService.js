@@ -87,6 +87,29 @@ const appointmentService = {
       .get('/appointments/doctor/today', { params })
       .then((res) => res.data);
   },
+
+  /**
+   * Marcar cita como completada con notas y diagnóstico opcionales.
+   * @param {number|string} id
+   * @param {Object} [data] - { doctorNotes, diagnosis }
+   */
+  complete: (id, data = {}) =>
+    api.put(`/appointments/${id}/complete`, data).then((res) => res.data),
+
+  /**
+   * Marcar cita como no asistió (no-show).
+   * @param {number|string} id
+   */
+  markNoShow: (id) =>
+    api.put(`/appointments/${id}/no-show`).then((res) => res.data),
+
+  /**
+   * Actualizar notas y diagnóstico de la cita.
+   * @param {number|string} id
+   * @param {Object} data - { doctorNotes, diagnosis }
+   */
+  updateNotes: (id, data) =>
+    api.put(`/appointments/${id}/notes`, data).then((res) => res.data),
 };
 
 export default appointmentService;

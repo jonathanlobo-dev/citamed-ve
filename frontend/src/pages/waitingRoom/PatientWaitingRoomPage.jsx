@@ -64,22 +64,14 @@ const PatientWaitingRoomPage = () => {
     delayMinutes: 0
   });
 
-  // Verificar si hoy es el día de la cita
+  // Verificar si hoy es el día de la cita (Zona horaria Caracas)
   const isAppointmentToday = useCallback(() => {
     if (!appointment?.appointmentDate) return false;
-    const today = new Date().toISOString().split('T')[0];
-    const aptDate = new Date(appointment.appointmentDate).toISOString().split('T')[0];
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Caracas' }).format(new Date());
+    const aptDate = typeof appointment.appointmentDate === 'string'
+      ? appointment.appointmentDate.split('T')[0]
+      : new Date(appointment.appointmentDate).toISOString().split('T')[0];
     return today === aptDate;
-  }, [appointment?.appointmentDate]);
-
-  // Formatear la fecha de la cita para mostrar
-  const formatAppointmentDate = useCallback(() => {
-    if (!appointment?.appointmentDate) return '';
-    return new Date(appointment.appointmentDate).toLocaleDateString('es-VE', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long'
-    });
   }, [appointment?.appointmentDate]);
 
   // Cargar datos de la cita Y la cola del doctor
@@ -458,8 +450,12 @@ const PatientWaitingRoomPage = () => {
   const peopleAhead = myQueueEntry?.appointmentsAhead ?? Math.max(0, position - 1);
   const peopleBehind = Math.max(0, (queue?.length || localQueue?.length || 0) - position);
 
+  const isToday = isAppointmentToday();
+  const isConfirmed = appointment?.status === 'confirmed';
+  const isPending = appointment?.status === 'pending';
   // Determinar si el usuario necesita confirmar llegada (está en cola pero no ha hecho check-in físico)
-  const needsArrivalConfirmation = myQueueEntry && ['scheduled', 'en_route'].includes(currentStatus) && isAppointmentToday();
+  const needsArrivalConfirmation = myQueueEntry && ['scheduled', 'en_route'].includes(currentStatus) && isToday && isConfirmed;
+  const isTurnActive = isMyTurn || currentStatus === 'called';
 
   return (
     <div className="waiting-room-page enterprise">
@@ -509,6 +505,17 @@ const PatientWaitingRoomPage = () => {
       )}
 
       <main className="wr-content">
+        {/* Banner prominente cuando es tu turno */}
+        {isTurnActive && (
+          <div className="your-turn-banner" role="alert">
+            <div className="your-turn-icon">📢</div>
+            <div className="your-turn-content">
+              <h2>¡Es tu turno!</h2>
+              <p>El médico te está esperando en el consultorio.</p>
+            </div>
+          </div>
+        )}
+
         {/* Vista cuando NO tienes entrada en cola (caso raro - cita sin cola) */}
         {!myQueueEntry ? (
           <div className="pre-checkin no-queue">
@@ -521,7 +528,13 @@ const PatientWaitingRoomPage = () => {
                   </svg>
                 </div>
                 <h2>Cita Programada</h2>
-                <p>Esta cita no tiene entrada en la cola virtual aún</p>
+                <p>
+                  {isPending
+                    ? 'Tu cita está pendiente de confirmación médica'
+                    : isToday
+                      ? 'Confirma tu llegada para entrar a la cola'
+                      : 'Esta cita está programada para otra fecha'}
+                </p>
               </div>
 
               <div className="appointment-details">
@@ -536,6 +549,23 @@ const PatientWaitingRoomPage = () => {
                   </div>
                 </div>
               </div>
+
+              {isPending && (
+                <div className="pending-confirmation-banner" style={{ margin: '16px 0' }}>
+                  <span>⏳ Esperando confirmación del médico</span>
+                </div>
+              )}
+
+              {isConfirmed && isToday && (
+                <button
+                  type="button"
+                  onClick={handlePhysicalCheckIn}
+                  className="btn-primary"
+                  style={{ marginTop: '16px', width: '100%', padding: '12px' }}
+                >
+                  Confirmar Llegada / Check-in
+                </button>
+              )}
 
               <p className="checkin-hint">Contacta a la clínica si tienes dudas sobre tu cita.</p>
             </div>
@@ -709,6 +739,11 @@ const PatientWaitingRoomPage = () => {
                 </div>
 
                 <div className="panel-actions">
+                  {isPending && (
+                    <div className="pending-confirmation-banner">
+                      <span>⏳ Esperando confirmación del médico</span>
+                    </div>
+                  )}
                   {/* Botón de confirmar llegada cuando aplica */}
                   {needsArrivalConfirmation && (
                     <button onClick={handlePhysicalCheckIn} className="btn-arrival">

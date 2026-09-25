@@ -18,7 +18,8 @@ const DoctorQueueDashboard = ({
   onMarkNoShow,
   isOnline = false,
   onGoOnline,
-  onGoOffline
+  onGoOffline,
+  actionLoading = false
 }) => {
   const [currentPatient, setCurrentPatient] = useState(null);
 
@@ -27,26 +28,30 @@ const DoctorQueueDashboard = ({
     setCurrentPatient(inConsultation || null);
   }, [queue]);
 
-  // Sistema de 3 Fases: waiting (en casa) → en_route (viniendo) → checked_in (presente)
-  const waitingPatients = queue.filter(p => ['waiting', 'en_route', 'checked_in'].includes(p.status));
+  const activeQueue = queue.filter(p => ['scheduled', 'waiting', 'en_route', 'checked_in', 'called', 'in_consultation'].includes(p.status));
+  const waitingPatients = queue.filter(p => ['scheduled', 'waiting', 'en_route', 'checked_in'].includes(p.status));
   const calledPatient = queue.find(p => p.status === 'called');
 
-  // Contadores por estado para estadísticas
+  // Contadores por estado
+  const patientsScheduled = queue.filter(p => p.status === 'scheduled').length;
   const patientsWaiting = queue.filter(p => p.status === 'waiting').length;
-  const patientsEnRoute = queue.filter(p => p.status === 'en_route').length;
   const patientsPresent = queue.filter(p => p.status === 'checked_in').length;
 
-  // Función para obtener el estado visual del paciente
+  // B2: Chips de estado (Agendado, En cola, Llegó, Llamado, En consulta)
   const getPatientStatusBadge = (status) => {
     switch (status) {
+      case 'scheduled':
+        return <span className="patient-status-badge scheduled">📋 Agendado</span>;
       case 'waiting':
-        return <span className="patient-status-badge waiting">🏠 En casa</span>;
+        return <span className="patient-status-badge waiting">🏠 En cola</span>;
       case 'en_route':
         return <span className="patient-status-badge en-route">🚗 En camino</span>;
       case 'checked_in':
-        return <span className="patient-status-badge present">✅ Presente</span>;
+        return <span className="patient-status-badge present">✅ Llegó</span>;
       case 'called':
         return <span className="patient-status-badge called">📢 Llamado</span>;
+      case 'in_consultation':
+        return <span className="patient-status-badge in-consultation">👨‍⚕️ En consulta</span>;
       default:
         return null;
     }
@@ -60,10 +65,10 @@ const DoctorQueueDashboard = ({
 
   return (
     <div className="doctor-dashboard">
-      {/* Header con estado online */}
+      {/* Header con estado online y botón grande de llamar al siguiente */}
       <div className="dashboard-header">
         <div className="header-title">
-          <h2>Panel de Consultas del Dia</h2>
+          <h2>Panel de Consultas del Día</h2>
           <p className="today-date">
             {new Date().toLocaleDateString('es-VE', {
               weekday: 'long',
@@ -73,28 +78,43 @@ const DoctorQueueDashboard = ({
             })}
           </p>
         </div>
-        <button
-          className={`online-toggle ${isOnline ? 'online' : 'offline'}`}
-          onClick={isOnline ? onGoOffline : onGoOnline}
-        >
-          <span className="status-dot"></span>
-          {isOnline ? 'Online - Atendiendo' : 'Offline'}
-        </button>
+        <div className="header-actions">
+          {/* B2: Botón grande Llamar al siguiente */}
+          <button
+            type="button"
+            className="btn btn-call-next-hero"
+            onClick={onCallNext}
+            disabled={actionLoading || !!currentPatient || !!calledPatient || waitingPatients.length === 0}
+            title={waitingPatients.length === 0 ? 'No hay pacientes esperando' : 'Llamar al siguiente paciente en la cola'}
+          >
+            📢 Llamar al siguiente
+          </button>
+
+          <button
+            type="button"
+            className={`online-toggle ${isOnline ? 'online' : 'offline'}`}
+            onClick={isOnline ? onGoOffline : onGoOnline}
+            disabled={actionLoading}
+          >
+            <span className="status-dot"></span>
+            {isOnline ? 'Online - Atendiendo' : 'Offline'}
+          </button>
+        </div>
       </div>
 
-      {/* Estadísticas del día - Sistema de 3 Fases */}
+      {/* Estadísticas del día */}
       <div className="stats-grid">
         <div className="stat-card">
-          <span className="stat-value">{patientsWaiting}</span>
-          <span className="stat-label">🏠 En casa</span>
+          <span className="stat-value">{patientsScheduled}</span>
+          <span className="stat-label">📋 Agendados</span>
         </div>
-        <div className="stat-card highlight-orange">
-          <span className="stat-value">{patientsEnRoute}</span>
-          <span className="stat-label">🚗 En camino</span>
+        <div className="stat-card">
+          <span className="stat-value">{patientsWaiting}</span>
+          <span className="stat-label">🏠 En cola</span>
         </div>
         <div className="stat-card highlight-green">
           <span className="stat-value">{patientsPresent}</span>
-          <span className="stat-label">✅ Presentes</span>
+          <span className="stat-label">✅ Llegaron</span>
         </div>
         <div className="stat-card">
           <span className="stat-value">{stats.completedToday || 0}</span>
@@ -115,7 +135,7 @@ const DoctorQueueDashboard = ({
       </div>
 
       <div className="dashboard-content">
-        {/* Panel de consulta actual */}
+        {/* Panel de consulta actual o llamado */}
         <div className="current-consultation">
           <h3>Consulta Actual</h3>
           {currentPatient ? (
@@ -129,17 +149,20 @@ const DoctorQueueDashboard = ({
                   <span className="appointment-time">
                     Cita: {currentPatient.appointmentTime}
                   </span>
+                  <span className="patient-status-badge in-consultation">👨‍⚕️ En consulta</span>
                 </div>
               </div>
               <div className="consultation-timer">
                 <span className="timer-label">En consulta desde</span>
                 <span className="timer-value">
-                  {formatTime(currentPatient.consultationStart)}
+                  {formatTime(currentPatient.joinedAt || new Date())}
                 </span>
               </div>
               <button
+                type="button"
                 className="btn btn-success btn-end-consultation"
                 onClick={() => onEndConsultation(currentPatient.id)}
+                disabled={actionLoading}
               >
                 Finalizar Consulta
               </button>
@@ -152,21 +175,26 @@ const DoctorQueueDashboard = ({
                 </div>
                 <div className="patient-details">
                   <span className="patient-name">{calledPatient.patient.name}</span>
-                  <span className="status-called">Paciente llamado</span>
+                  <span className="status-called">📢 Paciente llamado al consultorio</span>
+                  <span className="appointment-time">Cita: {calledPatient.appointmentTime}</span>
                 </div>
               </div>
               <div className="called-actions">
                 <button
+                  type="button"
                   className="btn btn-primary"
                   onClick={() => onStartConsultation(calledPatient.id)}
+                  disabled={actionLoading}
                 >
                   Iniciar Consulta
                 </button>
                 <button
+                  type="button"
                   className="btn btn-danger"
                   onClick={() => onMarkNoShow(calledPatient.id)}
+                  disabled={actionLoading}
                 >
-                  No se presento
+                  No asistió
                 </button>
               </div>
             </div>
@@ -176,9 +204,14 @@ const DoctorQueueDashboard = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p>No hay paciente en consulta</p>
+              <p>No hay paciente en consulta actualmente</p>
               {waitingPatients.length > 0 && (
-                <button className="btn btn-primary" onClick={onCallNext}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={onCallNext}
+                  disabled={actionLoading}
+                >
                   Llamar siguiente paciente
                 </button>
               )}
@@ -186,66 +219,104 @@ const DoctorQueueDashboard = ({
           )}
         </div>
 
-        {/* Cola de espera */}
+        {/* Cola de espera con botones por fila */}
         <div className="waiting-queue">
           <div className="queue-header">
-            <h3>Cola de Espera</h3>
-            <span className="queue-count">{waitingPatients.length} pacientes</span>
+            <h3>Turnos de Hoy</h3>
+            <span className="queue-count">{activeQueue.length} paciente{activeQueue.length !== 1 ? 's' : ''}</span>
           </div>
 
-          {waitingPatients.length === 0 ? (
+          {activeQueue.length === 0 ? (
             <div className="empty-queue">
-              <p>No hay pacientes en la cola</p>
+              <p>No hay pacientes en la cola para hoy</p>
             </div>
           ) : (
             <div className="queue-list">
-              {waitingPatients.map((patient) => (
-                <div key={patient.id} className={`queue-item status-${patient.status}`}>
-                  <div className="queue-position">{patient.position}</div>
-                  <div className={`patient-avatar ${patient.status === 'en_route' ? 'en-route' : ''}`}>
-                    {patient.patient.initials}
+              {activeQueue.map((patient) => {
+                const isCurrent = patient.status === 'in_consultation';
+                const isCalled = patient.status === 'called';
+
+                return (
+                  <div key={patient.id} className={`queue-item status-${patient.status} ${isCurrent ? 'active' : ''}`}>
+                    <div className="queue-position">#{patient.position}</div>
+                    <div className="patient-avatar">
+                      {patient.patient.initials}
+                    </div>
+                    <div className="patient-info">
+                      <span className="patient-name">{patient.patient.name}</span>
+                      <span className="appointment-time">{patient.appointmentTime}</span>
+                    </div>
+                    <div className="queue-status">
+                      {getPatientStatusBadge(patient.status)}
+                    </div>
+                    <div className="queue-wait-time">
+                      <span className="wait-label">Espera est.:</span>
+                      <span className="wait-value">{patient.estimatedWaitMinutes || 0} min</span>
+                    </div>
+
+                    {/* B2: Botones por fila según estado */}
+                    <div className="queue-actions">
+                      {/* Estado: Agendado, En cola, Llegó */}
+                      {['scheduled', 'waiting', 'en_route', 'checked_in'].includes(patient.status) && (
+                        <>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline"
+                            onClick={() => onCallPatient(patient.id)}
+                            disabled={actionLoading || !!currentPatient || !!calledPatient}
+                            title="Llamar a este paciente"
+                          >
+                            Llamar
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => onMarkNoShow(patient.id)}
+                            disabled={actionLoading}
+                            title="Marcar no asistió"
+                          >
+                            No asistió
+                          </button>
+                        </>
+                      )}
+
+                      {/* Estado: Llamado */}
+                      {isCalled && (
+                        <>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-primary"
+                            onClick={() => onStartConsultation(patient.id)}
+                            disabled={actionLoading}
+                          >
+                            Iniciar consulta
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => onMarkNoShow(patient.id)}
+                            disabled={actionLoading}
+                          >
+                            No asistió
+                          </button>
+                        </>
+                      )}
+
+                      {/* Estado: En consulta */}
+                      {isCurrent && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-success"
+                          onClick={() => onEndConsultation(patient.id)}
+                          disabled={actionLoading}
+                        >
+                          Finalizar
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="patient-info">
-                    <span className="patient-name">{patient.patient.name}</span>
-                    <span className="appointment-time">{patient.appointmentTime}</span>
-                    {patient.reasonForVisit && (
-                      <span className="patient-reason" title={patient.reasonForVisit}>
-                        📋 {patient.reasonForVisit.length > 25
-                          ? patient.reasonForVisit.substring(0, 25) + '...'
-                          : patient.reasonForVisit}
-                      </span>
-                    )}
-                  </div>
-                  <div className="queue-status">
-                    {getPatientStatusBadge(patient.status)}
-                  </div>
-                  <div className="queue-wait-time">
-                    <span className="wait-label">Espera:</span>
-                    <span className="wait-value">{patient.estimatedWaitMinutes || 0} min</span>
-                  </div>
-                  <div className="queue-actions">
-                    {patient.patient.phone && (
-                      <a
-                        href={`https://wa.me/${patient.patient.phone?.replace(/[^0-9]/g, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn btn-sm btn-whatsapp"
-                        title="Enviar WhatsApp"
-                      >
-                        💬
-                      </a>
-                    )}
-                    <button
-                      className="btn btn-sm btn-outline"
-                      onClick={() => onCallPatient(patient.id)}
-                      disabled={!!currentPatient || !!calledPatient || patient.status === 'waiting'}
-                      title={patient.status === 'waiting' ? 'El paciente aún no ha salido de casa' : 'Llamar paciente'}
-                    >
-                      {patient.status === 'waiting' ? '⏳' : '📢'}
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
