@@ -62,3 +62,4 @@ presentacion_*.html
 ~$*
 _archivados/
 backend/scripts/output/
+PROMPTS_*
