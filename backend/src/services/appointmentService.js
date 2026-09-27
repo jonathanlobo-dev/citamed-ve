@@ -8,6 +8,7 @@
 const { Op } = require('sequelize');
 const db = require('../models');
 const { todayCaracas, nowTimeCaracas } = require('../utils/dateCaracas');
+const { validateClinicalNoteData } = require('../utils/clinicalNote');
 
 const {
   Appointment,
@@ -688,9 +689,97 @@ class AppointmentService {
   }
 
   /**
-   * Completar una cita con notas y diagnóstico
+   * Iniciar consulta de una cita confirmada de hoy
    */
-  async completeAppointment(appointmentId, user, { doctorNotes, diagnosis, actualDuration } = {}) {
+  async startConsultation(appointmentId, user) {
+    const appointment = await Appointment.findByPk(appointmentId);
+
+    if (!appointment) {
+      const err = new Error('Cita no encontrada');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    this._assertDoctorOwnership(appointment, user);
+
+    // Idempotente: si ya está en progreso, responder sin error
+    if (appointment.status === 'in_progress') {
+      return appointment;
+    }
+
+    if (appointment.status !== 'confirmed') {
+      const err = new Error('Solo se pueden iniciar consultas confirmadas');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const today = todayCaracas();
+    const aptDate = String(appointment.appointmentDate).split('T')[0];
+    if (aptDate !== today) {
+      const err = new Error('Solo se pueden iniciar consultas programadas para el día de hoy');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Si tiene turno en la cola de sala de espera, reutilizar waitingRoomService
+    const queueEntry = await WaitingQueue.findOne({
+      where: { appointmentId: appointment.id }
+    });
+
+    if (queueEntry && ['scheduled', 'waiting', 'checked_in'].includes(queueEntry.status)) {
+      const waitingRoomService = require('./waitingRoomService');
+      await waitingRoomService.startConsultation(queueEntry.id, user);
+      await appointment.reload();
+      return appointment;
+    }
+
+    appointment.status = 'in_progress';
+    await appointment.addStatusHistory('in_progress', 'Consulta iniciada por el médico');
+    await appointment.save();
+    return appointment;
+  }
+
+  /**
+   * Guardar borrador de nota clínica
+   */
+  async saveClinicalNote(appointmentId, user, { soapNote, vitalSigns, physicalExam, doctorNotes } = {}) {
+    const appointment = await Appointment.findByPk(appointmentId);
+
+    if (!appointment) {
+      const err = new Error('Cita no encontrada');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    this._assertDoctorOwnership(appointment, user);
+
+    if (appointment.status === 'completed') {
+      const err = new Error('La consulta ya fue cerrada y no se puede modificar');
+      err.statusCode = 409;
+      throw err;
+    }
+
+    if (!['confirmed', 'in_progress'].includes(appointment.status)) {
+      const err = new Error('Solo se puede guardar nota clínica en citas confirmadas o en curso');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const validated = validateClinicalNoteData({ soapNote, vitalSigns, physicalExam, doctorNotes });
+    if (validated.soapNote !== undefined) appointment.soapNote = validated.soapNote;
+    if (validated.vitalSigns !== undefined) appointment.vitalSigns = validated.vitalSigns;
+    if (validated.physicalExam !== undefined) appointment.physicalExam = validated.physicalExam;
+    if (validated.doctorNotes !== undefined) appointment.doctorNotes = validated.doctorNotes;
+    appointment.clinicalNoteSavedAt = new Date();
+
+    await appointment.save();
+    return appointment;
+  }
+
+  /**
+   * Completar una cita con notas, diagnóstico y datos clínicos
+   */
+  async completeAppointment(appointmentId, user, { doctorNotes, diagnosis, treatment, actualDuration, soapNote, vitalSigns, physicalExam } = {}) {
     const appointment = await Appointment.findByPk(appointmentId);
 
     if (!appointment) {
@@ -707,10 +796,30 @@ class AppointmentService {
       throw err;
     }
 
+    // Validar datos clínicos si vienen
+    const validated = validateClinicalNoteData({ soapNote, vitalSigns, physicalExam, doctorNotes });
+    if (validated.soapNote) appointment.soapNote = validated.soapNote;
+    if (validated.vitalSigns) appointment.vitalSigns = validated.vitalSigns;
+    if (validated.physicalExam) appointment.physicalExam = validated.physicalExam;
+    if (validated.doctorNotes !== undefined) appointment.doctorNotes = validated.doctorNotes;
+
+    // Diagnóstico: si no viene diagnosis, usar soapNote.assessment
+    let finalDiagnosis = diagnosis && typeof diagnosis === 'string' && diagnosis.trim() ? diagnosis.trim() : null;
+    if (!finalDiagnosis && appointment.soapNote?.assessment) {
+      finalDiagnosis = appointment.soapNote.assessment;
+    }
+    if (finalDiagnosis) appointment.diagnosis = finalDiagnosis;
+
+    // Tratamiento: si no viene treatment y viene soapNote.plan, guarda el plan también en treatment
+    let finalTreatment = treatment && typeof treatment === 'string' && treatment.trim() ? treatment.trim() : null;
+    if (!finalTreatment && appointment.soapNote?.plan) {
+      finalTreatment = appointment.soapNote.plan;
+    }
+    if (finalTreatment) appointment.treatment = finalTreatment;
+
+    appointment.clinicalNoteSavedAt = new Date();
     appointment.status = 'completed';
     appointment.checkOutTime = new Date();
-    if (doctorNotes !== undefined) appointment.doctorNotes = doctorNotes;
-    if (diagnosis !== undefined) appointment.diagnosis = diagnosis;
     if (actualDuration) appointment.actualDuration = actualDuration;
 
     await appointment.addStatusHistory('completed', 'Consulta finalizada por el médico');

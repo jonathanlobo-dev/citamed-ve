@@ -87,6 +87,43 @@ router.get(
   appointmentController.getPatientHistory.bind(appointmentController)
 );
 
+// ==========================================
+// RUTAS DE CONSULTA MEDICA (Espacio Clínico)
+// ==========================================
+
+/**
+ * @route   PUT /api/appointments/:id/start
+ * @desc    Iniciar consulta médica (cita de hoy en Caracas a in_progress)
+ */
+router.put(
+  '/:id/start',
+  authenticateToken,
+  requireRoles(['doctor', 'admin']),
+  appointmentController.start.bind(appointmentController)
+);
+
+/**
+ * @route   PUT /api/appointments/:id/clinical-note
+ * @desc    Guardar borrador de nota clínica (SOAP, signos vitales, examen físico)
+ */
+router.put(
+  '/:id/clinical-note',
+  authenticateToken,
+  requireRoles(['doctor', 'admin']),
+  appointmentController.saveClinicalNote.bind(appointmentController)
+);
+
+/**
+ * @route   PUT /api/appointments/:id/complete
+ * @desc    Finalizar consulta con notas, diagnóstico y datos clínicos
+ */
+router.put(
+  '/:id/complete',
+  authenticateToken,
+  requireRoles(['doctor', 'admin']),
+  appointmentController.complete.bind(appointmentController)
+);
+
 /**
  * @swagger
  * /api/appointments/{id}:
@@ -144,19 +181,6 @@ router.put(
   appointmentController.confirm.bind(appointmentController)
 );
 
-/**
- * @swagger
- * /api/appointments/{id}/complete:
- *   put:
- *     tags: [Appointments]
- *     summary: Finalizar una consulta con notas y diagnóstico
- */
-router.put(
-  '/:id/complete',
-  authenticateToken,
-  requireRoles(['doctor', 'admin']),
-  appointmentController.complete.bind(appointmentController)
-);
 
 /**
  * @swagger

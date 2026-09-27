@@ -333,17 +333,73 @@ class AppointmentController {
   }
 
   /**
+   * PUT /api/appointments/:id/start
+   * Iniciar una consulta médica
+   */
+  async start(req, res) {
+    try {
+      const { id } = req.params;
+      const appointment = await appointmentService.startConsultation(id, req.user);
+      res.json({
+        success: true,
+        message: 'Consulta iniciada exitosamente',
+        data: appointment
+      });
+    } catch (error) {
+      console.error('[AppointmentController] start error:', error);
+      const status = error.statusCode || 400;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * PUT /api/appointments/:id/clinical-note
+   * Guardar borrador de nota clínica
+   */
+  async saveClinicalNote(req, res) {
+    try {
+      const { id } = req.params;
+      const { soapNote, vitalSigns, physicalExam, doctorNotes } = req.body;
+      const appointment = await appointmentService.saveClinicalNote(id, req.user, {
+        soapNote,
+        vitalSigns,
+        physicalExam,
+        doctorNotes
+      });
+      res.json({
+        success: true,
+        message: 'Nota clínica guardada exitosamente',
+        data: appointment
+      });
+    } catch (error) {
+      console.error('[AppointmentController] saveClinicalNote error:', error);
+      const status = error.statusCode || 400;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
    * PUT /api/appointments/:id/complete
-   * Completar una consulta con notas y diagnóstico
+   * Completar una consulta con notas, diagnóstico y datos clínicos
    */
   async complete(req, res) {
     try {
       const { id } = req.params;
-      const { doctorNotes, diagnosis, actualDuration } = req.body;
+      const { doctorNotes, diagnosis, treatment, actualDuration, soapNote, vitalSigns, physicalExam } = req.body;
       const appointment = await appointmentService.completeAppointment(id, req.user, {
         doctorNotes,
         diagnosis,
-        actualDuration
+        treatment,
+        actualDuration,
+        soapNote,
+        vitalSigns,
+        physicalExam
       });
       res.json({
         success: true,
