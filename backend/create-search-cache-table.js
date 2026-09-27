@@ -193,6 +193,14 @@ async function runMigration() {
       CREATE OR REPLACE FUNCTION update_doctor_search_cache(p_doctor_id INTEGER)
       RETURNS VOID AS $$
       BEGIN
+        -- Un médico suspendido (isActive = false) no debe aparecer en el directorio
+        IF NOT EXISTS (
+          SELECT 1 FROM users WHERE id = p_doctor_id AND role = 'doctor' AND "isActive" IS TRUE
+        ) THEN
+          DELETE FROM doctor_search_cache WHERE doctor_id = p_doctor_id;
+          RETURN;
+        END IF;
+
         INSERT INTO doctor_search_cache (
           doctor_id,
           doctor_profile_id,
@@ -390,6 +398,7 @@ async function runMigration() {
       LEFT JOIN doctor_specialties ds ON ds.doctor_profile_id = dp.id
       LEFT JOIN specialties s ON (s.id = dp."specialtyId" OR s.id = ds.specialty_id)
       WHERE u.role = 'doctor'
+        AND u."isActive" IS TRUE
       GROUP BY u.id, dp.id, u."firstName", u."lastName", dp."firstName", dp."lastName",
                dp.city, dp.state, dp.price_teleconsultation, dp."consultationFee",
                dp."experienceYears", dp."acceptsInsurance",
