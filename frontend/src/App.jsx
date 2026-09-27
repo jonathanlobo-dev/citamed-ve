@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { PermissionsProvider } from './hooks/usePermissions';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -8,6 +8,7 @@ const DoctorPatientsPage = lazy(() => import('./pages/doctor/DoctorPatientsPage'
 const PatientRecordPage = lazy(() => import('./pages/doctor/PatientRecordPage'));
 const PatientMyRecordPage = lazy(() => import('./pages/patient/PatientMyRecordPage'));
 const EspacioClinicoPage = lazy(() => import('./pages/doctor/EspacioClinicoPage'));
+const VerificarDocumentoPage = lazy(() => import('./pages/public/VerificarDocumentoPage'));
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegistroPage from './pages/RegistroPage';
@@ -43,7 +44,10 @@ import DoctorWaitingRoomPage from './pages/waitingRoom/DoctorWaitingRoomPage';
 import SalaEsperaPage from './pages/waitingRoom/SalaEsperaPage';
 import MisCitasPage from './pages/appointments/MisCitasPage';
 import AgendarCitaPage from './pages/appointments/AgendarCitaPage';
-import VerificarRecipePage from './pages/public/VerificarRecipePage';
+function VerificarRecipeRedirect() {
+  const { code } = useParams();
+  return <Navigate to={`/verificar/${code}`} replace />;
+}
 
 function AppRoutes() {
   return (
@@ -61,8 +65,15 @@ function AppRoutes() {
       <Route path="/clinicas" element={<ClinicasPage />} />
       <Route path="/clinicas/:clinicId" element={<ClinicProfilePage />} />
       <Route path="/seguros" element={<SegurosPage />} />
-      <Route path="/verificar-recipe/:code" element={<VerificarRecipePage />} />
-      <Route path="/verificar/:code" element={<VerificarRecipePage />} />
+      <Route path="/verificar-recipe/:code" element={<VerificarRecipeRedirect />} />
+      <Route
+        path="/verificar/:code"
+        element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
+            <VerificarDocumentoPage />
+          </Suspense>
+        }
+      />
 
       {/* Module Routes */}
       <Route path="/modulo/agendamiento" element={<AgendamientoPage />} />
