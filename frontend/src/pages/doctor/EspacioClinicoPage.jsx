@@ -71,7 +71,7 @@ function doctorTitle(gender) {
 
 const PHYSICAL_EXAM_SYSTEMS = [
   { key: 'general', label: 'General' },
-  { key: 'head_neck', label: 'Cabeza y cuello' },
+  { key: 'headNeck', label: 'Cabeza y cuello' },
   { key: 'cardiovascular', label: 'Cardiovascular' },
   { key: 'respiratory', label: 'Respiratorio' },
   { key: 'abdomen', label: 'Abdomen' },
@@ -101,15 +101,15 @@ export default function EspacioClinicoPage() {
   });
 
   const [vitalSigns, setVitalSigns] = useState({
-    bloodPressureSystolic: '',
-    bloodPressureDiastolic: '',
+    systolic: '',
+    diastolic: '',
     heartRate: '',
     respiratoryRate: '',
     temperature: '',
     oxygenSaturation: '',
-    weight: '',
-    height: '',
-    bloodGlucose: ''
+    weightKg: '',
+    heightCm: '',
+    glucose: ''
   });
 
   const [physicalExam, setPhysicalExam] = useState(() => {
@@ -207,9 +207,21 @@ export default function EspacioClinicoPage() {
 
   const isReadOnly = appointment?.status === 'completed';
 
+  // Consultas anteriores del paciente, sin incluir la que se está atendiendo
+  const pastConsultations = (patientRecord?.consultations || []).filter(
+    (c) => c.id !== appointment?.id
+  );
+
+  // vitalsSeries viene en orden ascendente: el último elemento es el más reciente
+  const latestSeriesVitals = patientRecord?.vitalsSeries?.length
+    ? patientRecord.vitalsSeries[patientRecord.vitalsSeries.length - 1]
+    : null;
+
   // Helper para edad del paciente
   const patientAge = useMemo(() => {
-    if (patientRecord?.patientProfile?.age) return patientRecord.patientProfile.age;
+    // El backend envía la edad como texto ("34 años"); aquí se necesita el número
+    const recordAge = parseInt(patientRecord?.patient?.age, 10);
+    if (!Number.isNaN(recordAge)) return recordAge;
     const dob = appointment?.patient?.patientProfile?.dateOfBirth;
     if (!dob) return null;
     const birth = new Date(dob);
@@ -224,8 +236,8 @@ export default function EspacioClinicoPage() {
 
   // Cálculo en vivo de IMC
   const bmiInfo = useMemo(() => {
-    return calculateBMI(vitalSigns.weight, vitalSigns.height);
-  }, [vitalSigns.weight, vitalSigns.height]);
+    return calculateBMI(vitalSigns.weightKg, vitalSigns.heightCm);
+  }, [vitalSigns.weightKg, vitalSigns.heightCm]);
 
   // Fecha de inicio por defecto para reposo
   useEffect(() => {
@@ -387,10 +399,10 @@ export default function EspacioClinicoPage() {
     const defaultBody = [
       `MOTIVO DE CONSULTA Y ENFERMEDAD ACTUAL:\n${soapNote.subjective || 'No especificado'}\n`,
       `EXAMEN FÍSICO Y SIGNOS VITALES:\n${soapNote.objective || 'Sin hallazgos adicionales registrados'}\n` +
-        `TA: ${vitalSigns.bloodPressureSystolic || '-'}/${vitalSigns.bloodPressureDiastolic || '-'} mmHg, ` +
+        `TA: ${vitalSigns.systolic || '-'}/${vitalSigns.diastolic || '-'} mmHg, ` +
         `FC: ${vitalSigns.heartRate || '-'} lpm, FR: ${vitalSigns.respiratoryRate || '-'} rpm, ` +
         `Temp: ${vitalSigns.temperature || '-'} °C, SpO2: ${vitalSigns.oxygenSaturation || '-'} %, ` +
-        `Peso: ${vitalSigns.weight || '-'} kg, Talla: ${vitalSigns.height || '-'} cm, ` +
+        `Peso: ${vitalSigns.weightKg || '-'} kg, Talla: ${vitalSigns.heightCm || '-'} cm, ` +
         `IMC: ${bmiInfo.bmi || '-'} (${bmiInfo.category || 'N/A'})\n`,
       `EVALUACIÓN Y DIAGNÓSTICO:\n${soapNote.assessment || 'En estudio'}\n`,
       `PLAN DE TRATAMIENTO E INDICACIONES:\n${soapNote.plan || 'Continuar medidas generales'}`
@@ -1233,8 +1245,8 @@ export default function EspacioClinicoPage() {
               </span>
             </div>
             <div className="space-y-2">
-              {patientRecord?.consultations?.length > 0 ? (
-                patientRecord.consultations.slice(0, 5).map((past) => (
+              {pastConsultations.length > 0 ? (
+                pastConsultations.slice(0, 5).map((past) => (
                   <div
                     key={past.id}
                     onClick={() => setDrawerPastConsultation(past)}
@@ -1264,24 +1276,24 @@ export default function EspacioClinicoPage() {
                 </span>
               </div>
               <div className="text-xs space-y-1 text-slate-600">
-                {patientRecord.vitalsSeries[0].vitalSigns && (
+                {latestSeriesVitals && (
                   <>
                     <p>
                       <strong>TA:</strong>{' '}
-                      {patientRecord.vitalsSeries[0].vitalSigns.bloodPressureSystolic || '-'}/
-                      {patientRecord.vitalsSeries[0].vitalSigns.bloodPressureDiastolic || '-'} mmHg
+                      {latestSeriesVitals.systolic || '-'}/
+                      {latestSeriesVitals.diastolic || '-'} mmHg
                     </p>
                     <p>
-                      <strong>FC:</strong> {patientRecord.vitalsSeries[0].vitalSigns.heartRate || '-'} lpm
+                      <strong>FC:</strong> {latestSeriesVitals.heartRate || '-'} lpm
                     </p>
                     <p>
-                      <strong>Peso:</strong> {patientRecord.vitalsSeries[0].vitalSigns.weight || '-'} kg
+                      <strong>Peso:</strong> {latestSeriesVitals.weightKg || '-'} kg
                     </p>
                     <p>
-                      <strong>Temp:</strong> {patientRecord.vitalsSeries[0].vitalSigns.temperature || '-'} °C
+                      <strong>Temp:</strong> {latestSeriesVitals.temperature || '-'} °C
                     </p>
                     <span className="text-[10px] text-slate-400">
-                      Registrados el {patientRecord.vitalsSeries[0].date}
+                      Registrados el {latestSeriesVitals.date}
                     </span>
                   </>
                 )}
@@ -1343,7 +1355,7 @@ export default function EspacioClinicoPage() {
                 {/* TA Sistólica */}
                 <div
                   className={`ec-vital-input-box ${
-                    isVitalAbnormal('bloodPressureSystolic', vitalSigns.bloodPressureSystolic, patientAge)
+                    isVitalAbnormal('systolic', vitalSigns.systolic, patientAge)
                       ? 'abnormal'
                       : ''
                   }`}
@@ -1354,23 +1366,23 @@ export default function EspacioClinicoPage() {
                   </span>
                   <input
                     type="number"
-                    value={vitalSigns.bloodPressureSystolic}
+                    value={vitalSigns.systolic}
                     onChange={(e) =>
-                      setVitalSigns((prev) => ({ ...prev, bloodPressureSystolic: e.target.value }))
+                      setVitalSigns((prev) => ({ ...prev, systolic: e.target.value }))
                     }
                     placeholder="120"
                     className="ec-vital-input"
                     readOnly={isReadOnly}
                   />
-                  {vitalErrors.bloodPressureSystolic && (
-                    <span className="text-[10px] text-red-600 mt-1">{vitalErrors.bloodPressureSystolic}</span>
+                  {vitalErrors.systolic && (
+                    <span className="text-[10px] text-red-600 mt-1">{vitalErrors.systolic}</span>
                   )}
                 </div>
 
                 {/* TA Diastólica */}
                 <div
                   className={`ec-vital-input-box ${
-                    isVitalAbnormal('bloodPressureDiastolic', vitalSigns.bloodPressureDiastolic, patientAge)
+                    isVitalAbnormal('diastolic', vitalSigns.diastolic, patientAge)
                       ? 'abnormal'
                       : ''
                   }`}
@@ -1381,16 +1393,16 @@ export default function EspacioClinicoPage() {
                   </span>
                   <input
                     type="number"
-                    value={vitalSigns.bloodPressureDiastolic}
+                    value={vitalSigns.diastolic}
                     onChange={(e) =>
-                      setVitalSigns((prev) => ({ ...prev, bloodPressureDiastolic: e.target.value }))
+                      setVitalSigns((prev) => ({ ...prev, diastolic: e.target.value }))
                     }
                     placeholder="80"
                     className="ec-vital-input"
                     readOnly={isReadOnly}
                   />
-                  {vitalErrors.bloodPressureDiastolic && (
-                    <span className="text-[10px] text-red-600 mt-1">{vitalErrors.bloodPressureDiastolic}</span>
+                  {vitalErrors.diastolic && (
+                    <span className="text-[10px] text-red-600 mt-1">{vitalErrors.diastolic}</span>
                   )}
                 </div>
 
@@ -1500,8 +1512,8 @@ export default function EspacioClinicoPage() {
                   <input
                     type="number"
                     step="0.1"
-                    value={vitalSigns.weight}
-                    onChange={(e) => setVitalSigns((prev) => ({ ...prev, weight: e.target.value }))}
+                    value={vitalSigns.weightKg}
+                    onChange={(e) => setVitalSigns((prev) => ({ ...prev, weightKg: e.target.value }))}
                     placeholder="70"
                     className="ec-vital-input"
                     readOnly={isReadOnly}
@@ -1516,8 +1528,8 @@ export default function EspacioClinicoPage() {
                   </span>
                   <input
                     type="number"
-                    value={vitalSigns.height}
-                    onChange={(e) => setVitalSigns((prev) => ({ ...prev, height: e.target.value }))}
+                    value={vitalSigns.heightCm}
+                    onChange={(e) => setVitalSigns((prev) => ({ ...prev, heightCm: e.target.value }))}
                     placeholder="170"
                     className="ec-vital-input"
                     readOnly={isReadOnly}
@@ -1532,8 +1544,8 @@ export default function EspacioClinicoPage() {
                   </span>
                   <input
                     type="number"
-                    value={vitalSigns.bloodGlucose}
-                    onChange={(e) => setVitalSigns((prev) => ({ ...prev, bloodGlucose: e.target.value }))}
+                    value={vitalSigns.glucose}
+                    onChange={(e) => setVitalSigns((prev) => ({ ...prev, glucose: e.target.value }))}
                     placeholder="95"
                     className="ec-vital-input"
                     readOnly={isReadOnly}
@@ -2207,11 +2219,11 @@ export default function EspacioClinicoPage() {
               <div className="border-t pt-2 border-slate-100">
                 <span className="font-bold text-slate-700 block mb-1">Signos Vitales:</span>
                 <p>
-                  TA: {drawerPastConsultation.vitalSigns.bloodPressureSystolic || '-'}/
-                  {drawerPastConsultation.vitalSigns.bloodPressureDiastolic || '-'} mmHg | FC:{' '}
+                  TA: {drawerPastConsultation.vitalSigns.systolic || '-'}/
+                  {drawerPastConsultation.vitalSigns.diastolic || '-'} mmHg | FC:{' '}
                   {drawerPastConsultation.vitalSigns.heartRate || '-'} lpm | Temp:{' '}
                   {drawerPastConsultation.vitalSigns.temperature || '-'} °C | Peso:{' '}
-                  {drawerPastConsultation.vitalSigns.weight || '-'} kg
+                  {drawerPastConsultation.vitalSigns.weightKg || '-'} kg
                 </p>
               </div>
             )}

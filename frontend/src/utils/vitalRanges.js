@@ -4,13 +4,13 @@
  */
 
 export const ADULT_VITAL_RANGES = {
-  bloodPressureSystolic: {
+  systolic: {
     min: 90,
     max: 139,
     unit: 'mmHg',
     label: 'TA Sistólica'
   },
-  bloodPressureDiastolic: {
+  diastolic: {
     min: 60,
     max: 89,
     unit: 'mmHg',
@@ -40,7 +40,7 @@ export const ADULT_VITAL_RANGES = {
     unit: '%',
     label: 'Saturación O₂'
   },
-  bloodGlucose: {
+  glucose: {
     min: 70,
     max: 140,
     unit: 'mg/dL',
