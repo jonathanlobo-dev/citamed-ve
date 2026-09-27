@@ -1,6 +1,6 @@
 /**
  * AdminPanelPage.jsx - CITAMED.VE
- * M01 / Semana 7 - Panel de Superadministración: Resumen, Médicos y Usuarios
+ * M01 / Semana 7 - Panel de Superadministración: Resumen, Médicos, Usuarios y Configuración de IA
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -19,9 +19,16 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  ArrowUp,
+  ArrowDown,
+  Trash2,
+  Plus,
+  Play,
   RefreshCw,
+  Power,
   Activity,
   Calendar,
+  Lock,
   ExternalLink
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -29,6 +36,23 @@ import Navbar from '../../components/common/Navbar/Navbar';
 import SideDrawer from '../../components/common/SideDrawer/SideDrawer';
 import adminService from '../../services/adminService';
 import './AdminPanelPage.css';
+
+const TEXT_PROVIDERS = ['gemini', 'groq', 'openai', 'anthropic', 'mock'];
+const TRANSCRIPTION_PROVIDERS = ['groq', 'openai', 'mock'];
+
+const DEFAULT_MODELS = {
+  gemini: ['gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
+  groq: ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
+  openai: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo'],
+  anthropic: ['claude-haiku-4-5-20251001', 'claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307'],
+  mock: ['echo', 'fail']
+};
+
+const DEFAULT_TRANSCRIPTION_MODELS = {
+  groq: ['whisper-large-v3-turbo', 'whisper-large-v3', 'distil-whisper-large-v3-en'],
+  openai: ['whisper-1'],
+  mock: ['echo', 'fail']
+};
 
 export default function AdminPanelPage() {
   const navigate = useNavigate();
@@ -237,6 +261,236 @@ export default function AdminPanelPage() {
     }
   };
 
+  // ==========================================
+  // ESTADO: INTELIGENCIA ARTIFICIAL (IA)
+  // ==========================================
+  const [aiConfig, setAiConfig] = useState(null);
+  const [aiUsageStats, setAiUsageStats] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSaving, setAiSaving] = useState(false);
+
+  // Estados locales editables de IA
+  const [textChain, setTextChain] = useState([]);
+  const [transcriptionChain, setTranscriptionChain] = useState([]);
+  const [aiLimits, setAiLimits] = useState({
+    enabled: true,
+    monthlyActionsPerDoctor: 200,
+    perMinutePerUser: 10
+  });
+  const [aiEnvFlags, setAiEnvFlags] = useState({});
+
+  // Modelos cargados dinámicamente por proveedor { gemini: [...], groq: [...] }
+  const [providerModelsCache, setProviderModelsCache] = useState({});
+  // Resultados temporales de pruebas de conexión por item id
+  const [testResults, setTestResults] = useState({});
+  const [testingId, setTestingId] = useState(null);
+
+  const loadAiData = useCallback(async () => {
+    setAiLoading(true);
+    try {
+      const [configRes, usageRes] = await Promise.all([
+        adminService.getAiConfig(),
+        adminService.getAiUsage({ days: 30 })
+      ]);
+
+      if (configRes.success) {
+        setAiConfig(configRes);
+        setTextChain(
+          (configRes.providers || []).map((p) => ({
+            ...p,
+            apiKey: '', // La llave nunca se inicializa ni se muestra
+            replacingKey: false
+          }))
+        );
+        setTranscriptionChain(
+          (configRes.transcription || []).map((t) => ({
+            ...t,
+            apiKey: '',
+            replacingKey: false
+          }))
+        );
+        setAiLimits({
+          enabled: configRes.limits?.enabled ?? true,
+          monthlyActionsPerDoctor: configRes.limits?.monthlyActionsPerDoctor ?? 200,
+          perMinutePerUser: configRes.limits?.perMinutePerUser ?? 10
+        });
+        setAiEnvFlags(configRes.env || {});
+      }
+
+      if (usageRes.success) {
+        setAiUsageStats(usageRes);
+      }
+    } catch (err) {
+      console.error('Error al cargar datos de IA:', err);
+      toast.error('No se pudo cargar la configuración de IA');
+    } finally {
+      setAiLoading(false);
+    }
+  }, []);
+
+  // Fetch de modelos para un proveedor específico si no están en caché
+  const fetchModelsForProvider = async (provider, entryId = null) => {
+    if (!provider || providerModelsCache[provider]) return;
+    try {
+      const res = await adminService.getAiModels({ provider, entryId });
+      if (res.success && Array.isArray(res.models)) {
+        setProviderModelsCache((prev) => ({
+          ...prev,
+          [provider]: res.models
+        }));
+      }
+    } catch {
+      // Usar respaldo local si la llamada falla
+      const fallback = DEFAULT_MODELS[provider] || DEFAULT_TRANSCRIPTION_MODELS[provider] || [];
+      setProviderModelsCache((prev) => ({
+        ...prev,
+        [provider]: fallback
+      }));
+    }
+  };
+
+  // Reordenar elementos de la cadena
+  const moveItem = (listType, index, direction) => {
+    const list = listType === 'text' ? [...textChain] : [...transcriptionChain];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= list.length) return;
+    const temp = list[index];
+    list[index] = list[targetIndex];
+    list[targetIndex] = temp;
+
+    if (listType === 'text') setTextChain(list);
+    else setTranscriptionChain(list);
+  };
+
+  // Quitar elemento de la cadena
+  const removeItem = (listType, index) => {
+    if (listType === 'text') {
+      setTextChain(textChain.filter((_, i) => i !== index));
+    } else {
+      setTranscriptionChain(transcriptionChain.filter((_, i) => i !== index));
+    }
+  };
+
+  // Agregar nuevo item
+  const addItem = (listType) => {
+    const defaultProvider = listType === 'text' ? 'gemini' : 'groq';
+    const defaultModel = listType === 'text' ? 'gemini-2.5-flash' : 'whisper-large-v3-turbo';
+    const newItem = {
+      id: `new-${Date.now()}`,
+      provider: defaultProvider,
+      model: defaultModel,
+      enabled: true,
+      hasKey: false,
+      keyPreview: null,
+      apiKey: '',
+      replacingKey: true
+    };
+
+    if (listType === 'text') {
+      setTextChain([...textChain, newItem]);
+    } else {
+      setTranscriptionChain([...transcriptionChain, newItem]);
+    }
+    fetchModelsForProvider(defaultProvider);
+  };
+
+  // Probar conexión de un item
+  const handleTestItem = async (kind, item) => {
+    setTestingId(item.id);
+    setTestResults((prev) => ({ ...prev, [item.id]: { loading: true } }));
+    try {
+      const res = await adminService.testAiConnection({
+        kind,
+        provider: item.provider,
+        model: item.model,
+        apiKey: item.apiKey ? item.apiKey.trim() : undefined,
+        entryId: item.hasKey ? item.id : undefined
+      });
+
+      setTestResults((prev) => ({
+        ...prev,
+        [item.id]: {
+          loading: false,
+          ok: res.ok,
+          latencyMs: res.latencyMs,
+          message: res.message
+        }
+      }));
+
+      if (res.ok) {
+        toast.success(`Conexión exitosa (${res.latencyMs} ms)`);
+      } else {
+        toast.error(`Fallo: ${res.message}`);
+      }
+    } catch (err) {
+      setTestResults((prev) => ({
+        ...prev,
+        [item.id]: {
+          loading: false,
+          ok: false,
+          message: err.response?.data?.message || err.message
+        }
+      }));
+      toast.error(err.response?.data?.message || 'Error probando la conexión');
+    } finally {
+      setTestingId(null);
+    }
+  };
+
+  // Guardar configuración completa de IA
+  const handleSaveAiConfig = async () => {
+    // Validar que cada item tenga una llave (existente o nueva)
+    for (const item of textChain) {
+      if (item.provider !== 'mock' && !item.hasKey && (!item.apiKey || !item.apiKey.trim())) {
+        toast.error(`El proveedor ${item.provider} (${item.model}) requiere una API Key.`);
+        return;
+      }
+    }
+    for (const item of transcriptionChain) {
+      if (item.provider !== 'mock' && !item.hasKey && (!item.apiKey || !item.apiKey.trim())) {
+        toast.error(`El transcriptor ${item.provider} (${item.model}) requiere una API Key.`);
+        return;
+      }
+    }
+
+    setAiSaving(true);
+    try {
+      const payload = {
+        limits: {
+          enabled: Boolean(aiLimits.enabled),
+          monthlyActionsPerDoctor: Number(aiLimits.monthlyActionsPerDoctor) || 0,
+          perMinutePerUser: Number(aiLimits.perMinutePerUser) || 10
+        },
+        providers: textChain.map((p) => ({
+          ...(p.id && !p.id.startsWith('new-') ? { id: p.id } : {}),
+          provider: p.provider,
+          model: p.model.trim(),
+          enabled: Boolean(p.enabled),
+          ...(p.apiKey && p.apiKey.trim() ? { apiKey: p.apiKey.trim() } : {})
+        })),
+        transcription: transcriptionChain.map((t) => ({
+          ...(t.id && !t.id.startsWith('new-') ? { id: t.id } : {}),
+          provider: t.provider,
+          model: t.model.trim(),
+          enabled: Boolean(t.enabled),
+          ...(t.apiKey && t.apiKey.trim() ? { apiKey: t.apiKey.trim() } : {})
+        }))
+      };
+
+      const res = await adminService.updateAiConfig(payload);
+      if (res.success) {
+        toast.success('Configuración de IA guardada exitosamente');
+        // Recargar datos desde el servidor para obtener los previews limpios
+        await loadAiData();
+      }
+    } catch (err) {
+      console.error('Error al guardar configuración de IA:', err);
+      toast.error(err.response?.data?.message || 'Error al guardar configuración de IA');
+    } finally {
+      setAiSaving(false);
+    }
+  };
+
   // Carga inicial según la pestaña seleccionada
   useEffect(() => {
     if (activeTab === 'overview') {
@@ -245,8 +499,10 @@ export default function AdminPanelPage() {
       loadDoctors();
     } else if (activeTab === 'users') {
       loadUsers();
+    } else if (activeTab === 'ai') {
+      loadAiData();
     }
-  }, [activeTab, loadOverview, loadDoctors, loadUsers]);
+  }, [activeTab, loadOverview, loadDoctors, loadUsers, loadAiData]);
 
   return (
     <div className="admin-panel-page">
@@ -262,7 +518,7 @@ export default function AdminPanelPage() {
             <div>
               <h1 className="admin-header-title">Panel de Superadministración</h1>
               <p className="admin-header-subtitle">
-                Supervisión médica, control de usuarios y gestión de plataforma en CitaMed.
+                Supervisión médica, control de usuarios y gestión de inteligencia artificial en CitaMed.
               </p>
             </div>
           </div>
@@ -797,16 +1053,741 @@ export default function AdminPanelPage() {
         {/* PESTAÑA 4: INTELIGENCIA ARTIFICIAL (IA) */}
         {/* ========================================================= */}
         {activeTab === 'ai' && (
-          <div className="admin-card">
-            <div className="admin-card-header">
-              <h2 className="admin-card-title">
-                <Bot className="w-5 h-5 text-primary" />
-                <span>Configuración de Inteligencia Artificial</span>
-              </h2>
-            </div>
-            <p className="text-sm text-gray-500 py-4">
-              Configuración de proveedores de IA y límites en proceso...
-            </p>
+          <div>
+            {aiLoading ? (
+              <div className="flex items-center justify-center p-12 text-gray-500">
+                <RefreshCw className="w-6 h-6 animate-spin mr-3 text-primary" />
+                <span>Cargando configuración de IA...</span>
+              </div>
+            ) : aiConfig ? (
+              <>
+                {/* 1. LÍMITES Y VARIABLES DE ENTORNO */}
+                <div className="admin-card">
+                  <div className="admin-card-header">
+                    <h2 className="admin-card-title">
+                      <Power className="w-5 h-5 text-primary" />
+                      <span>Parámetros Generales de Inteligencia Artificial</span>
+                    </h2>
+                  </div>
+
+                  <div className="ai-config-grid">
+                    {/* Control de Límites */}
+                    <div className="ai-limits-box">
+                      <div className="ai-limit-row">
+                        <label htmlFor="ai-toggle-active" className="text-sm font-semibold text-gray-700">
+                          Servicio de IA activo en CitaMed
+                        </label>
+                        <input
+                          id="ai-toggle-active"
+                          type="checkbox"
+                          checked={aiLimits.enabled}
+                          onChange={(e) =>
+                            setAiLimits((prev) => ({ ...prev, enabled: e.target.checked }))
+                          }
+                          className="w-5 h-5 accent-primary cursor-pointer"
+                        />
+                      </div>
+
+                      <div className="ai-limit-row">
+                        <div>
+                          <div className="text-sm font-semibold text-gray-700">
+                            Acciones por médico al mes
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Límite mensual acumulado por profesional
+                          </div>
+                        </div>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100000"
+                          value={aiLimits.monthlyActionsPerDoctor}
+                          onChange={(e) =>
+                            setAiLimits((prev) => ({
+                              ...prev,
+                              monthlyActionsPerDoctor: parseInt(e.target.value, 10) || 0
+                            }))
+                          }
+                          className="ai-input"
+                          style={{ width: '110px', textAlign: 'right' }}
+                        />
+                      </div>
+
+                      <div className="ai-limit-row">
+                        <div>
+                          <div className="text-sm font-semibold text-gray-700">
+                            Máximo de peticiones por minuto
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Control anti-ráfagas por usuario
+                          </div>
+                        </div>
+                        <input
+                          type="number"
+                          min="1"
+                          max="60"
+                          value={aiLimits.perMinutePerUser}
+                          onChange={(e) =>
+                            setAiLimits((prev) => ({
+                              ...prev,
+                              perMinutePerUser: parseInt(e.target.value, 10) || 1
+                            }))
+                          }
+                          className="ai-input"
+                          style={{ width: '110px', textAlign: 'right' }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Respaldos por Variables del Servidor */}
+                    <div className="ai-limits-box">
+                      <div className="text-sm font-semibold text-gray-700 mb-1">
+                        Respaldos por variables de entorno (.env)
+                      </div>
+                      <p className="text-xs text-gray-500 mb-3">
+                        Si un proveedor falla en la cadena, el sistema salta a los respaldos configurados en el servidor:
+                      </p>
+
+                      <div className="ai-env-badges-wrap">
+                        <div className="ai-env-pill">
+                          <span>Gemini:</span>
+                          {aiEnvFlags.gemini ? (
+                            <span className="badge badge-success">Configurado</span>
+                          ) : (
+                            <span className="badge badge-neutral">No configurado</span>
+                          )}
+                        </div>
+                        <div className="ai-env-pill">
+                          <span>Groq:</span>
+                          {aiEnvFlags.groq ? (
+                            <span className="badge badge-success">Configurado</span>
+                          ) : (
+                            <span className="badge badge-neutral">No configurado</span>
+                          )}
+                        </div>
+                        <div className="ai-env-pill">
+                          <span>OpenAI:</span>
+                          {aiEnvFlags.openai ? (
+                            <span className="badge badge-success">Configurado</span>
+                          ) : (
+                            <span className="badge badge-neutral">No configurado</span>
+                          )}
+                        </div>
+                        <div className="ai-env-pill">
+                          <span>Anthropic:</span>
+                          {aiEnvFlags.anthropic ? (
+                            <span className="badge badge-success">Configurado</span>
+                          ) : (
+                            <span className="badge badge-neutral">No configurado</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. CADENA DE PROVEEDORES DE TEXTO (SOAP, RX, MEJORA) */}
+                <div className="admin-card">
+                  <div className="admin-card-header">
+                    <div>
+                      <h2 className="admin-card-title">
+                        <Bot className="w-5 h-5 text-primary" />
+                        <span>Cadena de Proveedores de Texto (SOAP, Récipe y Redacción)</span>
+                      </h2>
+                      <p className="text-xs text-gray-500 mt-1">
+                        El sistema intentará ejecutar las solicitudes en el orden configurado (prioridad descendente).
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => addItem('text')}
+                      className="admin-quick-link text-primary font-semibold"
+                    >
+                      <Plus className="w-4 h-4" /> Agregar proveedor
+                    </button>
+                  </div>
+
+                  {textChain.map((item, index) => {
+                    const testState = testResults[item.id];
+                    const availableModels =
+                      providerModelsCache[item.provider] ||
+                      DEFAULT_MODELS[item.provider] ||
+                      [];
+
+                    return (
+                      <div key={item.id || index} className="ai-chain-item">
+                        <div className="ai-chain-header">
+                          <div className="ai-chain-title-wrap">
+                            <span className="ai-chain-num">#{index + 1}</span>
+                            <span className="font-bold text-gray-900 capitalize">
+                              {item.provider}
+                            </span>
+                            <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 ml-3 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={item.enabled}
+                                onChange={(e) => {
+                                  const updated = [...textChain];
+                                  updated[index].enabled = e.target.checked;
+                                  setTextChain(updated);
+                                }}
+                                className="w-4 h-4 accent-primary"
+                              />
+                              Habilitado
+                            </label>
+                          </div>
+
+                          <div className="ai-chain-actions">
+                            <button
+                              type="button"
+                              title="Subir prioridad"
+                              disabled={index === 0}
+                              onClick={() => moveItem('text', index, -1)}
+                              className="ai-btn-icon"
+                            >
+                              <ArrowUp className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Bajar prioridad"
+                              disabled={index === textChain.length - 1}
+                              onClick={() => moveItem('text', index, 1)}
+                              className="ai-btn-icon"
+                            >
+                              <ArrowDown className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Quitar proveedor"
+                              onClick={() => removeItem('text', index)}
+                              className="ai-btn-icon ai-btn-danger"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={testingId === item.id}
+                              onClick={() => handleTestItem('text', item)}
+                              className="admin-btn-page text-xs ml-2"
+                            >
+                              {testingId === item.id ? (
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Play className="w-3.5 h-3.5 text-primary" />
+                              )}
+                              Probar conexión
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Campos del item */}
+                        <div className="ai-chain-fields">
+                          {/* Proveedor */}
+                          <div className="ai-field-group">
+                            <label className="ai-field-label">Proveedor</label>
+                            <select
+                              value={item.provider}
+                              onChange={(e) => {
+                                const newProv = e.target.value;
+                                const updated = [...textChain];
+                                updated[index].provider = newProv;
+                                updated[index].model =
+                                  (DEFAULT_MODELS[newProv] && DEFAULT_MODELS[newProv][0]) || 'default';
+                                setTextChain(updated);
+                                fetchModelsForProvider(newProv);
+                              }}
+                              className="ai-input"
+                            >
+                              {TEXT_PROVIDERS.map((tp) => (
+                                <option key={tp} value={tp}>
+                                  {tp.toUpperCase()}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Modelo */}
+                          <div className="ai-field-group">
+                            <label className="ai-field-label">Modelo</label>
+                            <div className="flex gap-2">
+                              <select
+                                value={item.model}
+                                onChange={(e) => {
+                                  const updated = [...textChain];
+                                  updated[index].model = e.target.value;
+                                  setTextChain(updated);
+                                }}
+                                className="ai-input"
+                              >
+                                {availableModels.map((m) => (
+                                  <option key={m} value={m}>
+                                    {m}
+                                  </option>
+                                ))}
+                                {!availableModels.includes(item.model) && (
+                                  <option value={item.model}>{item.model} (personalizado)</option>
+                                )}
+                              </select>
+                              <input
+                                type="text"
+                                placeholder="Escribir modelo..."
+                                value={item.model}
+                                onChange={(e) => {
+                                  const updated = [...textChain];
+                                  updated[index].model = e.target.value;
+                                  setTextChain(updated);
+                                }}
+                                className="ai-input"
+                                style={{ maxWidth: '180px' }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Llave API */}
+                          <div className="ai-field-group">
+                            <label className="ai-field-label">API Key</label>
+                            {item.hasKey && !item.replacingKey ? (
+                              <div className="ai-key-saved-box">
+                                <span className="font-mono text-xs flex items-center gap-1.5">
+                                  <Lock className="w-3.5 h-3.5 text-emerald-600" />
+                                  Guardada {item.keyPreview}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...textChain];
+                                    updated[index].replacingKey = true;
+                                    setTextChain(updated);
+                                  }}
+                                  className="text-xs text-primary font-semibold hover:underline"
+                                >
+                                  Reemplazar
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="relative">
+                                <input
+                                  type="password"
+                                  value={item.apiKey || ''}
+                                  onChange={(e) => {
+                                    const updated = [...textChain];
+                                    updated[index].apiKey = e.target.value;
+                                    setTextChain(updated);
+                                  }}
+                                  placeholder={item.hasKey ? 'Pega nueva clave...' : 'Pega tu API Key...'}
+                                  className="ai-input"
+                                  autoComplete="new-password"
+                                />
+                                {item.hasKey && item.replacingKey && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = [...textChain];
+                                      updated[index].replacingKey = false;
+                                      updated[index].apiKey = '';
+                                      setTextChain(updated);
+                                    }}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-gray-500 hover:text-gray-700"
+                                  >
+                                    Cancelar
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Resultado de prueba de conexión */}
+                        {testState && (
+                          <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">
+                            {testState.loading ? (
+                              <span className="ai-test-badge bg-blue-50 text-blue-700">
+                                <RefreshCw className="w-3 h-3 animate-spin" /> Verificando conectividad...
+                              </span>
+                            ) : testState.ok ? (
+                              <span className="ai-test-badge bg-emerald-50 text-emerald-700">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> OK — Latencia: {testState.latencyMs} ms
+                              </span>
+                            ) : (
+                              <span className="ai-test-badge bg-rose-50 text-rose-700">
+                                <AlertTriangle className="w-3.5 h-3.5" /> Error: {testState.message}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* 3. CADENA DE TRANSCRIPCIÓN DE AUDIO (WHISPER) */}
+                <div className="admin-card">
+                  <div className="admin-card-header">
+                    <div>
+                      <h2 className="admin-card-title">
+                        <Bot className="w-5 h-5 text-primary" />
+                        <span>Cadena de Transcripción de Audio (Whisper)</span>
+                      </h2>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Utilizada para convertir dictados de voz y notas médicas en texto dentro del Espacio Clínico.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => addItem('transcription')}
+                      className="admin-quick-link text-primary font-semibold"
+                    >
+                      <Plus className="w-4 h-4" /> Agregar transcriptor
+                    </button>
+                  </div>
+
+                  {transcriptionChain.map((item, index) => {
+                    const testState = testResults[item.id];
+                    const availableModels =
+                      DEFAULT_TRANSCRIPTION_MODELS[item.provider] || [];
+
+                    return (
+                      <div key={item.id || index} className="ai-chain-item">
+                        <div className="ai-chain-header">
+                          <div className="ai-chain-title-wrap">
+                            <span className="ai-chain-num">#{index + 1}</span>
+                            <span className="font-bold text-gray-900 capitalize">
+                              {item.provider}
+                            </span>
+                            <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 ml-3 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={item.enabled}
+                                onChange={(e) => {
+                                  const updated = [...transcriptionChain];
+                                  updated[index].enabled = e.target.checked;
+                                  setTranscriptionChain(updated);
+                                }}
+                                className="w-4 h-4 accent-primary"
+                              />
+                              Habilitado
+                            </label>
+                          </div>
+
+                          <div className="ai-chain-actions">
+                            <button
+                              type="button"
+                              title="Subir prioridad"
+                              disabled={index === 0}
+                              onClick={() => moveItem('transcription', index, -1)}
+                              className="ai-btn-icon"
+                            >
+                              <ArrowUp className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Bajar prioridad"
+                              disabled={index === transcriptionChain.length - 1}
+                              onClick={() => moveItem('transcription', index, 1)}
+                              className="ai-btn-icon"
+                            >
+                              <ArrowDown className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Quitar transcriptor"
+                              onClick={() => removeItem('transcription', index)}
+                              className="ai-btn-icon ai-btn-danger"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={testingId === item.id}
+                              onClick={() => handleTestItem('transcription', item)}
+                              className="admin-btn-page text-xs ml-2"
+                            >
+                              {testingId === item.id ? (
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Play className="w-3.5 h-3.5 text-primary" />
+                              )}
+                              Probar conexión
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Campos del item */}
+                        <div className="ai-chain-fields">
+                          <div className="ai-field-group">
+                            <label className="ai-field-label">Proveedor</label>
+                            <select
+                              value={item.provider}
+                              onChange={(e) => {
+                                const newProv = e.target.value;
+                                const updated = [...transcriptionChain];
+                                updated[index].provider = newProv;
+                                updated[index].model =
+                                  (DEFAULT_TRANSCRIPTION_MODELS[newProv] &&
+                                    DEFAULT_TRANSCRIPTION_MODELS[newProv][0]) ||
+                                  'whisper-large-v3-turbo';
+                                setTranscriptionChain(updated);
+                              }}
+                              className="ai-input"
+                            >
+                              {TRANSCRIPTION_PROVIDERS.map((tp) => (
+                                <option key={tp} value={tp}>
+                                  {tp.toUpperCase()}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="ai-field-group">
+                            <label className="ai-field-label">Modelo</label>
+                            <div className="flex gap-2">
+                              <select
+                                value={item.model}
+                                onChange={(e) => {
+                                  const updated = [...transcriptionChain];
+                                  updated[index].model = e.target.value;
+                                  setTranscriptionChain(updated);
+                                }}
+                                className="ai-input"
+                              >
+                                {availableModels.map((m) => (
+                                  <option key={m} value={m}>
+                                    {m}
+                                  </option>
+                                ))}
+                                {!availableModels.includes(item.model) && (
+                                  <option value={item.model}>{item.model} (personalizado)</option>
+                                )}
+                              </select>
+                              <input
+                                type="text"
+                                placeholder="Escribir modelo..."
+                                value={item.model}
+                                onChange={(e) => {
+                                  const updated = [...transcriptionChain];
+                                  updated[index].model = e.target.value;
+                                  setTranscriptionChain(updated);
+                                }}
+                                className="ai-input"
+                                style={{ maxWidth: '180px' }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="ai-field-group">
+                            <label className="ai-field-label">API Key</label>
+                            {item.hasKey && !item.replacingKey ? (
+                              <div className="ai-key-saved-box">
+                                <span className="font-mono text-xs flex items-center gap-1.5">
+                                  <Lock className="w-3.5 h-3.5 text-emerald-600" />
+                                  Guardada {item.keyPreview}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...transcriptionChain];
+                                    updated[index].replacingKey = true;
+                                    setTranscriptionChain(updated);
+                                  }}
+                                  className="text-xs text-primary font-semibold hover:underline"
+                                >
+                                  Reemplazar
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="relative">
+                                <input
+                                  type="password"
+                                  value={item.apiKey || ''}
+                                  onChange={(e) => {
+                                    const updated = [...transcriptionChain];
+                                    updated[index].apiKey = e.target.value;
+                                    setTranscriptionChain(updated);
+                                  }}
+                                  placeholder={item.hasKey ? 'Pega nueva clave...' : 'Pega tu API Key...'}
+                                  className="ai-input"
+                                  autoComplete="new-password"
+                                />
+                                {item.hasKey && item.replacingKey && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = [...transcriptionChain];
+                                      updated[index].replacingKey = false;
+                                      updated[index].apiKey = '';
+                                      setTranscriptionChain(updated);
+                                    }}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-gray-500 hover:text-gray-700"
+                                  >
+                                    Cancelar
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {testState && (
+                          <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">
+                            {testState.loading ? (
+                              <span className="ai-test-badge bg-blue-50 text-blue-700">
+                                <RefreshCw className="w-3 h-3 animate-spin" /> Verificando conectividad...
+                              </span>
+                            ) : testState.ok ? (
+                              <span className="ai-test-badge bg-emerald-50 text-emerald-700">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> OK — Latencia: {testState.latencyMs} ms
+                              </span>
+                            ) : (
+                              <span className="ai-test-badge bg-rose-50 text-rose-700">
+                                <AlertTriangle className="w-3.5 h-3.5" /> Error: {testState.message}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* BOTÓN GUARDAR CONFIGURACIÓN */}
+                <div className="flex justify-end mb-8">
+                  <button
+                    type="button"
+                    disabled={aiSaving}
+                    onClick={handleSaveAiConfig}
+                    className="px-6 py-3 bg-primary text-white font-bold rounded-xl shadow-lg hover:bg-primary-dark transition-all flex items-center gap-2"
+                  >
+                    {aiSaving && <RefreshCw className="w-4 h-4 animate-spin" />}
+                    <span>Guardar configuración de IA</span>
+                  </button>
+                </div>
+
+                {/* 4. MÉTRICAS DE USO DE LOS ÚLTIMOS 30 DÍAS */}
+                {aiUsageStats && (
+                  <div className="admin-card">
+                    <div className="admin-card-header">
+                      <h2 className="admin-card-title">
+                        <Activity className="w-5 h-5 text-purple-600" />
+                        <span>Métricas de Consumo de IA (Últimos 30 Días)</span>
+                      </h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                      {/* Por Proveedor */}
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-700 mb-2">Consumo por Proveedor</h3>
+                        <div className="admin-table-container">
+                          <table className="admin-table">
+                            <thead>
+                              <tr>
+                                <th>Proveedor</th>
+                                <th style={{ textAlign: 'center' }}>Exitosas</th>
+                                <th style={{ textAlign: 'center' }}>Fallidas</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {aiUsageStats.byProvider && aiUsageStats.byProvider.length > 0 ? (
+                                aiUsageStats.byProvider.map((p, i) => (
+                                  <tr key={i}>
+                                    <td className="font-semibold uppercase">{p.provider || 'Sin asignar'}</td>
+                                    <td style={{ textAlign: 'center' }}>
+                                      <span className="badge badge-success">{p.success}</span>
+                                    </td>
+                                    <td style={{ textAlign: 'center' }}>
+                                      <span className="badge badge-danger">{p.failed}</span>
+                                    </td>
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr>
+                                  <td colSpan="3" className="text-center py-4 text-gray-500 text-xs">
+                                    Sin registros por proveedor
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* Por Modo */}
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-700 mb-2">Consumo por Modalidad Clínica</h3>
+                        <div className="admin-table-container">
+                          <table className="admin-table">
+                            <thead>
+                              <tr>
+                                <th>Modo</th>
+                                <th style={{ textAlign: 'center' }}>Exitosas</th>
+                                <th style={{ textAlign: 'center' }}>Fallidas</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {aiUsageStats.byMode && aiUsageStats.byMode.length > 0 ? (
+                                aiUsageStats.byMode.map((m, i) => (
+                                  <tr key={i}>
+                                    <td className="font-semibold uppercase text-xs">{m.mode}</td>
+                                    <td style={{ textAlign: 'center' }}>
+                                      <span className="badge badge-success">{m.success}</span>
+                                    </td>
+                                    <td style={{ textAlign: 'center' }}>
+                                      <span className="badge badge-danger">{m.failed}</span>
+                                    </td>
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr>
+                                  <td colSpan="3" className="text-center py-4 text-gray-500 text-xs">
+                                    Sin registros por modo
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Consumo por Día */}
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-700 mb-2">Registro Diario (Últimos 30 Días)</h3>
+                      <div className="admin-table-container" style={{ maxHeight: '280px', overflowY: 'auto' }}>
+                        <table className="admin-table">
+                          <thead>
+                            <tr>
+                              <th>Fecha</th>
+                              <th style={{ textAlign: 'center' }}>Solicitudes Exitosas</th>
+                              <th style={{ textAlign: 'center' }}>Solicitudes Fallidas</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {aiUsageStats.byDay && aiUsageStats.byDay.length > 0 ? (
+                              aiUsageStats.byDay.map((d, i) => (
+                                <tr key={i}>
+                                  <td className="text-xs font-mono">{d.date}</td>
+                                  <td style={{ textAlign: 'center' }}>
+                                    <span className="badge badge-success">{d.success}</span>
+                                  </td>
+                                  <td style={{ textAlign: 'center' }}>
+                                    <span className="badge badge-danger">{d.failed}</span>
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan="3" className="text-center py-4 text-gray-500 text-xs">
+                                  Sin actividad registrada en los últimos 30 días
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : null}
           </div>
         )}
 
