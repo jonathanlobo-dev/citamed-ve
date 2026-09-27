@@ -215,19 +215,31 @@ async function runTest() {
     const today = getTodayCaracas();
     let appointmentId;
     try {
+      const slotsRes = await axios.get(
+        `${API_BASE}/appointments/available-slots?doctorProfileId=${docAProfileId}&date=${today}`,
+        { headers: { Authorization: `Bearer ${patToken}` } }
+      );
+      const slots = slotsRes.data?.data?.slots || [];
+      if (slots.length === 0) {
+        throw new Error(`No hay slots disponibles generados para hoy (${today})`);
+      }
+      const chosenSlot = slots[0].start;
+
       const aptRes = await axios.post(
         `${API_BASE}/appointments`,
         {
           doctorId: docAId,
           doctorProfileId: docAProfileId,
+          specialtyId: 1,
           appointmentDate: today,
-          appointmentTime: '10:00',
+          appointmentTime: chosenSlot,
+          appointmentType: 'first_consultation',
           reasonForVisit: 'Evaluación general y chequeo preventivo'
         },
         { headers: { Authorization: `Bearer ${patToken}` } }
       );
-      appointmentId = aptRes.data?.data?.id || aptRes.data?.id;
-      pass(`Cita agendada para hoy (id: ${appointmentId})`);
+      appointmentId = aptRes.data?.data?.id || aptRes.data?.appointment?.id || aptRes.data?.id;
+      pass(`Cita agendada para hoy (id: ${appointmentId} a las ${chosenSlot})`);
     } catch (err) {
       fail('Agendamiento de cita para hoy', err);
       allPassed = false;
