@@ -184,6 +184,14 @@ const authController = {
         });
       }
 
+      if (user.isActive === false) {
+        return res.status(403).json({
+          success: false,
+          code: 'ACCOUNT_SUSPENDED',
+          message: 'Tu cuenta está suspendida. Escríbenos a soporte si crees que es un error.'
+        });
+      }
+
       // Si 2FA está activado, retornar que se requiere verificación
       if (user.twoFactorEnabled) {
         return res.json({
@@ -299,6 +307,14 @@ const authController = {
         return res.status(401).json({
           success: false,
           message: 'Código de verificación inválido'
+        });
+      }
+
+      if (user.isActive === false) {
+        return res.status(403).json({
+          success: false,
+          code: 'ACCOUNT_SUSPENDED',
+          message: 'Tu cuenta está suspendida. Escríbenos a soporte si crees que es un error.'
         });
       }
 

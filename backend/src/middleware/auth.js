@@ -22,6 +22,14 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
+    if (user.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        code: 'ACCOUNT_SUSPENDED',
+        message: 'Tu cuenta está suspendida. Escríbenos a soporte si crees que es un error.'
+      });
+    }
+
     req.user = {
       id: user.id,
       email: user.email,
