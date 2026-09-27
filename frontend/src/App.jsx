@@ -59,6 +59,7 @@ function AppRoutes() {
       <Route path="/clinicas/:clinicId" element={<ClinicProfilePage />} />
       <Route path="/seguros" element={<SegurosPage />} />
       <Route path="/verificar-recipe/:code" element={<VerificarRecipePage />} />
+      <Route path="/verificar/:code" element={<VerificarRecipePage />} />
 
       {/* Module Routes */}
       <Route path="/modulo/agendamiento" element={<AgendamientoPage />} />
