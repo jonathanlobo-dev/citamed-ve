@@ -5,6 +5,7 @@
 
 const appointmentService = require('../services/appointmentService');
 const reminderService = require('../services/reminderService');
+const auditService = require('../services/auditService');
 const db = require('../models');
 
 const { Appointment, DoctorProfile } = db;
@@ -484,6 +485,65 @@ class AppointmentController {
       res.status(status).json({
         success: false,
         message: error.message
+      });
+    }
+  }
+
+  /**
+   * PUT /api/appointments/:id/ai-consent
+   * Registra el consentimiento informado del paciente para el uso de IA
+   */
+  async setAiConsent(req, res) {
+    try {
+      const { id } = req.params;
+      const appointment = await Appointment.findByPk(id);
+
+      if (!appointment) {
+        return res.status(404).json({
+          success: false,
+          code: 'APPOINTMENT_NOT_FOUND',
+          message: 'Cita no encontrada'
+        });
+      }
+
+      if (appointment.doctorId !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: 'No tienes permiso para registrar consentimiento en esta cita'
+        });
+      }
+
+      if (appointment.status !== 'confirmed' && appointment.status !== 'in_progress') {
+        return res.status(409).json({
+          success: false,
+          code: 'INVALID_STATUS',
+          message: `No se puede registrar consentimiento para una cita en estado '${appointment.status}'`
+        });
+      }
+
+      appointment.aiConsentAt = new Date();
+      await appointment.save();
+
+      await auditService.log({
+        userId: req.user.id,
+        action: 'appointment.ai_consent',
+        entityType: 'appointment',
+        entityId: appointment.id,
+        details: { aiConsentAt: appointment.aiConsentAt }
+      });
+
+      return res.json({
+        success: true,
+        message: 'Consentimiento para uso de IA registrado exitosamente',
+        data: appointment
+      });
+    } catch (error) {
+      console.error('[AppointmentController] setAiConsent error:', error.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al registrar consentimiento para IA',
+        error: error.message
       });
     }
   }

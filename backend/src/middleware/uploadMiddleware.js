@@ -201,6 +201,59 @@ function getUploadConfig() {
   };
 }
 
+// ═══════════════════════════════════════════════════════════════
+// SUBIDA DE AUDIO (CONSULTA CLÍNICA - IA)
+// ═══════════════════════════════════════════════════════════════
+
+const AUDIO_MAX_SIZE = 20 * 1024 * 1024; // 20 MB
+const ALLOWED_AUDIO_MIMES = [
+  'audio/webm',
+  'audio/ogg',
+  'audio/mp4',
+  'audio/x-m4a',
+  'audio/m4a',
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/wav',
+  'audio/wave',
+  'audio/x-wav'
+];
+
+const audioFileFilter = (req, file, cb) => {
+  const baseMime = file.mimetype.split(';')[0].trim().toLowerCase();
+  if (!ALLOWED_AUDIO_MIMES.includes(baseMime)) {
+    return cb(new Error(`Tipo de archivo de audio no permitido: ${file.mimetype}`), false);
+  }
+  cb(null, true);
+};
+
+const audioUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: audioFileFilter,
+  limits: {
+    fileSize: AUDIO_MAX_SIZE,
+    files: 1
+  }
+});
+
+const uploadAudioFile = (req, res, next) => {
+  audioUpload.single('audio')(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({
+          success: false,
+          error: 'El archivo de audio excede el tamaño máximo permitido de 20MB'
+        });
+      }
+      return res.status(400).json({
+        success: false,
+        error: err.message || 'Error al procesar el archivo de audio'
+      });
+    }
+    next();
+  });
+};
+
 module.exports = {
   // Middlewares principales
   uploadDocument,
@@ -209,6 +262,7 @@ module.exports = {
   uploadProfilePhoto,
   uploadClinicPhotos,
   uploadMultipleDocuments,
+  uploadAudioFile,
   handleUploadError,
   requireFile,
   addFileMetadata,
@@ -220,5 +274,6 @@ module.exports = {
   // Constantes
   ALLOWED_MIME_TYPES,
   ALLOWED_EXTENSIONS,
-  MAX_FILE_SIZE
+  MAX_FILE_SIZE,
+  AUDIO_MAX_SIZE
 };

@@ -224,4 +224,18 @@ router.get(
   appointmentController.getDoctorToday.bind(appointmentController)
 );
 
+/**
+ * @swagger
+ * /api/appointments/{id}/ai-consent:
+ *   put:
+ *     tags: [Appointments]
+ *     summary: Registrar consentimiento del paciente para uso de IA
+ */
+router.put(
+  '/:id/ai-consent',
+  authenticateToken,
+  requireRoles(['doctor']),
+  appointmentController.setAiConsent.bind(appointmentController)
+);
+
 module.exports = router;
