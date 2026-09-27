@@ -107,6 +107,7 @@ const prescriptionRoutes = require("./routes/prescriptions");
 const medicalDocumentRoutes = require("./routes/medicalDocuments");
 const doctorPatientsRoutes = require("./routes/doctorPatients");
 const myClinicalRecordRoutes = require("./routes/myClinicalRecord");
+const adminRoutes = require("./routes/admin");
 
 // ==================== USAR RUTAS ====================
 // Auth routes con rate limiting estricto (5 req/15min)
@@ -140,6 +141,7 @@ app.use("/api/prescriptions", prescriptionRoutes);
 app.use("/api/medical-documents", medicalDocumentRoutes);
 app.use("/api/doctor/patients", doctorPatientsRoutes);
 app.use("/api/patients", myClinicalRecordRoutes);
+app.use("/api/admin", adminRoutes);
 
 // ==================== RUTAS BÁSICAS ====================
 app.get("/", (req, res) => {
