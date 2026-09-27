@@ -194,7 +194,9 @@ async function runTest() {
       dateOfBirth: '1992-06-15',
       gender: 'male',
       phone: '+584125553003',
-      bloodType: 'O+'
+      bloodType: 'O+',
+      emergencyContactName: 'Pedro Silva',
+      emergencyContactPhone: '+584141112233'
     };
 
     let patToken, patId;
