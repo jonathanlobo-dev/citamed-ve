@@ -15,9 +15,12 @@ const {
   AiUsage,
   sequelize
 } = require('../models');
+const crypto = require('crypto');
 const { getCaracasParts, todayCaracas } = require('../utils/dateCaracas');
 const searchService = require('./searchService');
 const auditService = require('./auditService');
+const platformSettingsService = require('./platformSettingsService');
+const secretCrypto = require('../utils/secretCrypto');
 
 class AdminService {
   /**
@@ -560,6 +563,460 @@ class AdminService {
         total,
         totalPages: Math.ceil(total / limitNum)
       }
+    };
+  }
+
+  /**
+   * Obtiene la configuración de IA sin exponer llaves secretas
+   */
+  async getAiConfig() {
+    const [providersSetting, transcriptionSetting, limitsSetting] = await Promise.all([
+      platformSettingsService.get('ai_providers', { chain: [] }),
+      platformSettingsService.get('ai_transcription', { chain: [] }),
+      platformSettingsService.get('ai_limits', {
+        enabled: true,
+        monthlyActionsPerDoctor: 200,
+        perMinutePerUser: 10
+      })
+    ]);
+
+    const mapItem = (item) => {
+      const hasKey = !!item.apiKeyEnc || !!item.apiKey;
+      let keyPreview = null;
+      if (item.apiKeyEnc) {
+        try {
+          const dec = secretCrypto.decrypt(item.apiKeyEnc);
+          keyPreview = secretCrypto.maskKey(dec);
+        } catch (_) {
+          keyPreview = '••••';
+        }
+      } else if (item.apiKey) {
+        keyPreview = secretCrypto.maskKey(item.apiKey);
+      }
+      return {
+        id: item.id,
+        provider: item.provider,
+        model: item.model,
+        enabled: item.enabled !== false,
+        hasKey,
+        keyPreview
+      };
+    };
+
+    const providersList = (Array.isArray(providersSetting?.chain) ? providersSetting.chain : []).map(mapItem);
+    const transcriptionList = (Array.isArray(transcriptionSetting?.chain) ? transcriptionSetting.chain : []).map(mapItem);
+
+    const env = {
+      gemini: !!process.env.GEMINI_API_KEY,
+      groq: !!process.env.GROQ_API_KEY,
+      openai: !!process.env.OPENAI_API_KEY,
+      anthropic: !!process.env.ANTHROPIC_API_KEY
+    };
+
+    return {
+      providers: providersList,
+      transcription: transcriptionList,
+      limits: {
+        enabled: limitsSetting?.enabled !== false,
+        monthlyActionsPerDoctor: typeof limitsSetting?.monthlyActionsPerDoctor === 'number'
+          ? limitsSetting.monthlyActionsPerDoctor
+          : 200,
+        perMinutePerUser: typeof limitsSetting?.perMinutePerUser === 'number'
+          ? limitsSetting.perMinutePerUser
+          : 10
+      },
+      env
+    };
+  }
+
+  /**
+   * Actualiza la configuración de IA cifrando llaves nuevas y auditando
+   */
+  async updateAiConfig({ providers: rawProviders, transcription: rawTranscription, limits: rawLimits } = {}, adminUser) {
+    const [existingProviders, existingTranscription] = await Promise.all([
+      platformSettingsService.get('ai_providers', { chain: [] }),
+      platformSettingsService.get('ai_transcription', { chain: [] })
+    ]);
+
+    const existingProvidersMap = new Map();
+    (existingProviders?.chain || []).forEach(it => { if (it.id) existingProvidersMap.set(it.id, it); });
+
+    const existingTransMap = new Map();
+    (existingTranscription?.chain || []).forEach(it => { if (it.id) existingTransMap.set(it.id, it); });
+
+    const ALLOWED_TEXT_PROVIDERS = ['gemini', 'groq', 'openai', 'anthropic', 'mock'];
+    const ALLOWED_TRANS_PROVIDERS = ['groq', 'openai', 'mock'];
+
+    const cleanProviders = [];
+    if (Array.isArray(rawProviders)) {
+      for (const item of rawProviders) {
+        if (!ALLOWED_TEXT_PROVIDERS.includes(item.provider)) {
+          const err = new Error(`Proveedor de texto no válido: ${item.provider}`);
+          err.status = 400;
+          throw err;
+        }
+        if (!item.model || typeof item.model !== 'string' || item.model.trim().length < 1 || item.model.trim().length > 100) {
+          const err = new Error('El modelo debe ser una cadena de texto entre 1 y 100 caracteres');
+          err.status = 400;
+          throw err;
+        }
+
+        const id = item.id || crypto.randomUUID();
+        const existing = existingProvidersMap.get(id);
+
+        let apiKeyEnc = null;
+        if (typeof item.apiKey === 'string' && item.apiKey.trim().length > 0) {
+          apiKeyEnc = secretCrypto.encrypt(item.apiKey.trim());
+        } else if (existing && existing.apiKeyEnc) {
+          apiKeyEnc = existing.apiKeyEnc;
+        } else if (item.provider === 'mock') {
+          apiKeyEnc = null;
+        } else {
+          const err = new Error(`Item de proveedor '${item.provider}' sin llave configurada`);
+          err.status = 400;
+          throw err;
+        }
+
+        cleanProviders.push({
+          id,
+          provider: item.provider,
+          model: item.model.trim(),
+          enabled: item.enabled !== false,
+          ...(apiKeyEnc ? { apiKeyEnc } : {})
+        });
+      }
+    }
+
+    const cleanTranscription = [];
+    if (Array.isArray(rawTranscription)) {
+      for (const item of rawTranscription) {
+        if (!ALLOWED_TRANS_PROVIDERS.includes(item.provider)) {
+          const err = new Error(`Proveedor de transcripción no válido: ${item.provider}`);
+          err.status = 400;
+          throw err;
+        }
+        if (!item.model || typeof item.model !== 'string' || item.model.trim().length < 1 || item.model.trim().length > 100) {
+          const err = new Error('El modelo de transcripción debe ser una cadena de texto entre 1 y 100 caracteres');
+          err.status = 400;
+          throw err;
+        }
+
+        const id = item.id || crypto.randomUUID();
+        const existing = existingTransMap.get(id);
+
+        let apiKeyEnc = null;
+        if (typeof item.apiKey === 'string' && item.apiKey.trim().length > 0) {
+          apiKeyEnc = secretCrypto.encrypt(item.apiKey.trim());
+        } else if (existing && existing.apiKeyEnc) {
+          apiKeyEnc = existing.apiKeyEnc;
+        } else if (item.provider === 'mock') {
+          apiKeyEnc = null;
+        } else {
+          const err = new Error(`Item de transcripción '${item.provider}' sin llave configurada`);
+          err.status = 400;
+          throw err;
+        }
+
+        cleanTranscription.push({
+          id,
+          provider: item.provider,
+          model: item.model.trim(),
+          enabled: item.enabled !== false,
+          ...(apiKeyEnc ? { apiKeyEnc } : {})
+        });
+      }
+    }
+
+    let cleanLimits = { enabled: true, monthlyActionsPerDoctor: 200, perMinutePerUser: 10 };
+    if (rawLimits && typeof rawLimits === 'object') {
+      if (typeof rawLimits.enabled === 'boolean') {
+        cleanLimits.enabled = rawLimits.enabled;
+      }
+      if (rawLimits.monthlyActionsPerDoctor !== undefined) {
+        const num = parseInt(rawLimits.monthlyActionsPerDoctor, 10);
+        if (isNaN(num) || num < 0 || num > 100000) {
+          const err = new Error('monthlyActionsPerDoctor debe ser un entero entre 0 y 100.000');
+          err.status = 400;
+          throw err;
+        }
+        cleanLimits.monthlyActionsPerDoctor = num;
+      }
+      if (rawLimits.perMinutePerUser !== undefined) {
+        const num = parseInt(rawLimits.perMinutePerUser, 10);
+        if (isNaN(num) || num < 1 || num > 60) {
+          const err = new Error('perMinutePerUser debe ser un entero entre 1 y 60');
+          err.status = 400;
+          throw err;
+        }
+        cleanLimits.perMinutePerUser = num;
+      }
+    }
+
+    if (Array.isArray(rawProviders)) {
+      await platformSettingsService.set('ai_providers', { chain: cleanProviders }, adminUser?.id || null);
+    }
+    if (Array.isArray(rawTranscription)) {
+      await platformSettingsService.set('ai_transcription', { chain: cleanTranscription }, adminUser?.id || null);
+    }
+    if (rawLimits) {
+      await platformSettingsService.set('ai_limits', cleanLimits, adminUser?.id || null);
+    }
+
+    await auditService.log({
+      userId: adminUser?.id || null,
+      action: 'admin.ai_config_updated',
+      entityType: 'platform_settings',
+      entityId: 'ai',
+      details: {
+        providersCount: cleanProviders.length,
+        transcriptionCount: cleanTranscription.length,
+        limits: cleanLimits
+      }
+    });
+
+    return await this.getAiConfig();
+  }
+
+  /**
+   * Prueba conexión con un proveedor de IA
+   */
+  async testAiConnection({ kind = 'text', provider, model, apiKey, entryId } = {}, adminUser) {
+    if (!provider) {
+      const err = new Error('Proveedor requerido');
+      err.status = 400;
+      throw err;
+    }
+
+    let effectiveKey = apiKey ? apiKey.trim() : null;
+    if (!effectiveKey && entryId) {
+      const settingKey = kind === 'transcription' ? 'ai_transcription' : 'ai_providers';
+      const setting = await platformSettingsService.get(settingKey, { chain: [] });
+      const found = (setting?.chain || []).find(it => it.id === entryId);
+      if (found && found.apiKeyEnc) {
+        try {
+          effectiveKey = secretCrypto.decrypt(found.apiKeyEnc);
+        } catch (_) {}
+      }
+    }
+
+    if (!effectiveKey && provider !== 'mock') {
+      const envKeyMap = {
+        gemini: process.env.GEMINI_API_KEY,
+        groq: process.env.GROQ_API_KEY,
+        openai: process.env.OPENAI_API_KEY,
+        anthropic: process.env.ANTHROPIC_API_KEY
+      };
+      effectiveKey = envKeyMap[provider] || null;
+    }
+
+    if (!effectiveKey && provider !== 'mock') {
+      const err = new Error('No se especificó ni encontró llave de API para la prueba');
+      err.status = 400;
+      throw err;
+    }
+
+    const start = Date.now();
+    let ok = false;
+    let message = '';
+    let latencyMs = 0;
+    let errorCode = null;
+
+    try {
+      if (provider === 'mock') {
+        if (model === 'fail') {
+          const err = new Error('Fallo simulado mock (429)');
+          err.status = 429;
+          throw err;
+        }
+        ok = true;
+        latencyMs = 5;
+        message = 'Conexión exitosa (mock)';
+      } else if (kind === 'transcription') {
+        const url = provider === 'groq'
+          ? 'https://api.groq.com/openai/v1/models'
+          : 'https://api.openai.com/v1/models';
+
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${effectiveKey}` }
+        });
+        latencyMs = Date.now() - start;
+        if (res.ok) {
+          ok = true;
+          message = 'Conexión exitosa con el servicio de transcripción';
+        } else {
+          ok = false;
+          message = `Proveedor respondió con estado ${res.status}`;
+          errorCode = `HTTP_${res.status}`;
+        }
+      } else {
+        const providers = require('./ai/providers');
+        let testResp = '';
+        const testModel = model || (provider === 'gemini' ? 'gemini-2.5-flash' : provider === 'groq' ? 'openai/gpt-oss-120b' : provider === 'openai' ? 'gpt-4o-mini' : 'claude-haiku-4-5-20251001');
+
+        if (provider === 'gemini') {
+          testResp = await providers.callGemini({ apiKey: effectiveKey, model: testModel, userText: 'Responde solo: OK' });
+        } else if (provider === 'groq') {
+          testResp = await providers.callGroq({ apiKey: effectiveKey, model: testModel, userText: 'Responde solo: OK' });
+        } else if (provider === 'openai') {
+          testResp = await providers.callOpenAI({ apiKey: effectiveKey, model: testModel, userText: 'Responde solo: OK' });
+        } else if (provider === 'anthropic') {
+          testResp = await providers.callAnthropic({ apiKey: effectiveKey, model: testModel, userText: 'Responde solo: OK' });
+        }
+
+        latencyMs = Date.now() - start;
+        ok = !!testResp;
+        message = ok ? 'Conexión exitosa con el proveedor de IA' : 'Respuesta vacía';
+      }
+    } catch (err) {
+      latencyMs = Date.now() - start;
+      ok = false;
+      message = err.message || 'Error al conectar con el proveedor';
+      errorCode = err.code || `HTTP_${err.status || 500}`;
+    }
+
+    try {
+      await AiUsage.create({
+        userId: adminUser?.id || 1,
+        mode: 'test',
+        provider,
+        model: model || 'test',
+        success: ok,
+        latencyMs,
+        errorCode
+      });
+    } catch (_) {}
+
+    return {
+      ok,
+      latencyMs,
+      message
+    };
+  }
+
+  /**
+   * Obtiene la lista de modelos soportados por proveedor
+   */
+  async getAiModels({ provider } = {}) {
+    const fallbackModels = {
+      gemini: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash', 'gemini-1.5-pro'],
+      groq: ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'whisper-large-v3-turbo'],
+      openai: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'whisper-1'],
+      anthropic: ['claude-haiku-4-5-20251001', 'claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307'],
+      mock: ['echo', 'fail']
+    };
+
+    const models = fallbackModels[provider] || [];
+    return { provider, models };
+  }
+
+  /**
+   * Estadísticas de uso de IA para los últimos N días
+   */
+  async getAiUsageStats({ days = 30 } = {}) {
+    const daysNum = Math.min(Math.max(parseInt(days, 10) || 30, 1), 365);
+    const startDate = new Date(Date.now() - daysNum * 24 * 60 * 60 * 1000);
+
+    const [byDayRows, byProviderRows, byModeRows, topDoctorRows] = await Promise.all([
+      AiUsage.findAll({
+        where: { created_at: { [Op.gte]: startDate } },
+        attributes: [
+          [sequelize.literal("DATE(created_at AT TIME ZONE 'America/Caracas')"), 'dayDate'],
+          'success',
+          [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+        ],
+        group: [sequelize.literal("DATE(created_at AT TIME ZONE 'America/Caracas')"), 'success'],
+        order: [[sequelize.literal("DATE(created_at AT TIME ZONE 'America/Caracas')"), 'ASC']],
+        raw: true
+      }),
+      AiUsage.findAll({
+        where: { created_at: { [Op.gte]: startDate } },
+        attributes: [
+          'provider',
+          'success',
+          [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+        ],
+        group: ['provider', 'success'],
+        raw: true
+      }),
+      AiUsage.findAll({
+        where: { created_at: { [Op.gte]: startDate } },
+        attributes: [
+          'mode',
+          'success',
+          [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+        ],
+        group: ['mode', 'success'],
+        raw: true
+      }),
+      AiUsage.findAll({
+        where: {
+          success: true,
+          created_at: { [Op.gte]: startDate }
+        },
+        attributes: [
+          'userId',
+          [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+        ],
+        group: ['user_id'],
+        order: [[sequelize.literal('count'), 'DESC']],
+        limit: 5,
+        raw: true
+      })
+    ]);
+
+    const dayMap = {};
+    byDayRows.forEach(r => {
+      const d = r.dayDate;
+      if (!dayMap[d]) dayMap[d] = { date: d, success: 0, failed: 0 };
+      const cnt = parseInt(r.count, 10);
+      if (r.success) dayMap[d].success += cnt;
+      else dayMap[d].failed += cnt;
+    });
+    const byDay = Object.values(dayMap);
+
+    const providerMap = {};
+    byProviderRows.forEach(r => {
+      const p = r.provider || 'desconocido';
+      if (!providerMap[p]) providerMap[p] = { provider: p, success: 0, failed: 0 };
+      const cnt = parseInt(r.count, 10);
+      if (r.success) providerMap[p].success += cnt;
+      else providerMap[p].failed += cnt;
+    });
+    const byProvider = Object.values(providerMap);
+
+    const modeMap = {};
+    byModeRows.forEach(r => {
+      const m = r.mode || 'desconocido';
+      if (!modeMap[m]) modeMap[m] = { mode: m, success: 0, failed: 0 };
+      const cnt = parseInt(r.count, 10);
+      if (r.success) modeMap[m].success += cnt;
+      else modeMap[m].failed += cnt;
+    });
+    const byMode = Object.values(modeMap);
+
+    let topDoctors = [];
+    if (topDoctorRows.length > 0) {
+      const userIds = topDoctorRows.map(r => r.userId);
+      const users = await User.findAll({
+        where: { id: { [Op.in]: userIds } },
+        attributes: ['id', 'firstName', 'lastName']
+      });
+      const userMap = {};
+      users.forEach(u => {
+        userMap[u.id] = `${u.firstName || ''} ${u.lastName || ''}`.trim();
+      });
+      topDoctors = topDoctorRows.map(r => ({
+        doctorId: r.userId,
+        name: userMap[r.userId] || `Médico #${r.userId}`,
+        count: parseInt(r.count, 10)
+      }));
+    }
+
+    return {
+      byDay,
+      byProvider,
+      byMode,
+      topDoctors
     };
   }
 }

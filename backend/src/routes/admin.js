@@ -23,4 +23,12 @@ router.put('/users/:id/status', adminController.updateUserStatus.bind(adminContr
 // Listado de médicos para el superadmin
 router.get('/doctors', adminController.getDoctors.bind(adminController));
 
+// Configuración y monitoreo de IA
+router.get('/ai/config', adminController.getAiConfig.bind(adminController));
+router.put('/ai/config', adminController.updateAiConfig.bind(adminController));
+router.post('/ai/test', adminController.testAiConnection.bind(adminController));
+router.get('/ai/models', adminController.getAiModels.bind(adminController));
+router.post('/ai/models', adminController.getAiModels.bind(adminController));
+router.get('/ai/usage', adminController.getAiUsage.bind(adminController));
+
 module.exports = router;

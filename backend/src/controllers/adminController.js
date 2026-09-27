@@ -147,6 +147,126 @@ class AdminController {
       });
     }
   }
+
+  /**
+   * GET /api/admin/ai/config
+   */
+  async getAiConfig(req, res) {
+    try {
+      const config = await adminService.getAiConfig();
+      return res.json({
+        success: true,
+        ...config
+      });
+    } catch (error) {
+      console.error('[AdminController] Error en getAiConfig:', error.message);
+      return res.status(error.status || 500).json({
+        success: false,
+        message: 'Error al obtener configuración de IA',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * PUT /api/admin/ai/config
+   */
+  async updateAiConfig(req, res) {
+    try {
+      const updated = await adminService.updateAiConfig(req.body, req.user);
+      return res.json({
+        success: true,
+        message: 'Configuración de IA actualizada exitosamente',
+        ...updated
+      });
+    } catch (error) {
+      const status = error.status || 500;
+      if (status !== 500) {
+        return res.status(status).json({
+          success: false,
+          message: error.message
+        });
+      }
+      console.error('[AdminController] Error en updateAiConfig:', error.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al guardar configuración de IA',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * POST /api/admin/ai/test
+   */
+  async testAiConnection(req, res) {
+    try {
+      const result = await adminService.testAiConnection(req.body, req.user);
+      return res.json({
+        success: true,
+        ...result
+      });
+    } catch (error) {
+      const status = error.status || 500;
+      if (status !== 500) {
+        return res.status(status).json({
+          success: false,
+          message: error.message
+        });
+      }
+      console.error('[AdminController] Error en testAiConnection:', error.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al probar conexión de IA',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * GET/POST /api/admin/ai/models
+   */
+  async getAiModels(req, res) {
+    try {
+      const provider = req.query.provider || req.body?.provider;
+      const entryId = req.query.entryId || req.body?.entryId;
+      const apiKey = req.body?.apiKey;
+
+      const result = await adminService.getAiModels({ provider, entryId, apiKey });
+      return res.json({
+        success: true,
+        ...result
+      });
+    } catch (error) {
+      console.error('[AdminController] Error en getAiModels:', error.message);
+      return res.status(error.status || 500).json({
+        success: false,
+        message: 'Error al listar modelos de IA',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * GET /api/admin/ai/usage
+   */
+  async getAiUsage(req, res) {
+    try {
+      const { days } = req.query;
+      const stats = await adminService.getAiUsageStats({ days });
+      return res.json({
+        success: true,
+        ...stats
+      });
+    } catch (error) {
+      console.error('[AdminController] Error en getAiUsage:', error.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al obtener métricas de IA',
+        error: error.message
+      });
+    }
+  }
 }
 
 module.exports = new AdminController();
