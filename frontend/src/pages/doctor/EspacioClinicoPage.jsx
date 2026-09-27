@@ -55,6 +55,20 @@ import { shareDocument, prefetchDocumentPdf } from '../../utils/shareDocument';
 import { getCompanionSuggestions, checkMedicationAllergy } from '../../utils/companionRules';
 import './EspacioClinicoPage.css';
 
+const SEVERITY_LABELS = {
+  mild: 'leve',
+  moderate: 'moderada',
+  severe: 'severa',
+  life_threatening: 'grave'
+};
+
+function doctorTitle(gender) {
+  const g = String(gender || '').toLowerCase();
+  if (g === 'masculino' || g === 'male' || g === 'm') return 'Dr.';
+  if (g === 'femenino' || g === 'female' || g === 'f') return 'Dra.';
+  return 'Dr(a).';
+}
+
 const PHYSICAL_EXAM_SYSTEMS = [
   { key: 'general', label: 'General' },
   { key: 'head_neck', label: 'Cabeza y cuello' },
@@ -117,6 +131,9 @@ export default function EspacioClinicoPage() {
 
   // Documentos médicos emitidos en esta consulta
   const [documents, setDocuments] = useState([]);
+
+  // Récipes ya emitidos para esta cita (se muestran al finalizar y en modo lectura)
+  const [issuedPrescriptions, setIssuedPrescriptions] = useState([]);
 
   // Errores de validación de signos vitales (de API 400)
   const [vitalErrors, setVitalErrors] = useState({});
@@ -314,12 +331,27 @@ export default function EspacioClinicoPage() {
           try {
             const docRes = await medicalDocumentService.getByPatient(pId);
             if (mounted) {
-              // Filtrar solo los documentos emitidos en esta cita o relacionados
-              setDocuments(docRes.data || []);
+              const docs = docRes.data || [];
+              setDocuments(docs);
+              docs
+                .filter((d) => d.appointmentId === apt.id && d.type !== 'attachment' && d.status === 'active')
+                .forEach((d) => prefetchDocumentPdf(d.type, d.id, medicalDocumentService.downloadPdf));
             }
           } catch (docErr) {
             console.error('[EspacioClinico] Error cargando documentos:', docErr);
           }
+        }
+
+        // Cargar récipes ya emitidos en esta cita
+        try {
+          const prescRes = await prescriptionAPI.getByAppointment(apt.id);
+          const list = prescRes.data?.data || [];
+          if (mounted) setIssuedPrescriptions(list);
+          list
+            .filter((p) => p.status === 'active')
+            .forEach((p) => prefetchDocumentPdf('prescription', p.id, prescriptionAPI.downloadPdf));
+        } catch (prescErr) {
+          console.error('[EspacioClinico] Error cargando récipes de la cita:', prescErr);
         }
       } catch (err) {
         console.error('[EspacioClinico] Error cargando datos de la cita:', err);
@@ -567,7 +599,7 @@ export default function EspacioClinicoPage() {
           presumptiveDiagnosis: labDiagnosis.trim() || soapNote.assessment.trim() || undefined
         }
       });
-      setDocuments((prev) => [res.data, ...prev]);
+      addIssuedDocument(res.data);
       setDrawerLabOrder(false);
       setSelectedExams([]);
       setLabOtherExams('');
@@ -598,7 +630,7 @@ export default function EspacioClinicoPage() {
           observations: restObservations.trim() || undefined
         }
       });
-      setDocuments((prev) => [res.data, ...prev]);
+      addIssuedDocument(res.data);
       setDrawerRestNote(false);
       alert('Reposo médico emitido exitosamente.');
     } catch (err) {
@@ -624,7 +656,7 @@ export default function EspacioClinicoPage() {
           observations: certObservations.trim() || undefined
         }
       });
-      setDocuments((prev) => [res.data, ...prev]);
+      addIssuedDocument(res.data);
       setDrawerCertificate(false);
       alert('Constancia médica emitida exitosamente.');
     } catch (err) {
@@ -651,7 +683,7 @@ export default function EspacioClinicoPage() {
           body: reportBody.trim()
         }
       });
-      setDocuments((prev) => [res.data, ...prev]);
+      addIssuedDocument(res.data);
       setDrawerReport(false);
       alert('Informe médico emitido exitosamente.');
     } catch (err) {
@@ -677,7 +709,7 @@ export default function EspacioClinicoPage() {
       formData.append('title', attachmentTitle.trim() || attachmentFile.name);
 
       const res = await medicalDocumentService.uploadAttachment(formData);
-      setDocuments((prev) => [res.data, ...prev]);
+      addIssuedDocument(res.data);
       setDrawerAttachment(false);
       setAttachmentFile(null);
       setAttachmentTitle('');
@@ -789,7 +821,7 @@ export default function EspacioClinicoPage() {
       documentId: doc.id,
       verificationCode: doc.verificationCode,
       patientName: patientFullName,
-      doctorName: `Dr(a). ${user?.firstName || ''} ${user?.lastName || ''}`.trim(),
+      doctorName: `${doctorTitle(user?.gender)} ${user?.firstName || ''} ${user?.lastName || ''}`.trim(),
       date: new Intl.DateTimeFormat('es-VE', {
         timeZone: 'America/Caracas',
         day: '2-digit',
@@ -799,6 +831,78 @@ export default function EspacioClinicoPage() {
       patientPhone: patient?.phone || '',
       isPatientSharing: false
     });
+  };
+
+  // Agrega un documento recién emitido y deja su PDF listo para compartir desde el clic
+  const addIssuedDocument = (doc) => {
+    if (!doc) return;
+    setDocuments((prev) => [doc, ...prev]);
+    if (doc.type !== 'attachment' && doc.id) {
+      prefetchDocumentPdf(doc.type, doc.id, medicalDocumentService.downloadPdf);
+    }
+  };
+
+  const handleDownloadPrescriptionPdf = async (presc) => {
+    try {
+      const res = await prescriptionAPI.downloadPdf(presc.id);
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `recipe-CitaMed-${presc.verificationCode}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error descargando récipe:', err);
+      alert('Error al descargar el récipe.');
+    }
+  };
+
+  const renderIssuedPrescriptions = () => {
+    const active = issuedPrescriptions.filter((p) => p.status === 'active');
+    if (active.length === 0) {
+      return <p className="text-xs text-slate-400 italic">No se emitió récipe en esta consulta.</p>;
+    }
+    return (
+      <div className="space-y-2">
+        {active.map((presc) => (
+          <div
+            key={presc.id}
+            className="p-3 rounded-lg border border-slate-200 bg-white flex flex-wrap justify-between items-center gap-2 text-xs"
+          >
+            <div className="min-w-0">
+              <span className="font-bold text-slate-800 block">
+                Récipe con {presc.items?.length || 0} medicamento{presc.items?.length === 1 ? '' : 's'}
+              </span>
+              {presc.items?.length > 0 && (
+                <span className="text-slate-600 block truncate">
+                  {presc.items.map((it) => it.medication).join(', ')}
+                </span>
+              )}
+              <span className="text-[10px] text-slate-500 font-mono">Código: {presc.verificationCode}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleDownloadPrescriptionPdf(presc)}
+                className="px-2.5 py-1 bg-primary/10 text-primary font-semibold rounded text-xs hover:bg-primary/20 transition flex items-center gap-1"
+              >
+                <Download className="w-3 h-3" /> Descargar PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => handleShareDocument({ ...presc, type: 'prescription' })}
+                className="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-semibold rounded text-xs hover:bg-emerald-100 transition flex items-center gap-1"
+              >
+                <Share2 className="w-3 h-3" /> WhatsApp
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   // 3. Finalizar Consulta Médica
@@ -828,6 +932,7 @@ export default function EspacioClinicoPage() {
           const createdPresc = prescRes.data?.data;
           if (createdPresc?.id) {
             prefetchDocumentPdf('prescription', createdPresc.id, prescriptionAPI.downloadPdf);
+            setIssuedPrescriptions((prev) => [createdPresc, ...prev]);
           }
         } catch (prescErr) {
           console.error('[EspacioClinico] Error emitiendo récipe:', prescErr);
@@ -954,7 +1059,7 @@ export default function EspacioClinicoPage() {
             </span>
             {allergiesList.map((a, i) => (
               <span key={i} className="ec-chip ec-chip-allergy">
-                {a.allergen || a} {a.severity ? `(${a.severity})` : ''}
+                {a.allergen || a} {a.severity ? `(${SEVERITY_LABELS[a.severity] || a.severity})` : ''}
               </span>
             ))}
           </div>
@@ -1582,6 +1687,9 @@ export default function EspacioClinicoPage() {
               )}
             </div>
 
+            {isReadOnly ? (
+              renderIssuedPrescriptions()
+            ) : (
             <div className="space-y-4">
               {recipeItems.map((item, idx) => (
                 <div key={idx} className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
@@ -1740,6 +1848,7 @@ export default function EspacioClinicoPage() {
                 />
               </div>
             </div>
+            )}
           </section>
 
           {/* SECCIÓN 6: ÓRDENES Y DOCUMENTOS MÉDICOS */}
@@ -2615,6 +2724,11 @@ export default function EspacioClinicoPage() {
             <p className="text-emerald-700">
               La consulta de {patientFullName} ha sido completada y certificada en CitaMed.
             </p>
+          </div>
+
+          <div>
+            <h4 className="font-bold text-slate-800 uppercase mb-2">Récipe</h4>
+            {renderIssuedPrescriptions()}
           </div>
 
           <div>
