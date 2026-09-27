@@ -130,7 +130,7 @@ class AdminService {
     // 5. Métricas de IA del mes
     const aiUsageRows = await AiUsage.findAll({
       where: {
-        createdAt: { [Op.gte]: startOfMonthDate }
+        created_at: { [Op.gte]: startOfMonthDate }
       },
       attributes: ['provider', 'success', [sequelize.fn('COUNT', sequelize.col('id')), 'count']],
       group: ['provider', 'success'],
@@ -158,31 +158,35 @@ class AdminService {
     const topDoctorRows = await AiUsage.findAll({
       where: {
         success: true,
-        createdAt: { [Op.gte]: startOfMonthDate }
+        created_at: { [Op.gte]: startOfMonthDate }
       },
       attributes: [
         'userId',
-        [sequelize.fn('COUNT', sequelize.col('AiUsage.id')), 'count']
+        [sequelize.fn('COUNT', sequelize.col('id')), 'count']
       ],
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['id', 'firstName', 'lastName']
-        }
-      ],
-      group: ['AiUsage.user_id', 'user.id', 'user.first_name', 'user.last_name'],
+      group: ['user_id'],
       order: [[sequelize.literal('count'), 'DESC']],
       limit: 5,
-      raw: true,
-      nest: true
+      raw: true
     });
 
-    const topDoctors = topDoctorRows.map(row => ({
-      doctorId: row.userId,
-      name: row.user ? `${row.user.firstName || ''} ${row.user.lastName || ''}`.trim() : `Médico #${row.userId}`,
-      count: parseInt(row.count, 10)
-    }));
+    let topDoctors = [];
+    if (topDoctorRows.length > 0) {
+      const docUserIds = topDoctorRows.map(r => r.userId);
+      const docUsers = await User.findAll({
+        where: { id: { [Op.in]: docUserIds } },
+        attributes: ['id', 'firstName', 'lastName']
+      });
+      const docUserMap = {};
+      docUsers.forEach(u => {
+        docUserMap[u.id] = `${u.firstName || ''} ${u.lastName || ''}`.trim();
+      });
+      topDoctors = topDoctorRows.map(r => ({
+        doctorId: r.userId,
+        name: docUserMap[r.userId] || `Médico #${r.userId}`,
+        count: parseInt(r.count, 10)
+      }));
+    }
 
     const ai = {
       thisMonth: {

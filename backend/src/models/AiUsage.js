@@ -65,6 +65,10 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(50),
       allowNull: true,
       field: 'error_code'
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      field: 'created_at'
     }
   }, {
     tableName: 'ai_usage',
