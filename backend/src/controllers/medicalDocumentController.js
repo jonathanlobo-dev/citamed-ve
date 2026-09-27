@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const db = require('../models');
 const medicalDocumentService = require('../services/medicalDocumentService');
 const { generateMedicalDocumentPdf } = require('../services/medicalDocumentPdfService');
-const storageService = require('../services/storageService');
+const storageService = require('../services/clinicalFileStorage');
 
 const { MedicalDocument, Appointment, AuditLog } = db;
 
