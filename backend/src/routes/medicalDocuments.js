@@ -10,6 +10,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { requireRoles } = require('../middleware/rbacMiddleware');
 const { generalLimiter } = require('../middleware/rateLimiter');
 const { uploadAttachmentFile } = require('../middleware/uploadMiddleware');
+const LAB_CATALOG = require('../utils/labCatalog');
 
 // ==========================================
 // RUTA PÚBLICA (Verificación QR / Web)
@@ -20,6 +21,10 @@ router.get('/verify/:code', generalLimiter, medicalDocumentController.verify.bin
 // ==========================================
 // RUTAS AUTENTICADAS
 // ==========================================
+
+router.get('/lab-catalog', authenticateToken, (req, res) => {
+  res.json({ success: true, data: LAB_CATALOG });
+});
 
 // Subir archivo adjunto privado (multipart, campo 'file')
 // IMPORTANTE: Registrar antes de rutas con /:id
