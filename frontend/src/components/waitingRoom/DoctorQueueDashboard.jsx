@@ -236,7 +236,7 @@ const DoctorQueueDashboard = ({
               <button
                 type="button"
                 className="btn btn-success btn-end-consultation"
-                onClick={() => onEndConsultation(currentPatient.id)}
+                onClick={() => onEndConsultation(currentPatient.id, currentPatient.appointmentId || currentPatient.appointment?.id)}
                 disabled={actionLoading}
               >
                 Finalizar Consulta
@@ -258,7 +258,7 @@ const DoctorQueueDashboard = ({
                 <button
                   type="button"
                   className="btn btn-primary"
-                  onClick={() => onStartConsultation(calledPatient.id)}
+                  onClick={() => onStartConsultation(calledPatient.id, calledPatient.appointmentId || calledPatient.appointment?.id)}
                   disabled={actionLoading}
                 >
                   Iniciar Consulta
@@ -361,7 +361,7 @@ const DoctorQueueDashboard = ({
                           <button
                             type="button"
                             className="btn btn-sm btn-primary"
-                            onClick={() => onStartConsultation(patient.id)}
+                            onClick={() => onStartConsultation(patient.id, patient.appointmentId || patient.appointment?.id)}
                             disabled={actionLoading}
                           >
                             Iniciar consulta
@@ -382,7 +382,7 @@ const DoctorQueueDashboard = ({
                         <button
                           type="button"
                           className="btn btn-sm btn-success"
-                          onClick={() => onEndConsultation(patient.id)}
+                          onClick={() => onEndConsultation(patient.id, patient.appointmentId || patient.appointment?.id)}
                           disabled={actionLoading}
                         >
                           Finalizar

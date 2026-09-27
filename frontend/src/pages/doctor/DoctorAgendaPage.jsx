@@ -7,7 +7,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 import {
   Calendar, Clock, Plus, X, Save, Loader2, AlertCircle, CheckCircle,
@@ -19,6 +20,7 @@ import doctorService from '../../services/doctorService';
 import appointmentService from '../../services/appointmentService';
 import prescriptionAPI from '../../services/prescriptionService';
 import { shareRecipe, prefetchRecipePdf } from '../../utils/shareRecipe';
+import SideDrawer from '../../components/common/SideDrawer/SideDrawer';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 
@@ -346,25 +348,10 @@ function DoctorAgendaPage() {
     }
   };
 
-  // Estado Modal de Completar Cita
-  const [completeModal, setCompleteModal] = useState({
-    open: false,
-    appointmentId: null,
-    patientName: '',
-    patientPhone: '',
-    doctorNotes: '',
-    diagnosis: '',
-    showRecipe: false,
-    items: [],
-    indications: '',
-    prescriptionSuccess: null,
-    submitting: false
-  });
+  // SideDrawer para detalle de cita y ficha de paciente
+  const [drawerAppointment, setDrawerAppointment] = useState(null);
 
-  // Expediente mínimo y alergias del paciente (modal y detalle)
-  const [completeModalHistory, setCompleteModalHistory] = useState(null);
-  const [loadingCompleteHistory, setLoadingCompleteHistory] = useState(false);
-  const [showCompleteHistory, setShowCompleteHistory] = useState(false);
+  // Expediente mínimo y alergias del paciente (detalle)
   const [patientHistories, setPatientHistories] = useState({});
   const [expandedHistoryAptId, setExpandedHistoryAptId] = useState(null);
   const [loadingAptHistory, setLoadingAptHistory] = useState({});
@@ -458,121 +445,7 @@ function DoctorAgendaPage() {
     }
   };
 
-  const handleOpenCompleteModal = (apt) => {
-    const pId = apt.patientId || apt.patient?.id;
-    setCompleteModal({
-      open: true,
-      appointmentId: apt.id,
-      patientName: `${apt.patient?.firstName || ''} ${apt.patient?.lastName || ''}`.trim(),
-      patientPhone: apt.patient?.phone || '',
-      doctorNotes: apt.doctorNotes || '',
-      diagnosis: apt.diagnosis || '',
-      showRecipe: false,
-      items: [],
-      indications: '',
-      prescriptionSuccess: null,
-      submitting: false
-    });
-    setCompleteModalHistory(null);
-    setShowCompleteHistory(false);
-    if (pId) {
-      setLoadingCompleteHistory(true);
-      appointmentService
-        .getPatientHistory(pId)
-        .then((res) => setCompleteModalHistory(res.data))
-        .catch((err) => console.error('Error fetching history for complete modal:', err))
-        .finally(() => setLoadingCompleteHistory(false));
-    }
-  };
 
-  const handleCloseCompleteModal = () => {
-    setCompleteModal({
-      open: false,
-      appointmentId: null,
-      patientName: '',
-      patientPhone: '',
-      doctorNotes: '',
-      diagnosis: '',
-      showRecipe: false,
-      items: [],
-      indications: '',
-      prescriptionSuccess: null,
-      submitting: false
-    });
-    setCompleteModalHistory(null);
-    setShowCompleteHistory(false);
-  };
-
-  const handleAddMedicationToModal = () => {
-    setCompleteModal((prev) => ({
-      ...prev,
-      items: [
-        ...prev.items,
-        { medication: '', presentation: '', dose: '', frequency: '', duration: '', instructions: '' }
-      ]
-    }));
-  };
-
-  const handleUpdateMedicationInModal = (index, field, value) => {
-    setCompleteModal((prev) => {
-      const newItems = [...prev.items];
-      newItems[index] = { ...newItems[index], [field]: value };
-      return { ...prev, items: newItems };
-    });
-  };
-
-  const handleRemoveMedicationFromModal = (index) => {
-    setCompleteModal((prev) => ({
-      ...prev,
-      items: prev.items.filter((_, idx) => idx !== index)
-    }));
-  };
-
-  const handleSubmitComplete = async (e) => {
-    if (e) e.preventDefault();
-    if (!completeModal.appointmentId) return;
-
-    setCompleteModal((prev) => ({ ...prev, submitting: true }));
-    try {
-      await appointmentService.complete(completeModal.appointmentId, {
-        doctorNotes: completeModal.doctorNotes.trim() || undefined,
-        diagnosis: completeModal.diagnosis.trim() || undefined
-      });
-
-      const validItems = (completeModal.items || []).filter((i) => i.medication && i.medication.trim());
-      if (completeModal.showRecipe && validItems.length > 0) {
-        try {
-          const prescRes = await prescriptionAPI.create({
-            appointmentId: completeModal.appointmentId,
-            items: validItems,
-            indications: completeModal.indications.trim() || undefined
-          });
-          const createdPresc = prescRes.data?.data;
-          if (createdPresc?.id) prefetchRecipePdf(createdPresc.id, prescriptionAPI.downloadPdf);
-          toast.success('¡Consulta completada y récipe emitido!');
-          setCompleteModal((prev) => ({
-            ...prev,
-            submitting: false,
-            prescriptionSuccess: createdPresc
-          }));
-          fetchAppointments();
-          return;
-        } catch (prescErr) {
-          console.error('Error emitiendo récipe:', prescErr);
-          toast.error('Cita completada, pero falló la emisión del récipe: ' + (prescErr.response?.data?.error || prescErr.message));
-        }
-      } else {
-        toast.success('¡Consulta completada exitosamente!');
-      }
-
-      handleCloseCompleteModal();
-      fetchAppointments();
-    } catch (err) {
-      console.error('Error completing appointment:', err);
-      toast.error(err.response?.data?.message || 'Error al completar la cita');
-      setCompleteModal((prev) => ({ ...prev, submitting: false }));
-    }
-  };
 
   const handleMarkNoShow = async (id) => {
     if (!window.confirm('¿Marcar al paciente como no asistió a esta cita?')) return;
@@ -955,7 +828,11 @@ function DoctorAgendaPage() {
                               </div>
                               <div>
                                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                                  <h4 className="font-bold text-gray-900 text-lg">
+                                  <h4
+                                    className="font-bold text-gray-900 text-lg cursor-pointer hover:text-primary transition"
+                                    onClick={() => setDrawerAppointment(apt)}
+                                    title="Ver detalle de la cita"
+                                  >
                                     {apt.patient?.firstName} {apt.patient?.lastName}
                                   </h4>
                                   {isPending && (
@@ -1213,9 +1090,9 @@ function DoctorAgendaPage() {
                                   {isAptToday && (
                                     <button
                                       type="button"
-                                      onClick={() => navigate('/medico/sala-espera')}
+                                      onClick={() => navigate(`/medico/consulta/${apt.id}`)}
                                       className="px-3.5 py-2 bg-primary text-white hover:bg-primary/90 text-sm font-semibold rounded-lg shadow transition flex items-center gap-1.5"
-                                      title="Ir a atender a la Sala de Espera"
+                                      title="Atender en el Espacio Clínico"
                                     >
                                       <Users className="w-4 h-4" />
                                       Atender
@@ -1223,9 +1100,9 @@ function DoctorAgendaPage() {
                                   )}
                                   <button
                                     type="button"
-                                    onClick={() => handleOpenCompleteModal(apt)}
+                                    onClick={() => navigate(`/medico/consulta/${apt.id}`)}
                                     className="px-3 py-2 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 text-sm font-semibold rounded-lg transition flex items-center gap-1.5"
-                                    title="Finalizar y registrar notas de la consulta"
+                                    title="Completar consulta en el Espacio Clínico"
                                   >
                                     <CheckCircle className="w-4 h-4" />
                                     Completar
@@ -1248,6 +1125,15 @@ function DoctorAgendaPage() {
                                   </button>
                                 </>
                               )}
+                              <button
+                                type="button"
+                                onClick={() => setDrawerAppointment(apt)}
+                                className="px-3 py-2 border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-medium rounded-lg transition flex items-center gap-1.5"
+                                title="Ver detalles de la cita"
+                              >
+                                <FileText className="w-4 h-4 text-gray-500" />
+                                Detalle
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -1307,10 +1193,7 @@ function DoctorAgendaPage() {
                           dayApts.map((apt) => (
                             <div
                               key={apt.id}
-                              onClick={() => {
-                                setSelectedDate(dateStr);
-                                setViewMode('day');
-                              }}
+                              onClick={() => setDrawerAppointment(apt)}
                               className={`p-2 rounded-lg border text-xs cursor-pointer transition hover:scale-[1.02] ${
                                 apt.status === 'pending'
                                   ? 'bg-amber-50 border-amber-300 text-amber-900'
@@ -1550,344 +1433,142 @@ function DoctorAgendaPage() {
         )}
       </div>
 
-      {/* Modal Completar Cita */}
-      {completeModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h3 className="font-bold text-gray-900 text-lg">
-                Completar Consulta {completeModal.patientName ? `— ${completeModal.patientName}` : ''}
-              </h3>
-              <button
-                type="button"
-                onClick={handleCloseCompleteModal}
-                disabled={completeModal.submitting}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            {completeModal.prescriptionSuccess ? (
-              <div className="p-6 text-center space-y-4">
-                <div className="w-14 h-14 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
-                  <Check className="w-8 h-8" />
-                </div>
+      {/* SideDrawer de Detalle de Cita */}
+      <SideDrawer
+        open={Boolean(drawerAppointment)}
+        onClose={() => setDrawerAppointment(null)}
+        title="Detalle de la Cita"
+      >
+        {drawerAppointment && (
+          <div className="space-y-6">
+            {/* Cabecera del Paciente */}
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+              <div className="flex items-start justify-between">
                 <div>
-                  <h4 className="text-lg font-bold text-gray-900">¡Consulta completada y récipe emitido!</h4>
-                  <p className="text-sm text-gray-500 mt-1">El récipe médico ha sido registrado y certificado en CitaMed.</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 inline-block font-mono text-sm text-teal-700 font-bold">
-                  Código: {completeModal.prescriptionSuccess.verificationCode}
-                </div>
-
-                <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadPrescription(completeModal.prescriptionSuccess.id)}
-                    className="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-xl shadow transition flex items-center gap-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    Descargar récipe (PDF)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleSharePrescription(completeModal.prescriptionSuccess, {
-                        patient: { firstName: completeModal.patientName, phone: completeModal.patientPhone }
-                      })
-                    }
-                    className="px-4 py-2.5 bg-[#25d366] hover:bg-[#1ebc59] text-white text-sm font-semibold rounded-xl shadow transition flex items-center gap-2"
-                  >
-                    <Share2 className="w-4 h-4" />
-                    Enviar por WhatsApp
-                  </button>
-                </div>
-
-                <div className="pt-4 border-t border-gray-100 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={handleCloseCompleteModal}
-                    className="px-5 py-2 bg-gray-900 hover:bg-black text-white text-sm font-semibold rounded-xl transition"
-                  >
-                    Finalizar y Cerrar
-                  </button>
+                  <h4 className="font-bold text-gray-900 text-lg">
+                    {drawerAppointment.patient?.firstName} {drawerAppointment.patient?.lastName}
+                  </h4>
+                  {drawerAppointment.patient?.identification && (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Cédula / ID: {drawerAppointment.patient.identification}
+                    </p>
+                  )}
+                  {drawerAppointment.patient?.gender && (
+                    <p className="text-xs text-gray-500">
+                      Sexo: {drawerAppointment.patient.gender === 'M' ? 'Masculino' : drawerAppointment.patient.gender === 'F' ? 'Femenino' : drawerAppointment.patient.gender}
+                    </p>
+                  )}
                 </div>
               </div>
-            ) : (
-              <form onSubmit={handleSubmitComplete}>
-                <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                  {/* Consultas anteriores con este paciente */}
-                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-200">
-                    <button
-                      type="button"
-                      onClick={() => setShowCompleteHistory(!showCompleteHistory)}
-                      className="w-full flex items-center justify-between text-xs font-semibold text-gray-700"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <FileText className="w-3.5 h-3.5 text-primary" />
-                        Consultas anteriores con este paciente {completeModalHistory ? `(${completeModalHistory.history?.length || 0})` : ''}
-                      </span>
-                      <span className="text-[11px] text-gray-500">{showCompleteHistory ? '▲ Ocultar' : '▼ Ver'}</span>
-                    </button>
 
-                    {showCompleteHistory && (
-                      <div className="mt-2.5 pt-2.5 border-t border-gray-200 max-h-48 overflow-y-auto space-y-2 text-xs">
-                        {loadingCompleteHistory ? (
-                          <p className="text-gray-500 text-center py-2">Cargando consultas anteriores...</p>
-                        ) : !completeModalHistory || completeModalHistory.history?.length === 0 ? (
-                          <p className="text-gray-500 italic text-center py-2">Primera consulta con este paciente</p>
-                        ) : (
-                          completeModalHistory.history.map((past) => (
-                            <div key={past.id} className="p-2 bg-white rounded-lg border border-gray-200 space-y-1">
-                              <div className="flex items-center justify-between font-bold text-gray-800">
-                                <span>{past.appointmentDate} · {past.appointmentTime}</span>
-                                <span className="text-gray-500 font-normal italic">{past.reasonForVisit || 'Consulta general'}</span>
-                              </div>
-                              {past.diagnosis && (
-                                <div className="text-gray-700">
-                                  <span className="font-semibold text-teal-800">Diagnóstico:</span> {past.diagnosis}
-                                </div>
-                              )}
-                              {past.doctorNotes && (
-                                <div className="text-gray-700">
-                                  <span className="font-semibold text-teal-800">Notas:</span> {past.doctorNotes}
-                                </div>
-                              )}
-                              {past.prescriptions?.length > 0 && (
-                                <div className="pt-1 border-t border-gray-100 flex items-center justify-between gap-1 flex-wrap">
-                                  <span className="font-semibold text-teal-800">Récipes:</span>
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    {past.prescriptions.map((p) => (
-                                      <div key={p.id} className="flex items-center gap-1 bg-teal-50 px-2 py-0.5 rounded text-[11px]">
-                                        <span className="font-mono text-teal-700">{p.verificationCode}</span>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleDownloadPrescription(p.id)}
-                                          className="text-teal-700 hover:underline font-bold"
-                                        >
-                                          PDF
-                                        </button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
+              {/* Enlace ver historia del paciente */}
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <Link
+                  to={`/medico/pacientes/${drawerAppointment.patientId || drawerAppointment.patient?.id}`}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-900 hover:underline"
+                >
+                  <FileText className="w-4 h-4" />
+                  Ver historia del paciente →
+                </Link>
+              </div>
+            </div>
 
-                  <div>
-                    <label htmlFor="agenda-diagnosis" className="block text-sm font-semibold text-gray-700 mb-1">
-                      Diagnóstico (opcional)
-                    </label>
-                    <input
-                      id="agenda-diagnosis"
-                      type="text"
-                      value={completeModal.diagnosis}
-                      onChange={(e) => setCompleteModal((prev) => ({ ...prev, diagnosis: e.target.value }))}
-                      disabled={completeModal.submitting}
-                      placeholder="Ej. Rinofaringitis aguda, Control de rutina..."
-                      className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="agenda-notes" className="block text-sm font-semibold text-gray-700 mb-1">
-                      Notas médicas / Observaciones clínicas (opcional)
-                    </label>
-                    <textarea
-                      id="agenda-notes"
-                      rows={3}
-                      value={completeModal.doctorNotes}
-                      onChange={(e) => setCompleteModal((prev) => ({ ...prev, doctorNotes: e.target.value }))}
-                      disabled={completeModal.submitting}
-                      placeholder="Evolución clínica, indicaciones generales o plan terapéutico..."
-                      className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                    />
-                  </div>
-
-                  {/* Alerta de alergias registradas */}
-                  {completeModalHistory?.allergies?.length > 0 && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-bold">⚠️ Alergias del paciente:</span>{' '}
-                        {completeModalHistory.allergies.map(a => `${a.allergen}${a.severity ? ` (${a.severity}${a.reaction ? `: ${a.reaction}` : ''})` : ''}`).join(', ')}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Sección Récipe Médico */}
-                  <div className="pt-3 border-t border-gray-100">
-                    <label className="flex items-center justify-between p-3 bg-teal-50/60 border border-teal-200 rounded-xl cursor-pointer">
-                      <span className="flex items-center gap-2 text-sm font-semibold text-teal-900">
-                        <input
-                          type="checkbox"
-                          checked={completeModal.showRecipe}
-                          onChange={(e) => {
-                            const checked = e.target.checked;
-                            setCompleteModal((prev) => ({
-                              ...prev,
-                              showRecipe: checked,
-                              items:
-                                checked && prev.items.length === 0
-                                  ? [
-                                      {
-                                        medication: '',
-                                        presentation: '',
-                                        dose: '',
-                                        frequency: '',
-                                        duration: '',
-                                        instructions: ''
-                                      }
-                                    ]
-                                  : prev.items
-                            }));
-                          }}
-                          className="w-4 h-4 text-teal-600 rounded border-gray-300 focus:ring-teal-500"
-                        />
-                        Emitir Récipe Médico Electrónico
-                      </span>
-                      <span className="text-xs text-teal-700 font-medium">
-                        {completeModal.showRecipe ? 'Ocultar' : 'Agregar medicamentos'}
-                      </span>
-                    </label>
-
-                    {completeModal.showRecipe && (
-                      <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-gray-700">
-                            Medicamentos ({completeModal.items.length})
-                          </span>
-                          <button
-                            type="button"
-                            onClick={handleAddMedicationToModal}
-                            disabled={completeModal.submitting}
-                            className="px-2.5 py-1 text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-200 rounded-lg hover:bg-teal-100 transition"
-                          >
-                            + Agregar medicamento
-                          </button>
-                        </div>
-
-                        {completeModal.items.map((item, idx) => (
-                          <div key={idx} className="p-3 bg-white border border-gray-200 rounded-lg space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-teal-800">Medicamento #{idx + 1}</span>
-                              {completeModal.items.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveMedicationFromModal(idx)}
-                                  className="text-xs text-red-500 hover:text-red-700"
-                                >
-                                  Eliminar
-                                </button>
-                              )}
-                            </div>
-                            <input
-                              type="text"
-                              placeholder="Nombre del medicamento (ej. Amoxicilina) *"
-                              value={item.medication}
-                              onChange={(e) => handleUpdateMedicationInModal(idx, 'medication', e.target.value)}
-                              disabled={completeModal.submitting}
-                              required
-                              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs"
-                            />
-                            <div className="grid grid-cols-2 gap-2">
-                              <input
-                                type="text"
-                                placeholder="Presentación (ej. Caps 500mg)"
-                                value={item.presentation}
-                                onChange={(e) => handleUpdateMedicationInModal(idx, 'presentation', e.target.value)}
-                                disabled={completeModal.submitting}
-                                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs"
-                              />
-                              <input
-                                type="text"
-                                placeholder="Dosis (ej. 1 cápsula)"
-                                value={item.dose}
-                                onChange={(e) => handleUpdateMedicationInModal(idx, 'dose', e.target.value)}
-                                disabled={completeModal.submitting}
-                                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs"
-                              />
-                              <input
-                                type="text"
-                                placeholder="Frecuencia (ej. c/8 horas)"
-                                value={item.frequency}
-                                onChange={(e) => handleUpdateMedicationInModal(idx, 'frequency', e.target.value)}
-                                disabled={completeModal.submitting}
-                                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs"
-                              />
-                              <input
-                                type="text"
-                                placeholder="Duración (ej. 7 días)"
-                                value={item.duration}
-                                onChange={(e) => handleUpdateMedicationInModal(idx, 'duration', e.target.value)}
-                                disabled={completeModal.submitting}
-                                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs"
-                              />
-                            </div>
-                            <input
-                              type="text"
-                              placeholder="Instrucciones específicas (ej. Con las comidas)"
-                              value={item.instructions}
-                              onChange={(e) => handleUpdateMedicationInModal(idx, 'instructions', e.target.value)}
-                              disabled={completeModal.submitting}
-                              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs"
-                            />
-                          </div>
-                        ))}
-
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-700 mb-1">
-                            Indicaciones generales del récipe (opcional)
-                          </label>
-                          <textarea
-                            rows={2}
-                            value={completeModal.indications}
-                            onChange={(e) => setCompleteModal((prev) => ({ ...prev, indications: e.target.value }))}
-                            disabled={completeModal.submitting}
-                            placeholder="Reposo, dieta, abundantes líquidos o recomendaciones de alarma..."
-                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
+            {/* Datos de la Cita */}
+            <div className="space-y-3">
+              <h5 className="font-semibold text-gray-800 text-sm border-b pb-1">Información de la Consulta</h5>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-gray-500 block">Fecha:</span>
+                  <span className="font-medium text-gray-900">{drawerAppointment.appointmentDate}</span>
                 </div>
-                <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100">
-                  <button
-                    type="button"
-                    onClick={handleCloseCompleteModal}
-                    disabled={completeModal.submitting}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-100 transition"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={completeModal.submitting}
-                    className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl shadow transition flex items-center gap-1.5"
-                  >
-                    {completeModal.submitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Guardando...
-                      </>
-                    ) : (
-                      <>
-                        <Check className="w-4 h-4" />
-                        Completar Consulta
-                      </>
-                    )}
-                  </button>
+                <div>
+                  <span className="text-gray-500 block">Hora:</span>
+                  <span className="font-medium text-gray-900">{drawerAppointment.appointmentTime} ({drawerAppointment.duration || 30} min)</span>
                 </div>
-              </form>
+                <div>
+                  <span className="text-gray-500 block">Modalidad:</span>
+                  <span className="font-medium text-gray-900 capitalize">{drawerAppointment.type || drawerAppointment.modality || 'Presencial'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">Estado:</span>
+                  <span className="font-medium text-gray-900 capitalize">{drawerAppointment.status}</span>
+                </div>
+              </div>
+              <div className="text-xs">
+                <span className="text-gray-500 block">Motivo de consulta:</span>
+                <span className="font-medium text-gray-900">{drawerAppointment.reasonForVisit || 'Consulta general'}</span>
+              </div>
+              {(drawerAppointment.clinic || drawerAppointment.clinicLocation) && (
+                <div className="text-xs">
+                  <span className="text-gray-500 block">Ubicación / Consultorio:</span>
+                  <span className="font-medium text-gray-900">
+                    {drawerAppointment.clinic?.commercialName || drawerAppointment.clinicLocation?.name}
+                    {drawerAppointment.clinicLocation?.city ? ` · ${drawerAppointment.clinicLocation.city}` : ''}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Si está completada: diagnóstico y notas clínicas */}
+            {drawerAppointment.status === 'completed' && (
+              <div className="space-y-3 p-4 bg-teal-50/50 rounded-xl border border-teal-100 text-xs">
+                <h5 className="font-semibold text-teal-900 text-sm border-b border-teal-200 pb-1">Resumen Clínico</h5>
+                {drawerAppointment.diagnosis && (
+                  <div>
+                    <span className="font-semibold text-teal-800">Diagnóstico:</span>
+                    <p className="text-gray-800 mt-0.5">{drawerAppointment.diagnosis}</p>
+                  </div>
+                )}
+                {drawerAppointment.doctorNotes && (
+                  <div>
+                    <span className="font-semibold text-teal-800">Notas clínicas:</span>
+                    <p className="text-gray-800 mt-0.5">{drawerAppointment.doctorNotes}</p>
+                  </div>
+                )}
+              </div>
             )}
+
+            {/* Acciones principales en el drawer */}
+            <div className="pt-4 border-t flex flex-col gap-2">
+              {(drawerAppointment.status === 'confirmed' || drawerAppointment.status === 'in_progress') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const aptId = drawerAppointment.id;
+                    setDrawerAppointment(null);
+                    navigate(`/medico/consulta/${aptId}`);
+                  }}
+                  className="w-full py-2.5 px-4 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2 text-sm shadow"
+                >
+                  <Users className="w-4 h-4" />
+                  Atender en Espacio Clínico
+                </button>
+              )}
+              {drawerAppointment.status === 'completed' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const aptId = drawerAppointment.id;
+                    setDrawerAppointment(null);
+                    navigate(`/medico/consulta/${aptId}`);
+                  }}
+                  className="w-full py-2.5 px-4 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2 text-sm shadow"
+                >
+                  <FileText className="w-4 h-4" />
+                  Ver en Espacio Clínico
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setDrawerAppointment(null)}
+                className="w-full py-2 px-4 border border-gray-200 text-gray-700 hover:bg-gray-100 rounded-xl transition text-sm font-medium"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </SideDrawer>
     </div>
   );
 }
