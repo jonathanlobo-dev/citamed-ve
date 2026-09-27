@@ -34,10 +34,11 @@ const clinicalRecordService = {
 
   /**
    * Lista los pacientes con los que el médico ha tenido consultas
-   * @returns {Promise<{success: boolean, data: Array}>}
+   * @param {Object} [params] - { search, page, limit }
+   * @returns {Promise<{success: boolean, data: {patients: Array, pagination: Object}}>}
    */
-  getDoctorPatients: () =>
-    api.get('/doctor/patients').then((res) => res.data),
+  getDoctorPatients: (params) =>
+    api.get('/doctor/patients', { params }).then((res) => res.data),
 
   /**
    * Obtiene la historia clínica del propio paciente autenticado (sin doctorNotes)

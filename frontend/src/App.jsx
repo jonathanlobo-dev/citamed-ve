@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { PermissionsProvider } from './hooks/usePermissions';
 import ProtectedRoute from './components/ProtectedRoute';
 
+const DoctorPatientsPage = lazy(() => import('./pages/doctor/DoctorPatientsPage'));
 const EspacioClinicoPage = lazy(() => import('./pages/doctor/EspacioClinicoPage'));
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
@@ -137,7 +138,9 @@ function AppRoutes() {
         path="/medico/pacientes"
         element={
           <ProtectedRoute allowedRoles={['doctor']}>
-            <ComingSoonPage />
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
+              <DoctorPatientsPage />
+            </Suspense>
           </ProtectedRoute>
         }
       />
@@ -151,11 +154,7 @@ function AppRoutes() {
       />
       <Route
         path="/medico/historias-clinicas"
-        element={
-          <ProtectedRoute allowedRoles={['doctor']}>
-            <ComingSoonPage />
-          </ProtectedRoute>
-        }
+        element={<Navigate to="/medico/pacientes" replace />}
       />
       <Route
         path="/medico/estadisticas"
