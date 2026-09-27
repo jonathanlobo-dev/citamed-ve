@@ -89,9 +89,24 @@ const appointmentService = {
   },
 
   /**
+   * Iniciar consulta médica (cita de hoy en Caracas a in_progress).
+   * @param {number|string} id
+   */
+  start: (id) =>
+    api.put(`/appointments/${id}/start`).then((res) => res.data),
+
+  /**
+   * Guardar borrador de nota clínica (SOAP, signos vitales, examen físico).
+   * @param {number|string} id
+   * @param {Object} data - { soapNote, vitalSigns, physicalExam, doctorNotes }
+   */
+  saveClinicalNote: (id, data) =>
+    api.put(`/appointments/${id}/clinical-note`, data).then((res) => res.data),
+
+  /**
    * Marcar cita como completada con notas y diagnóstico opcionales.
    * @param {number|string} id
-   * @param {Object} [data] - { doctorNotes, diagnosis }
+   * @param {Object} [data] - { soapNote, vitalSigns, physicalExam, doctorNotes, diagnosis }
    */
   complete: (id, data = {}) =>
     api.put(`/appointments/${id}/complete`, data).then((res) => res.data),

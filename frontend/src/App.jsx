@@ -1,7 +1,10 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { PermissionsProvider } from './hooks/usePermissions';
 import ProtectedRoute from './components/ProtectedRoute';
+
+const EspacioClinicoPage = lazy(() => import('./pages/doctor/EspacioClinicoPage'));
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegistroPage from './pages/RegistroPage';
@@ -108,6 +111,16 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['doctor']}>
             <DoctorWaitingRoomPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/medico/consulta/:appointmentId"
+        element={
+          <ProtectedRoute allowedRoles={['doctor']}>
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
+              <EspacioClinicoPage />
+            </Suspense>
           </ProtectedRoute>
         }
       />
