@@ -5,6 +5,7 @@ import { PermissionsProvider } from './hooks/usePermissions';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const DoctorPatientsPage = lazy(() => import('./pages/doctor/DoctorPatientsPage'));
+const PatientRecordPage = lazy(() => import('./pages/doctor/PatientRecordPage'));
 const EspacioClinicoPage = lazy(() => import('./pages/doctor/EspacioClinicoPage'));
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
@@ -140,6 +141,16 @@ function AppRoutes() {
           <ProtectedRoute allowedRoles={['doctor']}>
             <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
               <DoctorPatientsPage />
+            </Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/medico/pacientes/:patientId"
+        element={
+          <ProtectedRoute allowedRoles={['doctor']}>
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
+              <PatientRecordPage />
             </Suspense>
           </ProtectedRoute>
         }
