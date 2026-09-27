@@ -32,6 +32,13 @@ import clinicalRecordService from '../../services/clinicalRecordService';
 import medicalDocumentService from '../../services/medicalDocumentService';
 import prescriptionAPI from '../../services/prescriptionService';
 import { prefetchDocumentPdf, shareDocument } from '../../utils/shareDocument';
+import {
+  examSystemLabel,
+  labelOf,
+  SEVERITY_LABELS,
+  ALLERGY_TYPE_LABELS,
+  CONDITION_STATUS_LABELS
+} from '../../utils/physicalExamLabels';
 import './PatientRecordPage.css';
 
 // Lazy loading de Recharts
@@ -304,7 +311,7 @@ export default function PatientRecordPage() {
 
     // Récipes
     (record.prescriptions || []).forEach((p) => {
-      const count = p.medications?.length || 0;
+      const count = p.items?.length || 0;
       items.push({
         id: `prescription_${p.id}`,
         rawId: p.id,
@@ -517,7 +524,7 @@ export default function PatientRecordPage() {
               </div>
 
               <div className="patient-record-demographics">
-                <span>{patient.age ? `${patient.age} años` : 'Edad no registrada'}</span>
+                <span>{patient.age || 'Edad no registrada'}</span>
                 {patient.phone && <span>· Tel: {patient.phone}</span>}
                 {patient.email && <span>· {patient.email}</span>}
               </div>
@@ -538,7 +545,7 @@ export default function PatientRecordPage() {
                       {alg.allergen}
                       {alg.severity && alg.severity !== 'mild' && (
                         <span className="text-[10px] font-bold uppercase ml-1 opacity-80">
-                          ({alg.severity === 'severe' ? 'severa' : alg.severity})
+                          ({labelOf(SEVERITY_LABELS, alg.severity).toLowerCase()})
                         </span>
                       )}
                     </span>
@@ -641,7 +648,7 @@ export default function PatientRecordPage() {
                       <div>
                         <strong className="text-slate-800 text-sm">{item.condition}</strong>
                         <div className="text-xs text-slate-500">
-                          Estado: {item.status || 'activa'}
+                          Estado: {labelOf(CONDITION_STATUS_LABELS, item.status) || 'Activa'}
                           {item.diagnosedDate && ` · Diagnóstico: ${formatDate(item.diagnosedDate)}`}
                           {item.diagnosedBy && ` · Registrado por: ${item.diagnosedBy}`}
                         </div>
@@ -723,8 +730,8 @@ export default function PatientRecordPage() {
                             {alg.allergen}
                           </strong>
                           <div className="text-xs text-slate-500">
-                            Tipo: {alg.allergyType || 'medicamento'}
-                            {alg.severity && ` · Severidad: ${alg.severity}`}
+                            Tipo: {labelOf(ALLERGY_TYPE_LABELS, alg.allergyType) || 'Medicamento'}
+                            {alg.severity && ` · Severidad: ${labelOf(SEVERITY_LABELS, alg.severity)}`}
                           </div>
                           {alg.reaction && (
                             <p className="text-xs text-slate-600 mt-1">Reacción: {alg.reaction}</p>
@@ -921,7 +928,7 @@ export default function PatientRecordPage() {
                     <span className="day">{c.appointmentDate?.split('-')[2] || '—'}</span>
                     <span className="month">
                       {c.appointmentDate
-                        ? new Date(c.appointmentDate).toLocaleString('es-VE', { month: 'short' })
+                        ? new Date(`${c.appointmentDate}T12:00:00`).toLocaleString('es-VE', { month: 'short' })
                         : ''}
                     </span>
                     <span className="year">{c.appointmentDate?.split('-')[0] || ''}</span>
@@ -1002,7 +1009,7 @@ export default function PatientRecordPage() {
                       <td>
                         <strong className="text-slate-800 text-sm">Récipe Médico</strong>
                         <div className="text-xs text-slate-500">
-                          {p.medications?.length || 0} medicamentos prescritos
+                          {p.items?.length || 0} medicamentos prescritos
                         </div>
                       </td>
                       <td>{formatDate(p.createdAt || p.appointmentDate)}</td>
@@ -1357,7 +1364,7 @@ export default function PatientRecordPage() {
                     .map(([key, val]) => (
                       <div key={key} className="p-2.5 bg-slate-50 rounded border border-slate-100 text-xs">
                         <div className="flex justify-between items-center mb-1">
-                          <strong className="capitalize text-slate-800">{key}</strong>
+                          <strong className="text-slate-800">{examSystemLabel(key)}</strong>
                           <span
                             className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
                               val.status === 'normal'

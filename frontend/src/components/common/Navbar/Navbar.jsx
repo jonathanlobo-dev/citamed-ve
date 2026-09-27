@@ -240,10 +240,11 @@ function Navbar() {
               <button
                 key={item.label}
                 onClick={item.action}
+                title={item.label}
                 className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-primary hover:bg-gray-50 rounded-lg transition-colors font-medium text-sm"
               >
                 {item.icon}
-                {item.label}
+                <span className="hidden xl:inline">{item.label}</span>
               </button>
             ))}
           </div>
@@ -270,7 +271,7 @@ function Navbar() {
                   icon={<Calendar className="w-4 h-4" />}
                   onClick={() => navigate('/dashboard')}
                 >
-                  Dashboard
+                  <span className="hidden xl:inline">Dashboard</span>
                 </Button>
                 <Button
                   variant="ghost"
@@ -278,7 +279,7 @@ function Navbar() {
                   icon={<LogOut className="w-4 h-4" />}
                   onClick={handleLogout}
                 >
-                  Salir
+                  <span className="hidden xl:inline">Salir</span>
                 </Button>
               </>
             ) : (

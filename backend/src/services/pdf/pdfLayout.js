@@ -30,6 +30,10 @@ function formatCaracasDate(date) {
  * Formatea solo fecha (sin hora) en zona horaria de Caracas
  */
 function formatCaracasDateOnly(date) {
+  // 'YYYY-MM-DD' ya es una fecha local: pasarla por Date la toma como medianoche UTC
+  // y en Caracas la mostraría como el día anterior
+  const dateOnly = typeof date === 'string' && /^(\d{4})-(\d{2})-(\d{2})$/.exec(date.trim());
+  if (dateOnly) return `${dateOnly[3]}/${dateOnly[2]}/${dateOnly[1]}`;
   try {
     return new Intl.DateTimeFormat('es-VE', {
       timeZone: 'America/Caracas',

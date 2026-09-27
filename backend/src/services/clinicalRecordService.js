@@ -425,7 +425,13 @@ async function addPatientCondition(patientId, doctorUser, data = {}) {
   }
 
   // diagnosedBy: guardar NOMBRE del médico con su título (STRING 200)
-  const doctorName = `${doctorTitle(doctorUser.gender)} ${doctorUser.firstName || ''} ${doctorUser.lastName || ''}`.trim().slice(0, 200);
+  // req.user no trae nombre ni género, por eso se leen de la base
+  const doctorData = await User.findByPk(doctorUser.id, {
+    attributes: ['firstName', 'lastName', 'gender']
+  });
+  const doctorName = doctorData
+    ? `${doctorTitle(doctorData.gender)} ${doctorData.firstName || ''} ${doctorData.lastName || ''}`.trim().slice(0, 200)
+    : '';
 
   const newCondition = await PatientMedicalHistory.create({
     patientProfileId: profile.id,

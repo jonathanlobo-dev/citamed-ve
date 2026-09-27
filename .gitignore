@@ -64,3 +64,5 @@ _archivados/
 backend/scripts/output/
 PROMPTS_*
 capturas_bloque_b*
+capturas_bloque_c*
+.claude/launch.json

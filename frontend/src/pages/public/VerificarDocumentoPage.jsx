@@ -74,6 +74,10 @@ export default function VerificarDocumentoPage() {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
+    // Fechas sin hora (YYYY-MM-DD, como las del reposo): se muestran tal cual, sin pasar por
+    // Date, que las tomaría como medianoche UTC y en Caracas las correría al día anterior
+    const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr));
+    if (dateOnly) return `${dateOnly[3]}/${dateOnly[2]}/${dateOnly[1]}`;
     try {
       return new Intl.DateTimeFormat('es-VE', {
         timeZone: 'America/Caracas',

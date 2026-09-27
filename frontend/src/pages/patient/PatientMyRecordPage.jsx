@@ -32,6 +32,7 @@ import medicalDocumentService from '../../services/medicalDocumentService';
 import prescriptionAPI from '../../services/prescriptionService';
 import patientService from '../../services/patientService';
 import { prefetchDocumentPdf, shareDocument } from '../../utils/shareDocument';
+import { examSystemLabel, labelOf, SEVERITY_LABELS, CONDITION_STATUS_LABELS } from '../../utils/physicalExamLabels';
 import './PatientMyRecordPage.css';
 
 export default function PatientMyRecordPage() {
@@ -765,7 +766,7 @@ export default function PatientMyRecordPage() {
                         <strong className="text-rose-700 text-sm">{alg.allergen}</strong>
                         <div className="text-xs text-slate-500">
                           {alg.reaction ? `Reacción: ${alg.reaction}` : 'Sin reacción detallada'}
-                          {alg.severity && ` · Severidad: ${alg.severity}`}
+                          {alg.severity && ` · Severidad: ${labelOf(SEVERITY_LABELS, alg.severity)}`}
                         </div>
                       </div>
                       <button
@@ -817,7 +818,7 @@ export default function PatientMyRecordPage() {
                       <div>
                         <strong className="text-slate-800 text-sm">{cond.condition}</strong>
                         <div className="text-xs text-slate-500">
-                          Estado: {cond.status || 'activa'}
+                          Estado: {labelOf(CONDITION_STATUS_LABELS, cond.status) || 'Activa'}
                           {cond.diagnosedDate && ` · Diagnosticada: ${formatDate(cond.diagnosedDate)}`}
                         </div>
                         {cond.notes && (
@@ -1009,7 +1010,7 @@ export default function PatientMyRecordPage() {
                     .filter(([, val]) => val && val.status && val.status !== 'not_evaluated')
                     .map(([key, val]) => (
                       <div key={key} className="p-2 bg-slate-50 rounded flex justify-between items-center">
-                        <span className="capitalize font-medium text-slate-800">{key}</span>
+                        <span className="font-medium text-slate-800">{examSystemLabel(key)}</span>
                         <span
                           className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
                             val.status === 'normal'

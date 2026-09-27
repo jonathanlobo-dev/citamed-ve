@@ -215,7 +215,7 @@ export default function DoctorPatientsPage() {
                             C.I. {patient.identificationNumber || 'No registrada'}
                           </span>
                           <span className="doctor-patient-age">
-                            {patient.age ? `${patient.age} años` : 'Edad no reg.'}
+                            {patient.age || 'Edad no reg.'}
                           </span>
                           {patient.bloodType && (
                             <span className="doctor-patient-blood">
