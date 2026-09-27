@@ -226,33 +226,67 @@ class AiService {
         json: false
       });
 
-      await AiUsage.create({
+      await this.logUsageAttempts({
         userId,
         appointmentId: appointment.id,
         mode: 'improve',
-        provider: result.provider,
-        model: result.model,
-        success: true,
-        latencyMs: result.latencyMs,
-        inputChars
+        inputChars,
+        attempts: result.attempts,
+        fallback: { provider: result.provider, model: result.model, success: true, latencyMs: result.latencyMs }
       });
 
       return {
         text: result.text.trim()
       };
     } catch (err) {
-      await AiUsage.create({
+      await this.logUsageAttempts({
         userId,
         appointmentId: appointment.id,
         mode: 'improve',
-        provider: err.attempts?.[err.attempts.length - 1]?.provider || null,
-        model: err.attempts?.[err.attempts.length - 1]?.model || null,
-        success: false,
-        latencyMs: err.attempts?.[err.attempts.length - 1]?.latencyMs || null,
         inputChars,
-        errorCode: err.code || `HTTP_${err.status || 500}`
+        attempts: err.attempts,
+        fallback: { success: false, errorCode: err.code || `HTTP_${err.status || 500}` }
       });
       throw err;
+    }
+  }
+
+  /**
+   * Registra cada intento de la cadena en ai_usage
+   */
+  async logUsageAttempts({ userId, appointmentId, mode, inputChars = null, audioSeconds = null, attempts = [], fallback = {} }) {
+    try {
+      if (Array.isArray(attempts) && attempts.length > 0) {
+        for (const att of attempts) {
+          await AiUsage.create({
+            userId,
+            appointmentId,
+            mode,
+            provider: att.provider || null,
+            model: att.model || null,
+            success: att.success === true,
+            latencyMs: att.latencyMs || null,
+            inputChars,
+            audioSeconds,
+            errorCode: att.success ? null : (att.errorCode || fallback.errorCode || 'AI_ERROR')
+          });
+        }
+      } else {
+        await AiUsage.create({
+          userId,
+          appointmentId,
+          mode,
+          provider: fallback.provider || null,
+          model: fallback.model || null,
+          success: fallback.success === true,
+          latencyMs: fallback.latencyMs || null,
+          inputChars,
+          audioSeconds,
+          errorCode: fallback.errorCode || null
+        });
+      }
+    } catch (logErr) {
+      console.error('[AiService] Error registrando en ai_usage:', logErr.message);
     }
   }
 
@@ -291,15 +325,13 @@ class AiService {
 
       const validatedProposal = this.validateSoapProposal(result.parsedJson);
 
-      await AiUsage.create({
+      await this.logUsageAttempts({
         userId,
         appointmentId: appointment.id,
         mode: 'soap',
-        provider: result.provider,
-        model: result.model,
-        success: true,
-        latencyMs: result.latencyMs,
-        inputChars
+        inputChars,
+        attempts: result.attempts,
+        fallback: { provider: result.provider, model: result.model, success: true, latencyMs: result.latencyMs }
       });
 
       return {
@@ -307,16 +339,13 @@ class AiService {
         provider: result.provider
       };
     } catch (err) {
-      await AiUsage.create({
+      await this.logUsageAttempts({
         userId,
         appointmentId: appointment.id,
         mode: 'soap',
-        provider: err.attempts?.[err.attempts.length - 1]?.provider || null,
-        model: err.attempts?.[err.attempts.length - 1]?.model || null,
-        success: false,
-        latencyMs: err.attempts?.[err.attempts.length - 1]?.latencyMs || null,
         inputChars,
-        errorCode: err.code || `HTTP_${err.status || 500}`
+        attempts: err.attempts,
+        fallback: { success: false, errorCode: err.code || `HTTP_${err.status || 500}` }
       });
       throw err;
     }
@@ -438,15 +467,13 @@ class AiService {
 
       const validatedProposal = this.validateRxProposal(result.parsedJson);
 
-      await AiUsage.create({
+      await this.logUsageAttempts({
         userId,
         appointmentId: appointment.id,
         mode: 'rx',
-        provider: result.provider,
-        model: result.model,
-        success: true,
-        latencyMs: result.latencyMs,
-        inputChars
+        inputChars,
+        attempts: result.attempts,
+        fallback: { provider: result.provider, model: result.model, success: true, latencyMs: result.latencyMs }
       });
 
       return {
@@ -454,16 +481,13 @@ class AiService {
         provider: result.provider
       };
     } catch (err) {
-      await AiUsage.create({
+      await this.logUsageAttempts({
         userId,
         appointmentId: appointment.id,
         mode: 'rx',
-        provider: err.attempts?.[err.attempts.length - 1]?.provider || null,
-        model: err.attempts?.[err.attempts.length - 1]?.model || null,
-        success: false,
-        latencyMs: err.attempts?.[err.attempts.length - 1]?.latencyMs || null,
         inputChars,
-        errorCode: err.code || `HTTP_${err.status || 500}`
+        attempts: err.attempts,
+        fallback: { success: false, errorCode: err.code || `HTTP_${err.status || 500}` }
       });
       throw err;
     }
@@ -529,15 +553,13 @@ class AiService {
     try {
       result = await transcriptionService.transcribe({ buffer, mimeType, filename });
 
-      await AiUsage.create({
+      await this.logUsageAttempts({
         userId,
         appointmentId: appointment.id,
         mode: 'transcribe',
-        provider: result.provider,
-        model: result.model,
-        success: true,
-        latencyMs: result.latencyMs,
-        audioSeconds: result.seconds
+        audioSeconds: result.seconds,
+        attempts: result.attempts,
+        fallback: { provider: result.provider, model: result.model, success: true, latencyMs: result.latencyMs }
       });
 
       return {
@@ -545,15 +567,12 @@ class AiService {
         seconds: result.seconds
       };
     } catch (err) {
-      await AiUsage.create({
+      await this.logUsageAttempts({
         userId,
         appointmentId: appointment.id,
         mode: 'transcribe',
-        provider: err.attempts?.[err.attempts.length - 1]?.provider || null,
-        model: err.attempts?.[err.attempts.length - 1]?.model || null,
-        success: false,
-        latencyMs: err.attempts?.[err.attempts.length - 1]?.latencyMs || null,
-        errorCode: err.code || `HTTP_${err.status || 500}`
+        attempts: err.attempts,
+        fallback: { success: false, errorCode: err.code || `HTTP_${err.status || 500}` }
       });
       throw err;
     }
