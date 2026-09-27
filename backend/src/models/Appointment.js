@@ -164,6 +164,26 @@ module.exports = (sequelize) => {
       allowNull: true,
       comment: 'Tratamiento recomendado'
     },
+    soapNote: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      comment: 'Nota clínica SOAP { subjective, objective, assessment, plan }'
+    },
+    vitalSigns: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      comment: 'Signos vitales { systolic, diastolic, heartRate, respiratoryRate, temperature, oxygenSaturation, weightKg, heightCm, glucose, bmi }'
+    },
+    physicalExam: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      comment: 'Examen físico por sistemas'
+    },
+    clinicalNoteSavedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: 'Fecha y hora del último guardado de la nota clínica'
+    },
 
     // ========================================
     // UBICACIÓN

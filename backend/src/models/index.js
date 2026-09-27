@@ -173,6 +173,11 @@ try {
   db.Prescription = PrescriptionModel(sequelize);
   console.log('  ✅ Prescription cargado');
 
+  // M03 / Semana 6 - Documentos Médicos de la Historia Clínica
+  const MedicalDocumentModel = require('./MedicalDocument');
+  db.MedicalDocument = MedicalDocumentModel(sequelize);
+  console.log('  ✅ MedicalDocument cargado');
+
   console.log('✅ Todos los modelos cargados exitosamente\n');
 } catch (error) {
   console.error('❌ Error cargando modelos:', error.message);
@@ -783,6 +788,54 @@ try {
     as: 'prescriptionsReceived'
   });
   console.log('  ✅ Prescription <-> User (Patient)');
+
+  // ═══════════════════════════════════════════════════════════════
+  // M03 / Semana 6 - Documentos Médicos de la Historia Clínica
+  // ═══════════════════════════════════════════════════════════════
+
+  // MEDICAL_DOCUMENT <-> APPOINTMENT (N:1)
+  db.MedicalDocument.belongsTo(db.Appointment, {
+    foreignKey: 'appointmentId',
+    as: 'appointment'
+  });
+  db.Appointment.hasMany(db.MedicalDocument, {
+    foreignKey: 'appointmentId',
+    as: 'medicalDocuments'
+  });
+  console.log('  ✅ MedicalDocument <-> Appointment');
+
+  // MEDICAL_DOCUMENT <-> USER (Doctor) (N:1)
+  db.MedicalDocument.belongsTo(db.User, {
+    foreignKey: 'doctorId',
+    as: 'doctor'
+  });
+  db.User.hasMany(db.MedicalDocument, {
+    foreignKey: 'doctorId',
+    as: 'documentsIssued'
+  });
+  console.log('  ✅ MedicalDocument <-> User (Doctor)');
+
+  // MEDICAL_DOCUMENT <-> USER (Patient) (N:1)
+  db.MedicalDocument.belongsTo(db.User, {
+    foreignKey: 'patientId',
+    as: 'patient'
+  });
+  db.User.hasMany(db.MedicalDocument, {
+    foreignKey: 'patientId',
+    as: 'documentsReceived'
+  });
+  console.log('  ✅ MedicalDocument <-> User (Patient)');
+
+  // MEDICAL_DOCUMENT <-> USER (Uploader) (N:1)
+  db.MedicalDocument.belongsTo(db.User, {
+    foreignKey: 'uploadedBy',
+    as: 'uploader'
+  });
+  db.User.hasMany(db.MedicalDocument, {
+    foreignKey: 'uploadedBy',
+    as: 'documentsUploaded'
+  });
+  console.log('  ✅ MedicalDocument <-> User (Uploader)');
 
   console.log('✅ Asociaciones establecidas correctamente\n');
 } catch (error) {
