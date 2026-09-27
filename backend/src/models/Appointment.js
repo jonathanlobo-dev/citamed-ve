@@ -184,6 +184,11 @@ module.exports = (sequelize) => {
       allowNull: true,
       comment: 'Fecha y hora del último guardado de la nota clínica'
     },
+    aiConsentAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: 'Fecha y hora en que el paciente autorizó el uso de IA'
+    },
 
     // ========================================
     // UBICACIÓN

@@ -178,6 +178,16 @@ try {
   db.MedicalDocument = MedicalDocumentModel(sequelize);
   console.log('  ✅ MedicalDocument cargado');
 
+  // M01 / Semana 7 - Configuración de Plataforma
+  const PlatformSettingModel = require('./PlatformSetting');
+  db.PlatformSetting = PlatformSettingModel(sequelize);
+  console.log('  ✅ PlatformSetting cargado');
+
+  // M03 / Semana 7 - Registro de Uso de IA
+  const AiUsageModel = require('./AiUsage');
+  db.AiUsage = AiUsageModel(sequelize);
+  console.log('  ✅ AiUsage cargado');
+
   console.log('✅ Todos los modelos cargados exitosamente\n');
 } catch (error) {
   console.error('❌ Error cargando modelos:', error.message);
@@ -836,6 +846,35 @@ try {
     as: 'documentsUploaded'
   });
   console.log('  ✅ MedicalDocument <-> User (Uploader)');
+
+  // AI_USAGE <-> USER (N:1)
+  db.AiUsage.belongsTo(db.User, {
+    foreignKey: 'userId',
+    as: 'user'
+  });
+  db.User.hasMany(db.AiUsage, {
+    foreignKey: 'userId',
+    as: 'aiUsages'
+  });
+  console.log('  ✅ AiUsage <-> User');
+
+  // AI_USAGE <-> APPOINTMENT (N:1)
+  db.AiUsage.belongsTo(db.Appointment, {
+    foreignKey: 'appointmentId',
+    as: 'appointment'
+  });
+  db.Appointment.hasMany(db.AiUsage, {
+    foreignKey: 'appointmentId',
+    as: 'aiUsages'
+  });
+  console.log('  ✅ AiUsage <-> Appointment');
+
+  // PLATFORM_SETTING <-> USER (N:1)
+  db.PlatformSetting.belongsTo(db.User, {
+    foreignKey: 'updatedBy',
+    as: 'updatedByUser'
+  });
+  console.log('  ✅ PlatformSetting <-> User');
 
   console.log('✅ Asociaciones establecidas correctamente\n');
 } catch (error) {

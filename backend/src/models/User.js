@@ -58,6 +58,16 @@ module.exports = (sequelize) => {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
     },
+    suspendedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: 'Fecha y hora en que la cuenta fue suspendida'
+    },
+    suspensionReason: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+      comment: 'Motivo de la suspensión'
+    },
     isVerified: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
