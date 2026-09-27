@@ -52,6 +52,7 @@ import ClinicalTextField from '../../components/clinical/ClinicalTextField';
 import SideDrawer from '../../components/common/SideDrawer/SideDrawer';
 import { ADULT_VITAL_RANGES, isVitalAbnormal, calculateBMI } from '../../utils/vitalRanges';
 import { shareDocument, prefetchDocumentPdf } from '../../utils/shareDocument';
+import { getCompanionSuggestions, checkMedicationAllergy } from '../../utils/companionRules';
 import './EspacioClinicoPage.css';
 
 const PHYSICAL_EXAM_SYSTEMS = [
@@ -112,6 +113,7 @@ export default function EspacioClinicoPage() {
     { medication: '', presentation: '', dose: '', frequency: '', duration: '', instructions: '' }
   ]);
   const [recipeIndications, setRecipeIndications] = useState('');
+  const [dismissedCompanionCategories, setDismissedCompanionCategories] = useState([]);
 
   // Documentos médicos emitidos en esta consulta
   const [documents, setDocuments] = useState([]);
@@ -520,6 +522,29 @@ export default function EspacioClinicoPage() {
   const handleRemoveRecipeItem = (index) => {
     if (isReadOnly) return;
     setRecipeItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const companionSuggestions = useMemo(() => {
+    return getCompanionSuggestions(recipeItems, dismissedCompanionCategories);
+  }, [recipeItems, dismissedCompanionCategories]);
+
+  const handleAddCompanionMedication = (suggestion) => {
+    setRecipeItems((prev) => [
+      ...prev,
+      {
+        medication: suggestion.defaultMedication,
+        presentation: '',
+        dose: '1 dosis diaria',
+        frequency: 'Cada 24 horas',
+        duration: '7 días',
+        instructions: 'Tomar según indicación médica'
+      }
+    ]);
+    setDismissedCompanionCategories((prev) => [...prev, suggestion.id]);
+  };
+
+  const handleDismissCompanion = (categoryId) => {
+    setDismissedCompanionCategories((prev) => [...prev, categoryId]);
   };
 
   // Emisión de Orden de Exámenes
@@ -1645,8 +1670,61 @@ export default function EspacioClinicoPage() {
                       />
                     </div>
                   </div>
+
+                  {/* Alerta de alergia registrada para este medicamento */}
+                  {(() => {
+                    const allergyConflict = checkMedicationAllergy(item.medication, allergiesList);
+                    if (!allergyConflict) return null;
+                    return (
+                      <div className="flex items-center gap-2 p-2.5 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-lg animate-pulse">
+                        <ShieldAlert className="w-4 h-4 text-red-600 flex-shrink-0" />
+                        <span>
+                          Atención: el paciente tiene alergia registrada a{' '}
+                          <strong>{allergyConflict.allergen}</strong>.
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
+
+              {/* Sugerencias Acompañantes fijas */}
+              {companionSuggestions.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-slate-200">
+                  <span className="text-xs font-bold text-amber-800 uppercase tracking-wider block">
+                    Sugerencias Acompañantes
+                  </span>
+                  {companionSuggestions.map((s) => (
+                    <div
+                      key={s.id}
+                      className="p-3 bg-amber-50/90 border border-amber-300 rounded-lg flex items-center justify-between gap-3 text-xs"
+                    >
+                      <div className="flex items-center gap-2 text-amber-900">
+                        <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                        <span>{s.message}</span>
+                      </div>
+                      {!isReadOnly && (
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleAddCompanionMedication(s)}
+                            className="px-2.5 py-1 bg-amber-600 text-white font-semibold rounded hover:bg-amber-700 transition"
+                          >
+                            Agregar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDismissCompanion(s.id)}
+                            className="px-2 py-1 text-slate-500 hover:text-slate-800 transition"
+                          >
+                            Descartar
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div>
                 <label className="text-xs font-semibold text-slate-700 block mb-1">
