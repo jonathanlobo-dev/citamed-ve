@@ -326,7 +326,7 @@ class AdminService {
         include: [
           {
             model: Specialty,
-            as: 'primarySpecialty',
+            as: 'specialty',
             attributes: ['name'],
             required: false
           }
@@ -348,17 +348,20 @@ class AdminService {
         })
       ]);
 
-      userData.doctor = {
+      userData.DoctorProfile = {
+        mppsNumber: docProfile?.mppsNumber || null,
+        colegioMedicoNumber: docProfile?.colegioMedicoNumber || null,
         verificationStatus: docProfile?.verificationStatus || 'unverified',
-        specialty: docProfile?.primarySpecialty?.name || null,
+        specialty: docProfile?.specialty?.name || null,
+        isDirectoryListed: directoryRows.length > 0,
         city: docProfile?.city || null,
-        inDirectory: directoryRows.length > 0,
         totalAppointments,
         completedConsultations,
         lastConsultationAt: lastAppointment
           ? `${lastAppointment.appointmentDate} ${lastAppointment.appointmentTime || ''}`.trim()
           : null
       };
+      userData.doctor = userData.DoctorProfile;
     }
 
     return userData;
@@ -471,7 +474,7 @@ class AdminService {
         { firstName: { [Op.iLike]: term } },
         { lastName: { [Op.iLike]: term } },
         { email: { [Op.iLike]: term } },
-        { '$doctorProfile.primarySpecialty.name$': { [Op.iLike]: term } },
+        { '$doctorProfile.specialty.name$': { [Op.iLike]: term } },
         { '$doctorProfile.city$': { [Op.iLike]: term } }
       ];
     }
@@ -485,11 +488,11 @@ class AdminService {
           as: 'doctorProfile',
           where: Object.keys(profileWhere).length > 0 ? profileWhere : undefined,
           required: true,
-          attributes: ['id', 'city', 'verificationStatus'],
+          attributes: ['id', 'city', 'verificationStatus', 'mppsNumber', 'licenseNumber'],
           include: [
             {
               model: Specialty,
-              as: 'primarySpecialty',
+              as: 'specialty',
               attributes: ['name'],
               required: false
             }
@@ -529,31 +532,37 @@ class AdminService {
           doctorId: { [Op.in]: doctorIds },
           status: 'completed'
         },
-        attributes: [
-          'doctorId',
-          [sequelize.fn('MAX', sequelize.literal(`concat(appointment_date, ' ', COALESCE(appointment_time::text, ''))`)), 'lastConsultation']
-        ],
-        group: ['doctorId'],
-        raw: true
+        attributes: ['doctorId', 'appointmentDate', 'appointmentTime'],
+        order: [['appointmentDate', 'DESC'], ['appointmentTime', 'DESC']]
       });
       lastAppointments.forEach(r => {
-        lastConsultationMap[r.doctorId] = r.lastConsultation;
+        if (!lastConsultationMap[r.doctorId]) {
+          lastConsultationMap[r.doctorId] = `${r.appointmentDate} ${r.appointmentTime || ''}`.trim();
+        }
       });
     }
 
-    const doctors = doctorUsers.map(doc => ({
-      id: doc.id,
-      firstName: doc.firstName,
-      lastName: doc.lastName,
-      email: doc.email,
-      specialty: doc.doctorProfile?.primarySpecialty?.name || null,
-      city: doc.doctorProfile?.city || null,
-      verificationStatus: doc.doctorProfile?.verificationStatus || 'unverified',
-      isActive: doc.isActive,
-      inDirectory: directorySet.has(doc.id),
-      totalAppointments: appointmentsMap[doc.id] || 0,
-      lastConsultationAt: lastConsultationMap[doc.id] ? lastConsultationMap[doc.id].trim() : null
-    }));
+    const doctors = doctorUsers.map(doc => {
+      const fullName = [doc.firstName, doc.lastName].filter(Boolean).join(' ') || 'Sin nombre';
+      return {
+        id: doc.id,
+        name: fullName,
+        firstName: doc.firstName,
+        lastName: doc.lastName,
+        email: doc.email,
+        specialty: doc.doctorProfile?.specialty?.name || null,
+        specialties: doc.doctorProfile?.specialty?.name ? [doc.doctorProfile.specialty.name] : [],
+        mppsNumber: doc.doctorProfile?.mppsNumber || null,
+        licenseNumber: doc.doctorProfile?.licenseNumber || null,
+        colegioMedicoNumber: doc.doctorProfile?.licenseNumber || null,
+        city: doc.doctorProfile?.city || null,
+        verificationStatus: doc.doctorProfile?.verificationStatus || 'unverified',
+        isActive: doc.isActive,
+        inDirectory: directorySet.has(doc.id),
+        totalAppointments: appointmentsMap[doc.id] || 0,
+        lastConsultationAt: lastConsultationMap[doc.id] ? lastConsultationMap[doc.id].trim() : null
+      };
+    });
 
     return {
       doctors,
