@@ -29,6 +29,10 @@ class AdminService {
     const todayDateStr = todayCaracas();
     const startOfMonthStr = `${parts.year}-${parts.month}-01`;
     const startOfMonthDate = new Date(`${parts.year}-${parts.month}-01T00:00:00-04:00`);
+    // Primer día del mes siguiente: "este mes" no debe contar citas agendadas para meses futuros
+    const nextMonthNum = Number(parts.month) === 12 ? 1 : Number(parts.month) + 1;
+    const nextMonthYear = Number(parts.month) === 12 ? Number(parts.year) + 1 : Number(parts.year);
+    const startOfNextMonthStr = `${nextMonthYear}-${String(nextMonthNum).padStart(2, '0')}-01`;
 
     // 1. Usuarios por rol
     const userRoleCounts = await User.findAll({
@@ -90,11 +94,11 @@ class AdminService {
     // 3. Citas de hoy y del mes
     const [appointmentsToday, appointmentsMonth, completedConsultationsMonth] = await Promise.all([
       Appointment.count({ where: { appointmentDate: todayDateStr } }),
-      Appointment.count({ where: { appointmentDate: { [Op.gte]: startOfMonthStr } } }),
+      Appointment.count({ where: { appointmentDate: { [Op.gte]: startOfMonthStr, [Op.lt]: startOfNextMonthStr } } }),
       Appointment.count({
         where: {
           status: 'completed',
-          appointmentDate: { [Op.gte]: startOfMonthStr }
+          appointmentDate: { [Op.gte]: startOfMonthStr, [Op.lt]: startOfNextMonthStr }
         }
       })
     ]);
@@ -218,6 +222,12 @@ class AdminService {
 
     const where = {};
     if (role) {
+      // Un rol fuera del ENUM haría fallar la consulta con un 500
+      if (!['patient', 'doctor', 'admin', 'provider'].includes(role)) {
+        const err = new Error('Rol no válido');
+        err.status = 400;
+        throw err;
+      }
       where.role = role;
     }
     if (status === 'active') {

@@ -42,9 +42,9 @@ class AdminController {
       });
     } catch (error) {
       console.error('[AdminController] Error en getUsers:', error);
-      return res.status(500).json({
+      return res.status(error.status || 500).json({
         success: false,
-        message: 'Error al listar usuarios',
+        message: error.status ? error.message : 'Error al listar usuarios',
         error: error.message
       });
     }
