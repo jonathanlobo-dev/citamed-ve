@@ -66,3 +66,7 @@ PROMPTS_*
 capturas_bloque_b*
 capturas_bloque_c*
 .claude/launch.json
+.env.staging
+backend/.env.staging
+.env.*
+!.env.example
