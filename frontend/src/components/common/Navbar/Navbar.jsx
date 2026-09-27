@@ -1,3 +1,4 @@
+/* global __APP_VERSION__, __COMMIT_HASH__ */
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
@@ -261,18 +262,35 @@ function Navbar() {
                       {user.name?.split(' ')[0]}
                     </span>
                     <span className="text-xs text-gray-500 capitalize">
-                      {user.role === 'doctor' ? 'Médico' : user.role === 'patient' ? 'Paciente' : 'Proveedor'}
+                      {user.role === 'doctor'
+                        ? 'Médico'
+                        : user.role === 'patient'
+                        ? 'Paciente'
+                        : user.role === 'admin'
+                        ? 'Administrador'
+                        : 'Proveedor'}
                     </span>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  icon={<Calendar className="w-4 h-4" />}
-                  onClick={() => navigate('/dashboard')}
-                >
-                  <span className="hidden xl:inline">Dashboard</span>
-                </Button>
+                {user.role === 'admin' ? (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<Shield className="w-4 h-4" />}
+                    onClick={() => navigate('/admin')}
+                  >
+                    <span className="hidden xl:inline">Panel</span>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<Calendar className="w-4 h-4" />}
+                    onClick={() => navigate('/dashboard')}
+                  >
+                    <span className="hidden xl:inline">Dashboard</span>
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -358,21 +376,42 @@ function Navbar() {
                       </span>
                     </div>
                     <span className="text-xs text-gray-600 capitalize">
-                      {user.role === 'doctor' ? 'Médico' : user.role === 'patient' ? 'Paciente' : 'Proveedor'}
+                      {user.role === 'doctor'
+                        ? 'Médico'
+                        : user.role === 'patient'
+                        ? 'Paciente'
+                        : user.role === 'admin'
+                        ? 'Administrador'
+                        : 'Proveedor'}
                     </span>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="md"
-                    icon={<Calendar className="w-4 h-4" />}
-                    onClick={() => {
-                      navigate('/dashboard');
-                      setMobileMenuOpen(false);
-                    }}
-                    className="w-full"
-                  >
-                    Dashboard
-                  </Button>
+                  {user.role === 'admin' ? (
+                    <Button
+                      variant="primary"
+                      size="md"
+                      icon={<Shield className="w-4 h-4" />}
+                      onClick={() => {
+                        navigate('/admin');
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full"
+                    >
+                      Panel Superadmin
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="md"
+                      icon={<Calendar className="w-4 h-4" />}
+                      onClick={() => {
+                        navigate('/dashboard');
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full"
+                    >
+                      Dashboard
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="md"

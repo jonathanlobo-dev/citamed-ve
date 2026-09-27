@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -69,9 +70,19 @@ export function AuthProvider({ children }) {
         return { success: false, message: response.data.message };
       }
     } catch (error) {
-      const message = error.response?.data?.message || 'Error al iniciar sesión';
+      const isSuspended =
+        error.response?.status === 403 &&
+        error.response?.data?.code === 'ACCOUNT_SUSPENDED';
+      const message = isSuspended
+        ? 'Tu cuenta está suspendida. Escríbenos a soporte si crees que es un error.'
+        : error.response?.data?.message || 'Error al iniciar sesión';
       toast.error(message);
-      return { success: false, message };
+      return {
+        success: false,
+        message,
+        code: error.response?.data?.code,
+        status: error.response?.status
+      };
     }
   };
 
@@ -158,7 +169,7 @@ export function AuthProvider({ children }) {
       case 'provider':
         return '/proveedor/dashboard';
       case 'admin':
-        return '/admin/audit';
+        return '/admin';
       default:
         return '/';
     }
