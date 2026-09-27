@@ -9,6 +9,7 @@ const medicalDocumentController = require('../controllers/medicalDocumentControl
 const { authenticateToken } = require('../middleware/auth');
 const { requireRoles } = require('../middleware/rbacMiddleware');
 const { generalLimiter } = require('../middleware/rateLimiter');
+const { uploadAttachmentFile } = require('../middleware/uploadMiddleware');
 
 // ==========================================
 // RUTA PÚBLICA (Verificación QR / Web)
@@ -19,6 +20,15 @@ router.get('/verify/:code', generalLimiter, medicalDocumentController.verify.bin
 // ==========================================
 // RUTAS AUTENTICADAS
 // ==========================================
+
+// Subir archivo adjunto privado (multipart, campo 'file')
+// IMPORTANTE: Registrar antes de rutas con /:id
+router.post(
+  '/attachments',
+  authenticateToken,
+  uploadAttachmentFile,
+  medicalDocumentController.uploadAttachment.bind(medicalDocumentController)
+);
 
 // Emitir documento médico (médico o admin)
 router.post(
@@ -48,6 +58,20 @@ router.put(
   authenticateToken,
   requireRoles(['doctor', 'admin']),
   medicalDocumentController.void.bind(medicalDocumentController)
+);
+
+// Obtener URL firmada de archivo adjunto privado
+router.get(
+  '/:id/file',
+  authenticateToken,
+  medicalDocumentController.getFileSignedUrl.bind(medicalDocumentController)
+);
+
+// Eliminar archivo adjunto privado (solo uploader o admin)
+router.delete(
+  '/:id/file',
+  authenticateToken,
+  medicalDocumentController.deleteAttachmentFile.bind(medicalDocumentController)
 );
 
 module.exports = router;

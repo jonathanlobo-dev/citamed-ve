@@ -21,6 +21,7 @@
   "license": "MIT",
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",
+    "@supabase/supabase-js": "^2.117.2",
     "axios": "^1.5.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",

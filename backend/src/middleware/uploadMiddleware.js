@@ -139,6 +139,18 @@ const uploadDocument = (req, res, next) => {
 };
 
 /**
+ * Middleware para subir un solo archivo adjunto (campo 'file')
+ */
+const uploadAttachmentFile = (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      return handleUploadError(err, req, res, next);
+    }
+    next();
+  });
+};
+
+/**
  * Middleware para validar que el archivo fue recibido
  */
 const requireFile = (req, res, next) => {
@@ -193,6 +205,7 @@ module.exports = {
   // Middlewares principales
   uploadDocument,
   uploadSingleDocument,
+  uploadAttachmentFile,
   uploadProfilePhoto,
   uploadClinicPhotos,
   uploadMultipleDocuments,
