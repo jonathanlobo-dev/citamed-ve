@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 import {
   Calendar,
@@ -49,10 +50,10 @@ function DashboardPaciente() {
       color: 'from-green-500 to-green-600'
     },
     {
-      title: 'Mi Historia Clínica',
+      title: 'Mi Historia',
       icon: Activity,
-      description: 'Accede a tu historia médica completa',
-      path: '/paciente/historia-clinica',
+      description: 'Accede a tu historia médica completa y recetas',
+      path: '/paciente/mi-historia',
       color: 'from-red-500 to-red-600'
     },
     {

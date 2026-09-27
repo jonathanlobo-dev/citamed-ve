@@ -6,6 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 const DoctorPatientsPage = lazy(() => import('./pages/doctor/DoctorPatientsPage'));
 const PatientRecordPage = lazy(() => import('./pages/doctor/PatientRecordPage'));
+const PatientMyRecordPage = lazy(() => import('./pages/patient/PatientMyRecordPage'));
 const EspacioClinicoPage = lazy(() => import('./pages/doctor/EspacioClinicoPage'));
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
@@ -236,6 +237,20 @@ function AppRoutes() {
             <PatientProfilePage />
           </ProtectedRoute>
         }
+      />
+      <Route
+        path="/paciente/mi-historia"
+        element={
+          <ProtectedRoute allowedRoles={['patient']}>
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
+              <PatientMyRecordPage />
+            </Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/paciente/historia-clinica"
+        element={<Navigate to="/paciente/mi-historia" replace />}
       />
       <Route
         path="/perfil-paciente/editar"

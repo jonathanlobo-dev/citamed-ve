@@ -1,0 +1,610 @@
+/* PatientMyRecordPage.css - CITAMED.VE */
+
+.patient-my-record-page {
+  min-height: 100vh;
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.patient-my-record-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 4rem;
+}
+
+/* Header */
+.patient-my-record-header {
+  margin-bottom: 1.5rem;
+}
+
+.patient-my-record-header-badge {
+  display: inline-flex;
+  align-items: center;
+  background: #f0fdfa;
+  border: 1px solid #ccfbf1;
+  color: #0f766e;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  margin-bottom: 0.5rem;
+}
+
+.patient-my-record-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.patient-my-record-subtitle {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin-top: 0.35rem;
+  line-height: 1.4;
+}
+
+/* Tabs Mobile First */
+.patient-my-record-tabs-bar {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.patient-my-record-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55rem 0.85rem;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.patient-my-record-tab-btn:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.patient-my-record-tab-btn.active {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+
+.patient-my-record-tab-btn .badge {
+  margin-left: 0.4rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 0.1rem 0.45rem;
+  border-radius: 9999px;
+}
+
+.patient-my-record-tab-btn.active .badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+/* Sección común */
+.patient-my-record-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Tarjetas de consulta */
+.patient-my-consultations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.patient-my-consultation-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.patient-my-consultation-card:hover {
+  border-color: #93c5fd;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.08);
+}
+
+.patient-my-consultation-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.patient-my-consultation-date {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 0.25rem;
+}
+
+.patient-my-consultation-doctor {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.patient-my-consultation-specialty {
+  font-size: 0.8125rem;
+  color: #0284c7;
+  font-weight: 500;
+}
+
+.patient-my-chip-completed {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  text-transform: uppercase;
+}
+
+.patient-my-consultation-body {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+}
+
+.patient-my-consultation-field strong {
+  color: #334155;
+}
+
+.patient-my-consultation-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.patient-my-link-more {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0284c7;
+}
+
+/* Documentos grid */
+.patient-my-docs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 1rem;
+}
+
+.patient-my-doc-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+}
+
+.patient-my-doc-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+}
+
+.patient-doc-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+}
+
+.patient-doc-badge.purple {
+  background: #faf5ff;
+  color: #7e22ce;
+  border: 1px solid #e9d5ff;
+}
+
+.patient-doc-badge.teal {
+  background: #f0fdfa;
+  color: #0f766e;
+  border: 1px solid #99f6e4;
+}
+
+.patient-doc-badge.amber {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.patient-doc-badge.orange {
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #ffedd5;
+}
+
+.patient-doc-badge.indigo {
+  background: #eef2ff;
+  color: #4338ca;
+  border: 1px solid #c7d2fe;
+}
+
+.patient-my-status-pill {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  text-transform: uppercase;
+}
+
+.patient-my-status-pill.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.patient-my-status-pill.voided {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.patient-my-doc-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.25rem;
+}
+
+.patient-my-doc-doctor {
+  font-size: 0.8125rem;
+  color: #334155;
+  margin-bottom: 0.2rem;
+}
+
+.patient-my-doc-date {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-bottom: 0.75rem;
+}
+
+.patient-my-doc-code-wrap {
+  background: #f8fafc;
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.patient-my-doc-code {
+  font-family: monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0284c7;
+}
+
+.patient-my-doc-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  gap: 0.4rem;
+  margin-top: auto;
+}
+
+.patient-my-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.4rem 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.patient-my-action-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+/* Archivos */
+.patient-my-attachments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.patient-my-attachment-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.875rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.patient-my-att-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.patient-my-att-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.patient-my-att-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.patient-my-att-meta {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.15rem;
+}
+
+.patient-my-att-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.patient-my-icon-btn {
+  background: transparent;
+  border: none;
+  padding: 0.35rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.patient-my-icon-btn:hover {
+  background: #f1f5f9;
+}
+
+/* Mis datos médicos */
+.patient-my-data-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.patient-my-data-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 0.75rem;
+}
+
+.patient-my-data-add-btn {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #0284c7;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.patient-my-data-add-btn:hover {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+.patient-my-data-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.patient-my-data-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.75rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+}
+
+/* Empty Card */
+.patient-my-record-empty-card {
+  background: #ffffff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+/* Botones estándar */
+.patient-my-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55rem 1rem;
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.patient-my-btn-primary:hover:not(:disabled) {
+  background: #0369a1;
+}
+
+.patient-my-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55rem 1rem;
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.patient-my-btn-secondary:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.patient-my-btn-danger {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55rem 1rem;
+  background: #dc2626;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.patient-my-btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+/* Loading & Error */
+.patient-my-record-loading,
+.patient-my-record-error {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 4rem 1.5rem;
+  text-align: center;
+}
+
+.patient-my-record-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #0284c7;
+  border-radius: 50%;
+  animation: pmr-spin 0.8s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes pmr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.patient-my-record-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 1rem;
+  padding: 0.4rem 0.85rem;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+
+/* Confirm modal */
+.patient-my-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.patient-my-confirm-box {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 1.5rem;
+  max-width: 400px;
+  width: 100%;
+}
+
+.patient-my-confirm-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.35rem;
+}
+
+.patient-my-confirm-desc {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin-bottom: 1.25rem;
+  line-height: 1.4;
+}
+
+.patient-my-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+/* Responsivo */
+@media (max-width: 640px) {
+  .patient-my-docs-grid {
+    grid-template-columns: 1fr;
+  }
+}
