@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowLeft, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import Button from '../components/common/Button/button';
@@ -19,6 +20,19 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
+
+  // Detectar si el usuario llega tras ser expulsado por cuenta suspendida
+  useEffect(() => {
+    const isSuspended = searchParams.get('suspended') === '1';
+    const storedMsg = sessionStorage.getItem('citamed_suspended_message');
+    if (isSuspended || storedMsg) {
+      const msg =
+        storedMsg ||
+        'Tu cuenta está suspendida. Escríbenos a soporte si crees que es un error.';
+      sessionStorage.removeItem('citamed_suspended_message');
+      setErrors((prev) => ({ ...prev, general: msg }));
+    }
+  }, [searchParams]);
 
   const getRedirectTarget = (userRole) => {
     const fromState = location.state?.from;
@@ -109,13 +123,23 @@ function LoginPage() {
           navigate(targetPath, { replace: true });
         }, 1000);
       } else {
-        const errorMessage = result.message || 'Error al iniciar sesión';
+        const isSuspended =
+          result.code === 'ACCOUNT_SUSPENDED' ||
+          result.status === 403;
+        const errorMessage = isSuspended
+          ? 'Tu cuenta está suspendida. Escríbenos a soporte si crees que es un error.'
+          : result.message || 'Error al iniciar sesión';
         setErrors({ general: errorMessage });
         toast.error(errorMessage);
       }
     } catch (error) {
       console.error('Error en login:', error);
-      const errorMessage = error.response?.data?.message || 'Error de conexión con el servidor';
+      const isSuspended =
+        error.response?.status === 403 &&
+        error.response?.data?.code === 'ACCOUNT_SUSPENDED';
+      const errorMessage = isSuspended
+        ? 'Tu cuenta está suspendida. Escríbenos a soporte si crees que es un error.'
+        : error.response?.data?.message || 'Error de conexión con el servidor';
       setErrors({ general: errorMessage });
       toast.error(errorMessage);
     } finally {

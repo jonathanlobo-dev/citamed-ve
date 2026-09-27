@@ -40,6 +40,18 @@ api.interceptors.response.use(
       localStorage.removeItem('citamed_token');
       localStorage.removeItem('citamed_user');
       window.location.href = '/login';
+    } else if (
+      error.response?.status === 403 &&
+      error.response?.data?.code === 'ACCOUNT_SUSPENDED'
+    ) {
+      // Cuenta suspendida
+      localStorage.removeItem('citamed_token');
+      localStorage.removeItem('citamed_user');
+      sessionStorage.setItem(
+        'citamed_suspended_message',
+        'Tu cuenta está suspendida. Escríbenos a soporte si crees que es un error.'
+      );
+      window.location.href = '/login?suspended=1';
     }
     return Promise.reject(error);
   }
