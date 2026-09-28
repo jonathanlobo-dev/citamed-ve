@@ -68,6 +68,11 @@ module.exports = (sequelize) => {
       allowNull: true,
       comment: 'Motivo de la suspensión'
     },
+    accountClaimed: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+      comment: 'Indica si la cuenta fue reclamada por el paciente (false si fue creada por el médico en consulta sin cita)'
+    },
     isVerified: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,

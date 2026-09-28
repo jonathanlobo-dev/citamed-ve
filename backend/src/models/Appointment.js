@@ -189,6 +189,11 @@ module.exports = (sequelize) => {
       allowNull: true,
       comment: 'Fecha y hora en que el paciente autorizó el uso de IA'
     },
+    isWalkIn: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      comment: 'Indica si la consulta fue sin cita previa (walk-in)'
+    },
 
     // ========================================
     // UBICACIÓN
