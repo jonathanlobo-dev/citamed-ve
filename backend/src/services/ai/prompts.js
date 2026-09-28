@@ -50,18 +50,20 @@ ESTRUCTURA EXACTA DEL OBJETO JSON REQUERIDO:
     "glucose": null
   },
   "physicalExam": {
-    "general": { "status": "normal", "findings": "" },
-    "headNeck": { "status": "normal", "findings": "" },
-    "cardiovascular": { "status": "normal", "findings": "" },
-    "respiratory": { "status": "normal", "findings": "" },
-    "abdomen": { "status": "normal", "findings": "" },
-    "extremities": { "status": "normal", "findings": "" },
-    "neurological": { "status": "normal", "findings": "" },
-    "skin": { "status": "normal", "findings": "" }
+    "<sistema mencionado>": { "status": "normal | abnormal", "findings": "hallazgo con las palabras del médico" }
   },
   "labOrders": [],
   "warnings": []
 }
+Sistemas válidos para physicalExam (usa solo estas claves y solo los mencionados): general, headNeck, cardiovascular, respiratory, abdomen, extremities, neurological, skin.
+
+REGLAS DE FIDELIDAD (las más importantes):
+A. Copia los números EXACTAMENTE como se dijeron. Nunca redondees, promedies ni cambies una cifra por otra del mismo texto.
+B. Distingue lo medido en la consulta de lo que el paciente cuenta. Solo lo que el médico mide o registra en la consulta va a vitalSigns. Un valor que el paciente trae de otro lugar (farmacia, casa, otro médico) va en subjective con su propia cifra y su origen (ej: "tensión de 155/95 medida en farmacia").
+C. El texto puede ser una conversación entre médico y paciente sin indicar quién habla. Deduce quién dice qué por el contexto; las preguntas suelen ser del médico y los síntomas los relata el paciente.
+D. No agregues hallazgos, maniobras ni términos técnicos que no se dijeron. Si el médico dijo "pulmones bien", escribe "Pulmones sin alteraciones", no inventes "murmullo vesicular" ni "ruidos adventicios". No incluyas "consciente y orientado" ni ningún otro hallazgo si no se mencionó.
+E. No agregues clasificaciones, grados, estadios, causas ni diagnósticos diferenciales que el médico no expresó. Si dijo "hipertensión arterial", no escribas "grado 2" ni "esencial".
+F. Incluye en subjective los datos negativos relevantes que se mencionen (ej: "niega dolor torácico", "sin alergias medicamentosas conocidas") y los antecedentes personales y familiares.
 
 REGLAS DE EXTRACCIÓN Y VALIDACIÓN:
 1. vitalSigns:
@@ -101,9 +103,8 @@ Salida JSON:
   },
   "physicalExam": {
     "headNeck": { "status": "abnormal", "findings": "Orofaringe congestiva, amígdalas hipertróficas con placas pultáceas blanquecinas, adenopatías submandibulares dolorosas." },
-    "cardiovascular": { "status": "normal", "findings": "Sin hallazgos patológicos descritos." },
-    "respiratory": { "status": "normal", "findings": "Tórax simétrico sin alteraciones." },
-    "abdomen": { "status": "normal", "findings": "Abdomen normal sin alteraciones descritas." }
+    "respiratory": { "status": "normal", "findings": "Tórax normal." },
+    "abdomen": { "status": "normal", "findings": "Abdomen normal." }
   },
   "labOrders": ["Hematología completa", "Cultivo de exudado faríngeo"],
   "warnings": []
@@ -146,8 +147,10 @@ REGLAS DE EXTRACCIÓN Y ESTANDARIZACIÓN:
    - IV -> vía intravenosa
    - SC -> vía subcutánea
    - PRN -> según sea necesario / en caso de dolor o fiebre
-3. NO inventes medicamentos ni dosis que no fueron indicados por el médico.
-4. Si una dosis o frecuencia parece dudosa, inconsistente o peligrosa, regístrala en el arreglo "warnings".`;
+3. NO inventes medicamentos ni dosis que no fueron indicados por el médico. Copia las cifras exactamente como se dijeron.
+4. Si una dosis o frecuencia parece dudosa, inconsistente o peligrosa, regístrala en el arreglo "warnings".
+5. instructions: solo lo que el médico indicó (ej: "en la mañana", "si hay dolor o fiebre", "con las comidas"). No agregues frases genéricas como "con un vaso de agua". Si no dijo nada, deja "".
+6. duration: si el médico no indicó duración, deja "" y agrega a "warnings": "No se indicó la duración de <medicamento>".`;
 
 module.exports = {
   SAFETY_PREAMBLE,

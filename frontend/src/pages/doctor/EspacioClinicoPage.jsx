@@ -693,15 +693,7 @@ export default function EspacioClinicoPage() {
 
       if (!appointment) return;
 
-      const payloadStr = JSON.stringify(payload);
-      if (payloadStr === lastSavedPayloadRef.current) {
-        return; // Sin cambios
-      }
-
-      setSaveStatus('saving');
-      setSaveErrorMessage('');
-
-      // Guardar copia local en localStorage
+      // Copia local primero: incluye el borrador de IA, que no va al servidor
       try {
         const draftKey = `citamed_draft_apt_${appointment.id}`;
         localStorage.setItem(
@@ -715,6 +707,14 @@ export default function EspacioClinicoPage() {
       } catch (lsErr) {
         console.warn('[EspacioClinico] Fallo al escribir en localStorage:', lsErr);
       }
+
+      const payloadStr = JSON.stringify(payload);
+      if (payloadStr === lastSavedPayloadRef.current) {
+        return; // Sin cambios para el servidor
+      }
+
+      setSaveStatus('saving');
+      setSaveErrorMessage('');
 
       try {
         await appointmentService.saveClinicalNote(appointment.id, payload);
