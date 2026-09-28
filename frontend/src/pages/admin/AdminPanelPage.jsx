@@ -200,7 +200,11 @@ export default function AdminPanelPage() {
     try {
       const res = await adminService.getUserById(userId);
       if (res.success) {
-        setSelectedUser(res.data || res);
+        const u = res.data || res;
+        if (!u.name) {
+          u.name = [u.firstName, u.lastName].filter(Boolean).join(' ') || 'Sin nombre';
+        }
+        setSelectedUser(u);
       }
     } catch (err) {
       console.error('Error al obtener detalle del usuario:', err);
