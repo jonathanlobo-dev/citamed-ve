@@ -1,6 +1,7 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Mic, Square, Sparkles, Loader2 } from 'lucide-react';
 import useSpeechDictation from '../../hooks/useSpeechDictation';
+import useAudioRecorder from '../../hooks/useAudioRecorder';
 
 /**
  * ClinicalTextField - Campo de texto para notas clínicas con dictado por voz y corrección con IA
@@ -18,6 +19,8 @@ import useSpeechDictation from '../../hooks/useSpeechDictation';
  * @param {string} [className] - Clases CSS adicionales
  * @param {Function} [onImprove] - Callback para mejorar redacción con IA (D5)
  * @param {boolean} [improving=false] - Estado de carga al mejorar
+ * @param {Function} [onAiTranscribe] - (blob, mimeType) => Promise<string>. Si viene, "Dictar" graba y
+ *   transcribe con IA; si no, usa el dictado del navegador como última opción.
  */
 export default function ClinicalTextField({
   label,
@@ -30,9 +33,13 @@ export default function ClinicalTextField({
   hint,
   className = '',
   onImprove = null,
-  improving = false
+  improving = false,
+  onAiTranscribe = null
 }) {
   const textareaRef = useRef(null);
+  const recorder = useAudioRecorder();
+  const [transcribing, setTranscribing] = useState(false);
+  const [dictationError, setDictationError] = useState('');
 
   const handleTranscript = (text) => {
     if (readOnly) return;
@@ -41,8 +48,33 @@ export default function ClinicalTextField({
     onChange({ target: { value: updated } });
   };
 
-  const { isSupported, isListening, toggleListening } =
-    useSpeechDictation(handleTranscript);
+  const browserSpeech = useSpeechDictation(handleTranscript);
+  const useAi = Boolean(onAiTranscribe);
+  const canDictate = useAi || browserSpeech.isSupported;
+  const isListening = useAi ? recorder.isRecording : browserSpeech.isListening;
+
+  const toggleListening = async () => {
+    setDictationError('');
+    if (!useAi) {
+      browserSpeech.toggleListening();
+      return;
+    }
+    if (!recorder.isRecording) {
+      recorder.start().catch((err) => setDictationError(err.message || 'No se pudo usar el micrófono'));
+      return;
+    }
+    const res = await recorder.stop();
+    if (!res?.blob) return;
+    try {
+      setTranscribing(true);
+      const text = await onAiTranscribe(res.blob, res.mimeType);
+      if (text && text.trim()) handleTranscript(text.trim());
+    } catch (err) {
+      setDictationError(err.response?.data?.message || 'No se pudo transcribir el audio; intenta de nuevo.');
+    } finally {
+      setTranscribing(false);
+    }
+  };
 
   // Auto-ajuste de altura (D8)
   useEffect(() => {
@@ -86,17 +118,18 @@ export default function ClinicalTextField({
           )}
 
           {/* Botón Dictar por voz */}
-          {isSupported && !readOnly && (
+          {canDictate && !readOnly && (
             <div className="flex items-center gap-1.5">
               {isListening && (
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-600 animate-pulse">
                   <span className="w-2 h-2 rounded-full bg-rose-600 inline-block"></span>
-                  Escuchando...
+                  {useAi ? `Grabando ${Math.floor(recorder.seconds / 60)}:${String(recorder.seconds % 60).padStart(2, '0')}` : 'Escuchando...'}
                 </span>
               )}
               <button
                 type="button"
                 onClick={toggleListening}
+                disabled={transcribing}
                 className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border transition-all ${
                   isListening
                     ? 'bg-rose-50 border-rose-300 text-rose-700 hover:bg-rose-100 shadow-sm'
@@ -105,7 +138,12 @@ export default function ClinicalTextField({
                 title={isListening ? 'Detener dictado' : 'Dictar por voz'}
                 aria-label={isListening ? 'Detener dictado' : 'Iniciar dictado por voz'}
               >
-                {isListening ? (
+                {transcribing ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Transcribiendo...</span>
+                  </>
+                ) : isListening ? (
                   <>
                     <Square className="w-3.5 h-3.5 fill-current" />
                     <span>Detener</span>
@@ -143,6 +181,7 @@ export default function ClinicalTextField({
       </div>
 
       {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
+      {dictationError && <p className="mt-1 text-xs text-rose-600">{dictationError}</p>}
     </div>
   );
 }

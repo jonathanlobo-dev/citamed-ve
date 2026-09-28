@@ -118,7 +118,9 @@ class AiService {
       throw err;
     }
 
-    if (requiresConsent && !appointment.aiConsentAt) {
+    // El consentimiento por consulta está apagado: al proveedor solo va texto anonimizado.
+    // Se reactiva con AI_REQUIRE_CONSENT=1 sin tocar el código.
+    if (requiresConsent && process.env.AI_REQUIRE_CONSENT === '1' && !appointment.aiConsentAt) {
       const err = new Error('El paciente no ha otorgado consentimiento para el uso de IA en esta consulta');
       err.code = 'AI_CONSENT_REQUIRED';
       err.status = 409;

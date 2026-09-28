@@ -7,6 +7,16 @@ const platformSettingsService = require('../platformSettingsService');
 const secretCrypto = require('../../utils/secretCrypto');
 const providers = require('./providers');
 
+// Cascada de modelos de Gemini con una misma llave: si el primero está saturado,
+// retirado o tarda demasiado, se prueba el siguiente antes de pasar a otro proveedor
+const GEMINI_MODEL_CASCADE = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash'];
+
+function expandModels(item) {
+  if (item.provider !== 'gemini') return [item];
+  const models = [item.model, ...GEMINI_MODEL_CASCADE].filter(Boolean);
+  return [...new Set(models)].map((model) => ({ ...item, model }));
+}
+
 /**
  * Construye la cadena de proveedores de texto priorizada
  * 1. Elementos habilitados en platform_settings ('ai_providers')
@@ -45,7 +55,7 @@ async function buildTextChain() {
 
   // Respaldos por variables de entorno al final de la cadena
   const envBackups = [
-    { envKey: 'GEMINI_API_KEY', provider: 'gemini', model: 'gemini-3.5-flash-lite' },
+    { envKey: 'GEMINI_API_KEY', provider: 'gemini', model: 'gemini-3.5-flash' },
     { envKey: 'GROQ_API_KEY', provider: 'groq', model: 'openai/gpt-oss-120b' },
     { envKey: 'OPENAI_API_KEY', provider: 'openai', model: 'gpt-4o-mini' },
     { envKey: 'ANTHROPIC_API_KEY', provider: 'anthropic', model: 'claude-haiku-4-5-20251001' }
@@ -66,7 +76,7 @@ async function buildTextChain() {
   // Desduplicar por provider + apiKey + model
   const seen = new Set();
   const dedupedChain = [];
-  for (const item of resolvedChain) {
+  for (const item of resolvedChain.flatMap(expandModels)) {
     const fingerprint = `${item.provider}:${item.apiKey || 'no-key'}:${item.model}`;
     if (!seen.has(fingerprint)) {
       seen.add(fingerprint);

@@ -237,9 +237,6 @@ export default function EspacioClinicoPage() {
 
   // --- Estados de Inteligencia Artificial (Bloque D) ---
   const [aiStatus, setAiStatus] = useState(null);
-  const [aiConsent, setAiConsent] = useState(false);
-  const [isSettingConsent, setIsSettingConsent] = useState(false);
-  const [consentHighlight, setConsentHighlight] = useState(false);
   const [aiDraftText, setAiDraftText] = useState('');
   const aiDraftTextareaRef = useRef(null);
 
@@ -287,6 +284,16 @@ export default function EspacioClinicoPage() {
     const maxHeight = typeof window !== 'undefined' ? window.innerHeight * 0.6 : 500;
     el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
   }, [aiDraftText]);
+
+  // Dictado con IA solo si hay transcripción disponible y la consulta ya existe; si no, el navegador
+  const aiDictationReady = Boolean(aiStatus?.transcriptionAvailable && appointment && !isReadOnly);
+  const transcribeForField = useCallback(
+    async (blob, mimeType) => {
+      const res = await aiService.transcribe({ appointmentId: appointment.id, audioBlob: blob, mimeType });
+      return res?.text || '';
+    },
+    [appointment]
+  );
 
   // Carga de estado de IA
   const fetchAiStatus = useCallback(async () => {
@@ -464,11 +471,6 @@ export default function EspacioClinicoPage() {
             if (hasAnyEvaluated || Boolean(apt.soapNote?.objective?.trim())) {
               setIsPhysicalExamExpanded(true);
             }
-          }
-
-          // Cargar consentimiento de IA existente
-          if (apt.aiConsentAt) {
-            setAiConsent(true);
           }
 
           // Cargar notas privadas
@@ -862,42 +864,14 @@ export default function EspacioClinicoPage() {
   }
 
   const handleAiError = (err) => {
-    const code = err?.response?.data?.code;
-    if (code === 'AI_CONSENT_REQUIRED' || err?.response?.status === 409) {
-      setConsentHighlight(true);
-    }
     const msg = formatAiErrorMessage(err);
     toast.error(msg);
   };
 
-  const handleGrantConsent = async () => {
-    if (isDraftMode && !appointment) {
-      toast('Identifica al paciente para registrar el consentimiento y usar la IA', { icon: 'ℹ️' });
-      return;
-    }
-    try {
-      setIsSettingConsent(true);
-      await aiService.setConsent(appointment.id);
-      setAiConsent(true);
-      setConsentHighlight(false);
-      setAppointment((prev) => (prev ? { ...prev, aiConsentAt: new Date().toISOString() } : prev));
-      toast.success('Consentimiento de IA registrado');
-    } catch (err) {
-      console.error('[EspacioClinico] Error registrando consentimiento:', err);
-      toast.error(err.response?.data?.message || 'Error registrando consentimiento');
-    } finally {
-      setIsSettingConsent(false);
-    }
-  };
 
   const handleStartDraftAudio = () => {
     if (isDraftMode && !appointment) {
       toast('Identifica al paciente para usar la IA', { icon: 'ℹ️' });
-      return;
-    }
-    if (!aiConsent && !appointment?.aiConsentAt) {
-      setConsentHighlight(true);
-      toast.error('Debes marcar la autorización del paciente antes de dictar');
       return;
     }
     setAudioTarget('draft');
@@ -946,11 +920,6 @@ export default function EspacioClinicoPage() {
       toast('Identifica al paciente para usar la IA', { icon: 'ℹ️' });
       return;
     }
-    if (!aiConsent && !appointment?.aiConsentAt) {
-      setConsentHighlight(true);
-      toast.error('Debes marcar la autorización del paciente antes de usar la IA');
-      return;
-    }
 
     try {
       setAiDraftImproving(true);
@@ -981,11 +950,6 @@ export default function EspacioClinicoPage() {
     if (!aiDraftText?.trim()) return;
     if (isDraftMode && !appointment) {
       toast('Identifica al paciente para estructurar la consulta con IA', { icon: 'ℹ️' });
-      return;
-    }
-    if (!aiConsent && !appointment?.aiConsentAt) {
-      setConsentHighlight(true);
-      toast.error('Debes marcar la autorización del paciente antes de usar la IA');
       return;
     }
 
@@ -1019,12 +983,6 @@ export default function EspacioClinicoPage() {
       }
 
       if (soapResult.status === 'rejected' && rxResult.status === 'rejected') {
-        if (
-          soapResult.reason?.response?.data?.code === 'AI_CONSENT_REQUIRED' ||
-          rxResult.reason?.response?.data?.code === 'AI_CONSENT_REQUIRED'
-        ) {
-          setConsentHighlight(true);
-        }
         toast.error(sErr || rErr || 'Error estructurando consulta con IA');
         return;
       }
@@ -1107,11 +1065,6 @@ export default function EspacioClinicoPage() {
       toast('Identifica al paciente para usar la IA', { icon: 'ℹ️' });
       return;
     }
-    if (!aiConsent && !appointment?.aiConsentAt) {
-      setConsentHighlight(true);
-      toast.error('Debes marcar la autorización del paciente antes de usar la IA');
-      return;
-    }
 
     try {
       setImprovingFieldId(fieldName);
@@ -1142,11 +1095,6 @@ export default function EspacioClinicoPage() {
   const handleStartRecipeAudio = () => {
     if (isDraftMode && !appointment) {
       toast('Identifica al paciente para usar la IA', { icon: 'ℹ️' });
-      return;
-    }
-    if (!aiConsent && !appointment?.aiConsentAt) {
-      setConsentHighlight(true);
-      toast.error('Debes marcar la autorización del paciente antes de dictar');
       return;
     }
     setAudioTarget('recipe');
@@ -2149,49 +2097,6 @@ export default function EspacioClinicoPage() {
                   </div>
                 </div>
 
-                {aiStatus?.remaining !== undefined && (
-                  <span className="text-xs font-semibold text-sky-800 bg-sky-100/80 px-2.5 py-1 rounded-full border border-sky-200">
-                    Te quedan {aiStatus.remaining} acciones de IA este mes
-                  </span>
-                )}
-              </div>
-
-              {/* CONSENTIMIENTO DEL PACIENTE */}
-              <div
-                className={`p-3 rounded-lg border transition mb-4 ${
-                  consentHighlight
-                    ? 'bg-rose-50 border-rose-400 ring-2 ring-rose-400/40'
-                    : aiConsent || appointment?.aiConsentAt
-                    ? 'bg-emerald-50/70 border-emerald-200'
-                    : 'bg-slate-50 border-slate-200'
-                }`}
-              >
-                <label className="flex items-start gap-2.5 text-xs font-semibold text-slate-800 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(aiConsent || appointment?.aiConsentAt)}
-                    disabled={
-                      Boolean(aiConsent || appointment?.aiConsentAt) ||
-                      isSettingConsent ||
-                      (isDraftMode && !appointment)
-                    }
-                    onChange={handleGrantConsent}
-                    className="rounded text-primary focus:ring-primary h-4 w-4 mt-0.5 cursor-pointer disabled:cursor-not-allowed"
-                  />
-                  <div className="space-y-0.5 flex-1">
-                    <span className={aiConsent || appointment?.aiConsentAt ? 'text-emerald-900' : 'text-slate-800'}>
-                      El paciente autorizó el uso de IA en esta consulta
-                    </span>
-                    <p className="text-[11px] font-normal text-slate-500 leading-relaxed">
-                      El audio y el texto de la consulta se envían a un proveedor de IA para transcribirlos y ordenarlos. CitaMed no guarda el audio.
-                    </p>
-                    {isDraftMode && !appointment && (
-                      <p className="text-[11px] font-medium text-amber-700 mt-1">
-                        (Identifica al paciente para registrar el consentimiento y habilitar la IA)
-                      </p>
-                    )}
-                  </div>
-                </label>
               </div>
 
               {/* ÁREA DE TEXTO: BORRADOR DE LA CONSULTA */}
@@ -2203,34 +2108,33 @@ export default function EspacioClinicoPage() {
 
                   {/* BOTONES SOBRE EL ÁREA: DICTAR Y CORREGIR */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    {/* Dictado con Micrófono del Navegador (Web Speech API) */}
-                    {draftBrowserSpeech.isSupported && (
-                      <button
-                        type="button"
-                        onClick={draftBrowserSpeech.toggleListening}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border transition ${
-                          draftBrowserSpeech.isListening
-                            ? 'bg-rose-50 border-rose-300 text-rose-700 animate-pulse'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
-                        title="Dictado por voz local del navegador (no consume acciones de IA)"
-                      >
-                        {draftBrowserSpeech.isListening ? (
-                          <>
-                            <Square className="w-3 h-3 fill-current text-rose-600" />
-                            <span>Escuchando navegador...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Mic className="w-3 h-3 text-slate-500" />
-                            <span>Micrófono local</span>
-                          </>
-                        )}
-                      </button>
-                    )}
-
-                    {/* Botón Dictar con IA (transcribe) */}
-                    {audioRecorder.isRecording && audioTarget === 'draft' ? (
+                    {/* Un solo botón Dictar: con IA si hay transcripción disponible; si no, el dictado del navegador */}
+                    {!aiDictationReady ? (
+                      draftBrowserSpeech.isSupported && (
+                        <button
+                          type="button"
+                          onClick={draftBrowserSpeech.toggleListening}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border transition ${
+                            draftBrowserSpeech.isListening
+                              ? 'bg-rose-50 border-rose-300 text-rose-700 animate-pulse'
+                              : 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100'
+                          }`}
+                          title="Dictar por voz"
+                        >
+                          {draftBrowserSpeech.isListening ? (
+                            <>
+                              <Square className="w-3 h-3 fill-current text-rose-600" />
+                              <span>Detener</span>
+                            </>
+                          ) : (
+                            <>
+                              <Mic className="w-3.5 h-3.5 text-purple-600" />
+                              <span>Dictar</span>
+                            </>
+                          )}
+                        </button>
+                      )
+                    ) : audioRecorder.isRecording && audioTarget === 'draft' ? (
                       <div className="inline-flex items-center gap-1.5 bg-rose-50 border border-rose-300 px-2.5 py-1 rounded-md text-xs font-semibold text-rose-700 animate-pulse">
                         <span className="w-2 h-2 rounded-full bg-rose-600"></span>
                         <span>{formatTimer(audioRecorder.seconds)}</span>
@@ -2256,17 +2160,12 @@ export default function EspacioClinicoPage() {
                       <button
                         type="button"
                         disabled={
-                          isTranscribing ||
-                          (!aiConsent && !appointment?.aiConsentAt) ||
-                          !aiStatus?.transcriptionAvailable ||
-                          (isDraftMode && !appointment)
+                          isTranscribing
                         }
                         onClick={handleStartDraftAudio}
                         title={
                           isDraftMode && !appointment
                             ? 'Identifica al paciente para usar la IA'
-                            : (!aiConsent && !appointment?.aiConsentAt)
-                            ? 'Requiere autorización del paciente'
                             : 'Dictar consulta completa por micrófono'
                         }
                         className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 transition disabled:opacity-40 disabled:cursor-not-allowed"
@@ -2290,7 +2189,6 @@ export default function EspacioClinicoPage() {
                       type="button"
                       disabled={
                         !aiDraftText?.trim() ||
-                        (!aiConsent && !appointment?.aiConsentAt) ||
                         aiDraftImproving ||
                         (isDraftMode && !appointment)
                       }
@@ -2298,8 +2196,6 @@ export default function EspacioClinicoPage() {
                       title={
                         isDraftMode && !appointment
                           ? 'Identifica al paciente para usar la IA'
-                          : (!aiConsent && !appointment?.aiConsentAt)
-                          ? 'Requiere autorización del paciente'
                           : 'Corregir redacción ortográfica y gramatical del borrador'
                       }
                       className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition disabled:opacity-40 disabled:cursor-not-allowed"
@@ -2338,7 +2234,6 @@ export default function EspacioClinicoPage() {
                   onClick={handleStructureWithAi}
                   disabled={
                     !aiDraftText?.trim() ||
-                    (!aiConsent && !appointment?.aiConsentAt) ||
                     aiStructuringLoading ||
                     (isDraftMode && !appointment)
                   }
@@ -2385,6 +2280,7 @@ export default function EspacioClinicoPage() {
               placeholder="Paciente refiere que desde hace 3 días presenta fiebre, malestar general y congestión nasal..."
               rows={4}
               readOnly={isReadOnly}
+              onAiTranscribe={aiDictationReady ? transcribeForField : null}
               onImprove={(t) =>
                 handleImproveField('Subjetivo', t, (val) => setSoapNote((p) => ({ ...p, subjective: val })))
               }
@@ -2721,6 +2617,7 @@ export default function EspacioClinicoPage() {
                     placeholder="Otros hallazgos, estado mental, hidratación general..."
                     rows={3}
                     readOnly={isReadOnly}
+                    onAiTranscribe={aiDictationReady ? transcribeForField : null}
                     onImprove={(t) =>
                       handleImproveField('Objetivo', t, (val) => setSoapNote((p) => ({ ...p, objective: val })))
                     }
@@ -2750,6 +2647,7 @@ export default function EspacioClinicoPage() {
               rows={3}
               readOnly={isReadOnly}
               required
+              onAiTranscribe={aiDictationReady ? transcribeForField : null}
               onImprove={(t) =>
                 handleImproveField('Evaluación', t, (val) => setSoapNote((p) => ({ ...p, assessment: val })))
               }
@@ -2775,6 +2673,7 @@ export default function EspacioClinicoPage() {
               placeholder="Reposo relativo por 48 horas, hidratación oral abundante, acudir a control en 7 días si persisten los síntomas..."
               rows={3}
               readOnly={isReadOnly}
+              onAiTranscribe={aiDictationReady ? transcribeForField : null}
               onImprove={(t) =>
                 handleImproveField('Plan', t, (val) => setSoapNote((p) => ({ ...p, plan: val })))
               }
@@ -2821,7 +2720,6 @@ export default function EspacioClinicoPage() {
                       type="button"
                       disabled={
                         isTranscribing ||
-                        (!aiConsent && !appointment?.aiConsentAt) ||
                         !aiStatus?.transcriptionAvailable ||
                         (isDraftMode && !appointment)
                       }
@@ -2829,8 +2727,6 @@ export default function EspacioClinicoPage() {
                       title={
                         isDraftMode && !appointment
                           ? 'Identifica al paciente para usar la IA'
-                          : (!aiConsent && !appointment?.aiConsentAt)
-                          ? 'Requiere autorización del paciente'
                           : 'Dictar récipe con micrófono e IA'
                       }
                       className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
@@ -2853,15 +2749,12 @@ export default function EspacioClinicoPage() {
                   <button
                     type="button"
                     disabled={
-                      (!aiConsent && !appointment?.aiConsentAt) ||
                       (isDraftMode && !appointment)
                     }
                     onClick={() => setDrawerAiRxText(true)}
                     title={
                       isDraftMode && !appointment
                         ? 'Identifica al paciente para usar la IA'
-                        : (!aiConsent && !appointment?.aiConsentAt)
-                        ? 'Requiere autorización del paciente'
                         : 'Estructurar récipe a partir de texto libre'
                     }
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
@@ -3237,6 +3130,7 @@ export default function EspacioClinicoPage() {
               rows={3}
               readOnly={isReadOnly}
               hint="Estas notas no se incluyen en ningún informe, récipe ni resumen que se entregue al paciente."
+              onAiTranscribe={aiDictationReady ? transcribeForField : null}
               onImprove={(t) =>
                 handleImproveField('Notas privadas', t, (val) => setDoctorNotes(val))
               }
