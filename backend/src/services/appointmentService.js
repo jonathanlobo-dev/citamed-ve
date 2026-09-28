@@ -7,13 +7,18 @@
 
 const { Op } = require('sequelize');
 const db = require('../models');
+const crypto = require('crypto');
+const { v4: uuidv4 } = require('uuid');
 const { todayCaracas, nowTimeCaracas } = require('../utils/dateCaracas');
 const { validateClinicalNoteData } = require('../utils/clinicalNote');
+const { normalizeCedula, normalizePhoneVE } = require('../utils/identity');
+const auditService = require('./auditService');
 
 const {
   Appointment,
   User,
   DoctorProfile,
+  PatientProfile,
   DoctorAvailability,
   AvailabilityOverride,
   WaitingQueue,
@@ -251,6 +256,275 @@ class AppointmentService {
 
       await transaction.commit();
       return appointment;
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
+  /**
+   * Crear consulta médica sin cita previa (Walk-in)
+   * Atiende a paciente existente o crea uno nuevo en la misma transacción
+   */
+  async createWalkInAppointment(doctorUserId, data = {}) {
+    const { patientId, newPatient, reasonForVisit } = data;
+
+    const transaction = await db.sequelize.transaction();
+
+    try {
+      let targetUser = null;
+      let targetPatientProfile = null;
+      let linkedExisting = false;
+      let newPatientCreated = false;
+
+      // 1. Resolver el paciente (Body A o Body B)
+      if (patientId) {
+        targetUser = await User.findByPk(patientId, { transaction });
+        if (!targetUser || targetUser.role !== 'patient') {
+          const err = new Error('Paciente no encontrado');
+          err.statusCode = 404;
+          throw err;
+        }
+        targetPatientProfile = await PatientProfile.findOne({
+          where: { userId: targetUser.id },
+          transaction
+        });
+        linkedExisting = true;
+      } else if (newPatient) {
+        const {
+          firstName,
+          lastName,
+          identificationType,
+          identificationNumber,
+          noIdentification,
+          phone,
+          dateOfBirth,
+          gender,
+          email
+        } = newPatient;
+
+        if (!firstName || !lastName || firstName.trim().length < 2 || firstName.trim().length > 60 || lastName.trim().length < 2 || lastName.trim().length > 60) {
+          const err = new Error('El nombre y apellido son obligatorios (entre 2 y 60 caracteres)');
+          err.statusCode = 400;
+          throw err;
+        }
+
+        if (!phone) {
+          const err = new Error('El teléfono es obligatorio');
+          err.statusCode = 400;
+          throw err;
+        }
+
+        const normalizedPhone = normalizePhoneVE(phone);
+
+        let normalizedCedula = null;
+        if (!noIdentification) {
+          if (!identificationType || !identificationNumber) {
+            const err = new Error('La cédula (tipo y número) es obligatoria salvo que se marque menor de edad');
+            err.statusCode = 400;
+            throw err;
+          }
+          normalizedCedula = normalizeCedula(identificationType, identificationNumber);
+        }
+
+        let cleanEmail = null;
+        if (email && String(email).trim()) {
+          cleanEmail = String(email).trim().toLowerCase();
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(cleanEmail)) {
+            const err = new Error('El correo electrónico no es válido');
+            err.statusCode = 400;
+            throw err;
+          }
+        }
+
+        // Búsqueda 1: por cédula si existe
+        if (normalizedCedula) {
+          targetPatientProfile = await PatientProfile.findOne({
+            where: { identificationNumber: normalizedCedula },
+            transaction
+          });
+
+          if (targetPatientProfile) {
+            targetUser = await User.findByPk(targetPatientProfile.userId, { transaction });
+            if (targetUser && targetUser.role === 'patient') {
+              linkedExisting = true;
+            } else {
+              targetPatientProfile = null;
+              targetUser = null;
+            }
+          }
+        }
+
+        // Búsqueda 2: por email si viene y no se encontró por cédula
+        if (!targetUser && cleanEmail) {
+          const existingByEmail = await User.findOne({
+            where: { email: cleanEmail },
+            transaction
+          });
+
+          if (existingByEmail) {
+            if (existingByEmail.role === 'patient') {
+              targetUser = existingByEmail;
+              targetPatientProfile = await PatientProfile.findOne({
+                where: { userId: targetUser.id },
+                transaction
+              });
+              linkedExisting = true;
+            } else {
+              const err = new Error('Ese correo pertenece a otra cuenta');
+              err.statusCode = 409;
+              throw err;
+            }
+          }
+        }
+
+        // Creación: si no existía, crear User y PatientProfile
+        if (!targetUser) {
+          const userEmail = cleanEmail || `paciente.${uuidv4()}@sin-correo.citamed.ve`;
+          const randomPassword = crypto.randomBytes(32).toString('hex');
+
+          const userGender = gender === 'female' ? 'femenino' : gender === 'male' ? 'masculino' : gender === 'other' ? 'otro' : 'prefiero_no_decir';
+          const profileGender = ['male', 'female', 'other', 'prefer_not_to_say'].includes(gender) ? gender : 'prefer_not_to_say';
+
+          targetUser = await User.create({
+            role: 'patient',
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            phone: normalizedPhone,
+            email: userEmail,
+            password: randomPassword,
+            dateOfBirth: dateOfBirth || null,
+            gender: userGender,
+            isActive: true,
+            accountClaimed: false
+          }, { transaction });
+
+          targetPatientProfile = await PatientProfile.create({
+            userId: targetUser.id,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            identificationType: 'CI',
+            identificationNumber: normalizedCedula || null,
+            phoneNumber: normalizedPhone,
+            dateOfBirth: dateOfBirth || null,
+            gender: profileGender,
+            profileStatus: 'active',
+            consentForDataSharing: true
+          }, { transaction });
+
+          newPatientCreated = true;
+          linkedExisting = false;
+        }
+      } else {
+        const err = new Error('Debe especificar un patientId o los datos de newPatient');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      // 2. Resolver datos del médico y consultorio
+      const doctorProfile = await DoctorProfile.findOne({
+        where: { userId: doctorUserId },
+        transaction
+      });
+
+      if (!doctorProfile) {
+        const err = new Error('Perfil del médico no encontrado');
+        err.statusCode = 404;
+        throw err;
+      }
+
+      let clinicId = null;
+      let locationId = null;
+      try {
+        const assignment = await ClinicDoctor.findOne({
+          where: { doctorId: doctorUserId, isActive: true },
+          order: [['id', 'ASC']],
+          transaction
+        });
+        if (assignment) {
+          clinicId = assignment.clinicId;
+          locationId = assignment.locationId;
+        }
+      } catch (clinicErr) {
+        console.warn('⚠️ No se pudo obtener la clínica del médico para la consulta sin cita:', clinicErr.message);
+      }
+
+      // 3. Determinar tipo de cita (first_consultation vs follow_up)
+      const pastAptCount = await Appointment.count({
+        where: {
+          doctorId: doctorUserId,
+          patientId: targetUser.id,
+          status: { [Op.notIn]: ['cancelled_patient', 'cancelled_doctor'] }
+        },
+        transaction
+      });
+      const appointmentType = pastAptCount > 0 ? 'follow_up' : 'first_consultation';
+
+      // 4. Crear la cita en estado in_progress
+      const appointmentDate = todayCaracas();
+      const appointmentTime = nowTimeCaracas();
+      const reason = (reasonForVisit && String(reasonForVisit).trim())
+        ? String(reasonForVisit).trim().slice(0, 500)
+        : 'Consulta sin cita';
+
+      const appointment = await Appointment.create({
+        patientId: targetUser.id,
+        doctorId: doctorUserId,
+        doctorProfileId: doctorProfile.id,
+        specialtyId: doctorProfile.specialtyId || null,
+        clinicId,
+        locationId,
+        appointmentDate,
+        appointmentTime,
+        duration: 30,
+        appointmentType,
+        reasonForVisit: reason,
+        locationType: 'clinic',
+        consultationFee: doctorProfile.consultationFee || 0,
+        status: 'in_progress',
+        isWalkIn: true,
+        statusHistory: [{
+          status: 'in_progress',
+          timestamp: new Date(),
+          reason: 'Consulta sin cita iniciada por el médico'
+        }]
+      }, { transaction });
+
+      await transaction.commit();
+
+      // 5. Auditoría
+      try {
+        await auditService.log({
+          userId: doctorUserId,
+          action: 'appointment.walk_in_created',
+          entityType: 'appointment',
+          entityId: appointment.id,
+          details: {
+            linkedExisting,
+            newPatientCreated,
+            patientId: targetUser.id
+          }
+        });
+      } catch (auditErr) {
+        console.warn('⚠️ Error al registrar auditoría de walk-in:', auditErr.message);
+      }
+
+      return {
+        appointment: {
+          id: appointment.id,
+          status: appointment.status,
+          patientId: targetUser.id,
+          appointmentDate: appointment.appointmentDate,
+          appointmentTime: appointment.appointmentTime
+        },
+        patient: {
+          id: targetUser.id,
+          firstName: targetUser.firstName,
+          lastName: targetUser.lastName
+        },
+        linkedExisting
+      };
     } catch (error) {
       await transaction.rollback();
       throw error;

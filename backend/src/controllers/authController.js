@@ -169,6 +169,14 @@ const authController = {
       const isPasswordValid = await bcrypt.compare(password, user.password);
 
       if (!isPasswordValid) {
+        if (user.accountClaimed === false) {
+          return res.status(403).json({
+            success: false,
+            code: 'ACCOUNT_NOT_CLAIMED',
+            message: 'Esta cuenta fue creada por tu médico. Pronto podrás activarla.'
+          });
+        }
+
         // Registrar intento fallido
         await sessionService.recordLoginAttempt(
           user.id,
@@ -189,6 +197,14 @@ const authController = {
           success: false,
           code: 'ACCOUNT_SUSPENDED',
           message: 'Tu cuenta está suspendida. Escríbenos a soporte si crees que es un error.'
+        });
+      }
+
+      if (user.accountClaimed === false) {
+        return res.status(403).json({
+          success: false,
+          code: 'ACCOUNT_NOT_CLAIMED',
+          message: 'Esta cuenta fue creada por tu médico. Pronto podrás activarla.'
         });
       }
 
@@ -315,6 +331,14 @@ const authController = {
           success: false,
           code: 'ACCOUNT_SUSPENDED',
           message: 'Tu cuenta está suspendida. Escríbenos a soporte si crees que es un error.'
+        });
+      }
+
+      if (user.accountClaimed === false) {
+        return res.status(403).json({
+          success: false,
+          code: 'ACCOUNT_NOT_CLAIMED',
+          message: 'Esta cuenta fue creada por tu médico. Pronto podrás activarla.'
         });
       }
 

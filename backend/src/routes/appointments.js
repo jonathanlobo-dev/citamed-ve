@@ -8,6 +8,8 @@ const router = express.Router();
 const appointmentController = require('../controllers/appointmentController');
 const { authenticateToken } = require('../middleware/auth');
 const { requirePermission, requireRoles } = require('../middleware/rbacMiddleware');
+const { walkInValidator } = require('../validators/walkInValidator');
+const { validationErrorHandler } = require('../middleware/validationErrorHandler');
 
 // ==========================================
 // RUTAS PUBLICAS (requieren autenticacion basica)
@@ -56,6 +58,24 @@ router.post(
   authenticateToken,
   requirePermission('appointments.create'),
   appointmentController.create.bind(appointmentController)
+);
+
+/**
+  * @swagger
+  * /api/appointments/walk-in:
+  *   post:
+  *     tags: [Appointments]
+  *     summary: Crear consulta médica sin cita previa (walk-in)
+  *     security:
+  *       - bearerAuth: []
+  */
+router.post(
+  '/walk-in',
+  authenticateToken,
+  requireRoles(['doctor']),
+  walkInValidator,
+  validationErrorHandler,
+  appointmentController.createWalkIn.bind(appointmentController)
 );
 
 /**

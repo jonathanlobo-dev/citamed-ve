@@ -105,6 +105,30 @@ class AppointmentController {
   }
 
   /**
+   * POST /api/appointments/walk-in
+   * Crear consulta médica sin cita previa (walk-in)
+   */
+  async createWalkIn(req, res) {
+    try {
+      const doctorUserId = req.user.id;
+      const result = await appointmentService.createWalkInAppointment(doctorUserId, req.body);
+      res.status(201).json({
+        success: true,
+        appointment: result.appointment,
+        patient: result.patient,
+        linkedExisting: result.linkedExisting
+      });
+    } catch (error) {
+      console.error('[AppointmentController] createWalkIn error:', error);
+      const status = error.statusCode || 400;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
    * PUT /api/appointments/:id/confirm
    * Confirmar una cita
    */
