@@ -58,7 +58,7 @@ async function callGemini({ apiKey, model, systemPrompt, userText, json = false 
     throw err;
   }
 
-  const modelName = model || 'gemini-2.5-flash';
+  const modelName = model || 'gemini-3.5-flash-lite';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`;
 
   const payload = {

@@ -41,7 +41,7 @@ const TEXT_PROVIDERS = ['gemini', 'groq', 'openai', 'anthropic', 'mock'];
 const TRANSCRIPTION_PROVIDERS = ['groq', 'openai', 'mock'];
 
 const DEFAULT_MODELS = {
-  gemini: ['gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
+  gemini: ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-flash-latest'],
   groq: ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
   openai: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo'],
   anthropic: ['claude-haiku-4-5-20251001', 'claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307'],
@@ -415,7 +415,7 @@ export default function AdminPanelPage() {
   // Agregar nuevo item
   const addItem = (listType) => {
     const defaultProvider = listType === 'text' ? 'gemini' : 'groq';
-    const defaultModel = listType === 'text' ? 'gemini-2.5-flash' : 'whisper-large-v3-turbo';
+    const defaultModel = listType === 'text' ? 'gemini-3.5-flash-lite' : 'whisper-large-v3-turbo';
     const newItem = {
       id: `new-${Date.now()}`,
       provider: defaultProvider,

@@ -45,7 +45,7 @@ async function buildTextChain() {
 
   // Respaldos por variables de entorno al final de la cadena
   const envBackups = [
-    { envKey: 'GEMINI_API_KEY', provider: 'gemini', model: 'gemini-2.5-flash' },
+    { envKey: 'GEMINI_API_KEY', provider: 'gemini', model: 'gemini-3.5-flash-lite' },
     { envKey: 'GROQ_API_KEY', provider: 'groq', model: 'openai/gpt-oss-120b' },
     { envKey: 'OPENAI_API_KEY', provider: 'openai', model: 'gpt-4o-mini' },
     { envKey: 'ANTHROPIC_API_KEY', provider: 'anthropic', model: 'claude-haiku-4-5-20251001' }

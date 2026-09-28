@@ -881,7 +881,7 @@ class AdminService {
       } else {
         const providers = require('./ai/providers');
         let testResp = '';
-        const testModel = model || (provider === 'gemini' ? 'gemini-2.5-flash' : provider === 'groq' ? 'openai/gpt-oss-120b' : provider === 'openai' ? 'gpt-4o-mini' : 'claude-haiku-4-5-20251001');
+        const testModel = model || (provider === 'gemini' ? 'gemini-3.5-flash-lite' : provider === 'groq' ? 'openai/gpt-oss-120b' : provider === 'openai' ? 'gpt-4o-mini' : 'claude-haiku-4-5-20251001');
 
         if (provider === 'gemini') {
           testResp = await providers.callGemini({ apiKey: effectiveKey, model: testModel, userText: 'Responde solo: OK' });
@@ -928,7 +928,7 @@ class AdminService {
    */
   async getAiModels({ provider } = {}) {
     const fallbackModels = {
-      gemini: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash', 'gemini-1.5-pro'],
+      gemini: ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-flash-latest'],
       groq: ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'whisper-large-v3-turbo'],
       openai: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'whisper-1'],
       anthropic: ['claude-haiku-4-5-20251001', 'claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307'],
