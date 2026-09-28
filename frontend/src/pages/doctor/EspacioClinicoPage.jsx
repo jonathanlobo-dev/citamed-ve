@@ -29,6 +29,7 @@ import {
   History,
   Info,
   Lock,
+  Mic,
   Paperclip,
   Pill,
   Plus,
@@ -36,6 +37,8 @@ import {
   Search,
   Share2,
   ShieldAlert,
+  Sparkles,
+  Square,
   Stethoscope,
   Trash2,
   Upload,
@@ -54,6 +57,13 @@ import clinicalRecordService from '../../services/clinicalRecordService';
 import ClinicalTextField from '../../components/clinical/ClinicalTextField';
 import SideDrawer from '../../components/common/SideDrawer/SideDrawer';
 import IdentifyPatientDrawer from '../../components/clinical/IdentifyPatientDrawer';
+import useSpeechDictation from '../../hooks/useSpeechDictation';
+import aiService from '../../services/aiService';
+import useAudioRecorder from '../../hooks/useAudioRecorder';
+import AiSoapReviewDrawer from '../../components/clinical/AiSoapReviewDrawer';
+import AiImproveReviewDrawer from '../../components/clinical/AiImproveReviewDrawer';
+import AiRxReviewDrawer from '../../components/clinical/AiRxReviewDrawer';
+import AiRxTextDrawer from '../../components/clinical/AiRxTextDrawer';
 import { ADULT_VITAL_RANGES, isVitalAbnormal, calculateBMI } from '../../utils/vitalRanges';
 import { shareDocument, prefetchDocumentPdf } from '../../utils/shareDocument';
 import { getCompanionSuggestions, checkMedicationAllergy } from '../../utils/companionRules';
@@ -225,6 +235,102 @@ export default function EspacioClinicoPage() {
 
   const isReadOnly = !isDraftMode && appointment?.status === 'completed';
 
+  // --- Estados de Inteligencia Artificial (Bloque D) ---
+  const [aiStatus, setAiStatus] = useState(null);
+  const [aiConsent, setAiConsent] = useState(false);
+  const [isSettingConsent, setIsSettingConsent] = useState(false);
+  const [consentHighlight, setConsentHighlight] = useState(false);
+  const [aiDraftText, setAiDraftText] = useState('');
+  const aiDraftTextareaRef = useRef(null);
+
+  // Grabación de audio para dictado
+  const audioRecorder = useAudioRecorder();
+  const [audioTarget, setAudioTarget] = useState(null); // 'draft' | 'recipe'
+  const [isTranscribing, setIsTranscribing] = useState(false);
+
+  // Estructuración paralela SOAP + Rx (D3/D4)
+  const [aiStructuringLoading, setAiStructuringLoading] = useState(false);
+  const [aiSoapProposal, setAiSoapProposal] = useState({});
+  const [aiRxProposal, setAiRxProposal] = useState({});
+  const [aiSoapError, setAiSoapError] = useState(null);
+  const [aiRxError, setAiRxError] = useState(null);
+  const [drawerAiSoapReview, setDrawerAiSoapReview] = useState(false);
+
+  // Corrección de redacción (D5)
+  const [drawerAiImprove, setDrawerAiImprove] = useState(false);
+  const [improveData, setImproveData] = useState({ fieldName: '', originalText: '', improvedText: '', onApply: null });
+  const [improvingFieldId, setImprovingFieldId] = useState(null);
+  const [aiDraftImproving, setAiDraftImproving] = useState(false);
+
+  // Récipe desde dictado / texto (D6)
+  const [drawerAiRxReview, setDrawerAiRxReview] = useState(false);
+  const [drawerAiRxText, setDrawerAiRxText] = useState(false);
+  const [aiRxLoadingSingle, setAiRxLoadingSingle] = useState(false);
+  const [aiRxProposalSingle, setAiRxProposalSingle] = useState({});
+  const [aiRxErrorSingle, setAiRxErrorSingle] = useState(null);
+  const [aiAppliedToRecipe, setAiAppliedToRecipe] = useState(false);
+
+  // Examen físico desplegable (D9)
+  const [isPhysicalExamExpanded, setIsPhysicalExamExpanded] = useState(false);
+
+  // Dictado por voz nativo del navegador para el borrador
+  const handleDraftBrowserTranscript = useCallback((text) => {
+    setAiDraftText((prev) => (prev ? `${prev.trim()} ${text}` : text));
+  }, []);
+  const draftBrowserSpeech = useSpeechDictation(handleDraftBrowserTranscript);
+
+  // Auto-ajuste de altura para el borrador de consulta (D8)
+  useEffect(() => {
+    const el = aiDraftTextareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const maxHeight = typeof window !== 'undefined' ? window.innerHeight * 0.6 : 500;
+    el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
+  }, [aiDraftText]);
+
+  // Carga de estado de IA
+  const fetchAiStatus = useCallback(async () => {
+    try {
+      const data = await aiService.status();
+      setAiStatus(data);
+    } catch (e) {
+      console.warn('[EspacioClinico] Error consultando estado de IA:', e);
+    }
+  }, []);
+
+  // Helper para formatear tiempo de grabación MM:SS
+  const formatTimer = (sec) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
+
+  // Resumen textual del estado del examen físico (D9)
+  const physicalExamSummary = useMemo(() => {
+    let evaluated = 0;
+    let abnormal = 0;
+    PHYSICAL_EXAM_SYSTEMS.forEach((sys) => {
+      const s = physicalExam[sys.key]?.status;
+      if (s === 'normal') evaluated++;
+      else if (s === 'abnormal') {
+        evaluated++;
+        abnormal++;
+      }
+    });
+    if (evaluated === 0 && !soapNote.objective?.trim()) {
+      return 'Sin evaluar';
+    }
+    const evalText = `${evaluated} ${evaluated === 1 ? 'sistema evaluado' : 'sistemas evaluados'}`;
+    if (abnormal > 0) {
+      return `${evalText}, ${abnormal} ${abnormal === 1 ? 'anormal' : 'anormales'}`;
+    }
+    return evalText;
+  }, [physicalExam, soapNote.objective]);
+
+  useEffect(() => {
+    fetchAiStatus();
+  }, [fetchAiStatus]);
+
   // Restaurar estado transferido si viene de vincular paciente en consulta sin cita
   useEffect(() => {
     if (location.state?.recipeItems && Array.isArray(location.state.recipeItems)) {
@@ -232,6 +338,9 @@ export default function EspacioClinicoPage() {
     }
     if (location.state?.recipeIndications) {
       setRecipeIndications(location.state.recipeIndications);
+    }
+    if (location.state?.aiDraftText) {
+      setAiDraftText(location.state.aiDraftText);
     }
     if (location.state?.successMessage) {
       toast.success(location.state.successMessage, { duration: 5000 });
@@ -349,6 +458,17 @@ export default function EspacioClinicoPage() {
           // Cargar examen físico existente
           if (apt.physicalExam && typeof apt.physicalExam === 'object') {
             setPhysicalExam((prev) => ({ ...prev, ...apt.physicalExam }));
+            const hasAnyEvaluated = Object.values(apt.physicalExam).some(
+              (v) => v && v.status && v.status !== 'not_evaluated'
+            );
+            if (hasAnyEvaluated || Boolean(apt.soapNote?.objective?.trim())) {
+              setIsPhysicalExamExpanded(true);
+            }
+          }
+
+          // Cargar consentimiento de IA existente
+          if (apt.aiConsentAt) {
+            setAiConsent(true);
           }
 
           // Cargar notas privadas
@@ -456,7 +576,7 @@ export default function EspacioClinicoPage() {
         try {
           localStorage.setItem(
             `citamed_draft_apt_${newApt.id}`,
-            JSON.stringify({ ...payload, savedAt: Date.now() })
+            JSON.stringify({ ...payload, aiDraftText, savedAt: Date.now() })
           );
         } catch {
           // Ignorar
@@ -474,6 +594,7 @@ export default function EspacioClinicoPage() {
         state: {
           recipeItems,
           recipeIndications,
+          aiDraftText,
           successMessage: res.linkedExisting && body.newPatient
             ? 'Este paciente ya estaba registrado en CitaMed; la consulta quedó asociada a su historia.'
             : `Consulta asociada a ${fullName}`
@@ -550,13 +671,15 @@ export default function EspacioClinicoPage() {
           Object.values(payload.physicalExam || {}).some((v) => v?.status && v.status !== 'not_evaluated') ||
           String(payload.doctorNotes || '').trim() ||
           recipeItems.some((it) => String(it.medication || '').trim()) ||
-          String(recipeIndications || '').trim();
+          String(recipeIndications || '').trim() ||
+          String(aiDraftText || '').trim();
         if (!hasContent) return;
         try {
           const draftData = {
             ...payload,
             recipeItems,
             recipeIndications,
+            aiDraftText,
             identifiedPatient,
             savedAt: Date.now()
           };
@@ -585,6 +708,7 @@ export default function EspacioClinicoPage() {
           draftKey,
           JSON.stringify({
             ...payload,
+            aiDraftText,
             savedAt: Date.now()
           })
         );
@@ -617,7 +741,7 @@ export default function EspacioClinicoPage() {
         }
       }
     },
-    [isReadOnly, isDraftMode, appointment, recipeItems, recipeIndications, identifiedPatient, newDraftAlert]
+    [isReadOnly, isDraftMode, appointment, recipeItems, recipeIndications, aiDraftText, identifiedPatient, newDraftAlert]
   );
 
   // Disparar temporizador al modificar notas, signos o examen físico
@@ -642,15 +766,24 @@ export default function EspacioClinicoPage() {
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
-  }, [soapNote, vitalSigns, physicalExam, doctorNotes, recipeItems, recipeIndications, loading, isReadOnly, appointment, isDraftMode, executeAutoSave]);
+  }, [soapNote, vitalSigns, physicalExam, doctorNotes, recipeItems, recipeIndications, aiDraftText, loading, isReadOnly, appointment, isDraftMode, executeAutoSave]);
 
   // Restaurar borrador local
   const handleRestoreLocalDraft = () => {
     if (!localDraftAlert) return;
     if (localDraftAlert.soapNote) setSoapNote(localDraftAlert.soapNote);
     if (localDraftAlert.vitalSigns) setVitalSigns(localDraftAlert.vitalSigns);
-    if (localDraftAlert.physicalExam) setPhysicalExam(localDraftAlert.physicalExam);
+    if (localDraftAlert.physicalExam) {
+      setPhysicalExam(localDraftAlert.physicalExam);
+      const hasAnyEvaluated = Object.values(localDraftAlert.physicalExam).some(
+        (v) => v && v.status && v.status !== 'not_evaluated'
+      );
+      if (hasAnyEvaluated || Boolean(localDraftAlert.soapNote?.objective?.trim())) {
+        setIsPhysicalExamExpanded(true);
+      }
+    }
     if (localDraftAlert.doctorNotes) setDoctorNotes(localDraftAlert.doctorNotes);
+    if (localDraftAlert.aiDraftText) setAiDraftText(localDraftAlert.aiDraftText);
     setLocalDraftAlert(null);
   };
 
@@ -700,11 +833,412 @@ export default function EspacioClinicoPage() {
 
   const handleMarkAllNormal = () => {
     if (isReadOnly) return;
+    setIsPhysicalExamExpanded(true);
     const allNormal = {};
     PHYSICAL_EXAM_SYSTEMS.forEach((sys) => {
       allNormal[sys.key] = { status: 'normal', findings: '' };
     });
     setPhysicalExam(allNormal);
+  };
+
+  // --- Handlers de Inteligencia Artificial (Bloque D) ---
+  function formatAiErrorMessage(err) {
+    if (!err) return 'Error desconocido al procesar con IA';
+    const code = err.response?.data?.code || err.code;
+    const status = err.response?.status;
+    if (status === 402 || code === 'AI_QUOTA_EXCEEDED') {
+      return 'Se agotaron tus acciones de IA de este mes.';
+    }
+    if (status === 503 || code === 'AI_UNAVAILABLE') {
+      return 'La IA no está disponible en este momento; puedes seguir escribiendo normalmente.';
+    }
+    if (status === 409 || code === 'AI_CONSENT_REQUIRED') {
+      return 'Debes autorizar el uso de IA con el consentimiento del paciente.';
+    }
+    if (status === 422 || code === 'AUDIO_UNINTELLIGIBLE') {
+      return 'No se entendió el audio; intenta de nuevo más cerca del micrófono.';
+    }
+    return err.response?.data?.message || err.message || 'Error al comunicarse con el servicio de IA.';
+  }
+
+  const handleAiError = (err) => {
+    const code = err?.response?.data?.code;
+    if (code === 'AI_CONSENT_REQUIRED' || err?.response?.status === 409) {
+      setConsentHighlight(true);
+    }
+    const msg = formatAiErrorMessage(err);
+    toast.error(msg);
+  };
+
+  const handleGrantConsent = async () => {
+    if (isDraftMode && !appointment) {
+      toast('Identifica al paciente para registrar el consentimiento y usar la IA', { icon: 'ℹ️' });
+      return;
+    }
+    try {
+      setIsSettingConsent(true);
+      await aiService.setConsent(appointment.id);
+      setAiConsent(true);
+      setConsentHighlight(false);
+      setAppointment((prev) => (prev ? { ...prev, aiConsentAt: new Date().toISOString() } : prev));
+      toast.success('Consentimiento de IA registrado');
+    } catch (err) {
+      console.error('[EspacioClinico] Error registrando consentimiento:', err);
+      toast.error(err.response?.data?.message || 'Error registrando consentimiento');
+    } finally {
+      setIsSettingConsent(false);
+    }
+  };
+
+  const handleStartDraftAudio = () => {
+    if (isDraftMode && !appointment) {
+      toast('Identifica al paciente para usar la IA', { icon: 'ℹ️' });
+      return;
+    }
+    if (!aiConsent && !appointment?.aiConsentAt) {
+      setConsentHighlight(true);
+      toast.error('Debes marcar la autorización del paciente antes de dictar');
+      return;
+    }
+    setAudioTarget('draft');
+    audioRecorder.start().catch((err) => {
+      console.error('[EspacioClinico] Error iniciando grabación:', err);
+      toast.error(err.message || 'Error al acceder al micrófono');
+      setAudioTarget(null);
+    });
+  };
+
+  const handleStopDraftAudio = async () => {
+    const res = await audioRecorder.stop();
+    setAudioTarget(null);
+    if (!res || !res.blob) return;
+
+    if (isDraftMode && !appointment) {
+      toast('Identifica al paciente para usar la transcripción con IA', { icon: 'ℹ️' });
+      return;
+    }
+
+    try {
+      setIsTranscribing(true);
+      const tRes = await aiService.transcribe({
+        appointmentId: appointment.id,
+        audioBlob: res.blob,
+        mimeType: res.mimeType
+      });
+      fetchAiStatus();
+      if (tRes?.text) {
+        setAiDraftText((prev) => (prev ? `${prev.trim()}\n${tRes.text.trim()}` : tRes.text.trim()));
+        toast.success('Audio transcrito y agregado al borrador');
+      } else {
+        toast('No se detectó texto en el audio dictado', { icon: 'ℹ️' });
+      }
+    } catch (err) {
+      console.error('[EspacioClinico] Error transcribiendo audio:', err);
+      handleAiError(err);
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  const handleImproveDraft = async () => {
+    if (!aiDraftText?.trim()) return;
+    if (isDraftMode && !appointment) {
+      toast('Identifica al paciente para usar la IA', { icon: 'ℹ️' });
+      return;
+    }
+    if (!aiConsent && !appointment?.aiConsentAt) {
+      setConsentHighlight(true);
+      toast.error('Debes marcar la autorización del paciente antes de usar la IA');
+      return;
+    }
+
+    try {
+      setAiDraftImproving(true);
+      const res = await aiService.improve({
+        appointmentId: appointment.id,
+        text: aiDraftText
+      });
+      fetchAiStatus();
+      setImproveData({
+        fieldName: 'Borrador de la consulta',
+        originalText: aiDraftText,
+        improvedText: res.text,
+        onApply: (improved) => {
+          setAiDraftText(improved);
+          toast.success('Borrador corregido');
+        }
+      });
+      setDrawerAiImprove(true);
+    } catch (err) {
+      console.error('[EspacioClinico] Error corrigiendo borrador:', err);
+      handleAiError(err);
+    } finally {
+      setAiDraftImproving(false);
+    }
+  };
+
+  const handleStructureWithAi = async () => {
+    if (!aiDraftText?.trim()) return;
+    if (isDraftMode && !appointment) {
+      toast('Identifica al paciente para estructurar la consulta con IA', { icon: 'ℹ️' });
+      return;
+    }
+    if (!aiConsent && !appointment?.aiConsentAt) {
+      setConsentHighlight(true);
+      toast.error('Debes marcar la autorización del paciente antes de usar la IA');
+      return;
+    }
+
+    try {
+      setAiStructuringLoading(true);
+      setAiSoapError(null);
+      setAiRxError(null);
+
+      const [soapResult, rxResult] = await Promise.allSettled([
+        aiService.soap({ appointmentId: appointment.id, text: aiDraftText }),
+        aiService.rx({ appointmentId: appointment.id, text: aiDraftText })
+      ]);
+
+      fetchAiStatus();
+
+      let soapProp = {};
+      let rxProp = {};
+      let sErr = null;
+      let rErr = null;
+
+      if (soapResult.status === 'fulfilled') {
+        soapProp = soapResult.value.proposal || {};
+      } else {
+        sErr = formatAiErrorMessage(soapResult.reason);
+      }
+
+      if (rxResult.status === 'fulfilled') {
+        rxProp = rxResult.value.proposal || {};
+      } else {
+        rErr = formatAiErrorMessage(rxResult.reason);
+      }
+
+      if (soapResult.status === 'rejected' && rxResult.status === 'rejected') {
+        if (
+          soapResult.reason?.response?.data?.code === 'AI_CONSENT_REQUIRED' ||
+          rxResult.reason?.response?.data?.code === 'AI_CONSENT_REQUIRED'
+        ) {
+          setConsentHighlight(true);
+        }
+        toast.error(sErr || rErr || 'Error estructurando consulta con IA');
+        return;
+      }
+
+      setAiSoapProposal(soapProp);
+      setAiRxProposal(rxProp);
+      setAiSoapError(sErr);
+      setAiRxError(rErr);
+      setDrawerAiSoapReview(true);
+    } catch (err) {
+      console.error('[EspacioClinico] Error inesperado estructurando consulta:', err);
+      handleAiError(err);
+    } finally {
+      setAiStructuringLoading(false);
+    }
+  };
+
+  const handleApplyAiSoapProposal = ({
+    soapUpdates,
+    vitalsUpdates,
+    examUpdates,
+    recipeItemsUpdates,
+    recipeIndicationsUpdate,
+    hasRecipeApplied,
+    hasExamApplied
+  }) => {
+    // 1. SOAP
+    setSoapNote((prev) => ({
+      ...prev,
+      ...soapUpdates
+    }));
+
+    // 2. Signos vitales
+    setVitalSigns((prev) => ({
+      ...prev,
+      ...vitalsUpdates
+    }));
+
+    // 3. Examen físico
+    if (Object.keys(examUpdates || {}).length > 0) {
+      setPhysicalExam((prev) => ({
+        ...prev,
+        ...examUpdates
+      }));
+    }
+    if (hasExamApplied) {
+      setIsPhysicalExamExpanded(true);
+    }
+
+    // 4. Medicamentos del récipe
+    if (recipeItemsUpdates && recipeItemsUpdates.length > 0) {
+      setRecipeItems((prev) => {
+        const isSingleEmpty =
+          prev.length === 1 &&
+          !prev[0].medication?.trim() &&
+          !prev[0].presentation?.trim() &&
+          !prev[0].dose?.trim();
+        return isSingleEmpty ? recipeItemsUpdates : [...prev, ...recipeItemsUpdates];
+      });
+    }
+
+    // Indicaciones del récipe
+    if (recipeIndicationsUpdate) {
+      setRecipeIndications((prev) => {
+        if (!prev?.trim()) return recipeIndicationsUpdate;
+        return `${prev.trim()}\n${recipeIndicationsUpdate}`;
+      });
+    }
+
+    if (hasRecipeApplied) {
+      setAiAppliedToRecipe(true);
+    }
+
+    toast.success('Propuesta de IA aplicada a la consulta');
+  };
+
+  const handleImproveField = async (fieldName, text, setter) => {
+    if (!text?.trim()) return;
+    if (isDraftMode && !appointment) {
+      toast('Identifica al paciente para usar la IA', { icon: 'ℹ️' });
+      return;
+    }
+    if (!aiConsent && !appointment?.aiConsentAt) {
+      setConsentHighlight(true);
+      toast.error('Debes marcar la autorización del paciente antes de usar la IA');
+      return;
+    }
+
+    try {
+      setImprovingFieldId(fieldName);
+      const res = await aiService.improve({
+        appointmentId: appointment.id,
+        field: fieldName,
+        text
+      });
+      fetchAiStatus();
+      setImproveData({
+        fieldName,
+        originalText: text,
+        improvedText: res.text,
+        onApply: (improved) => {
+          setter(improved);
+          toast.success(`Texto de ${fieldName} actualizado`);
+        }
+      });
+      setDrawerAiImprove(true);
+    } catch (err) {
+      console.error(`[EspacioClinico] Error mejorando campo ${fieldName}:`, err);
+      handleAiError(err);
+    } finally {
+      setImprovingFieldId(null);
+    }
+  };
+
+  const handleStartRecipeAudio = () => {
+    if (isDraftMode && !appointment) {
+      toast('Identifica al paciente para usar la IA', { icon: 'ℹ️' });
+      return;
+    }
+    if (!aiConsent && !appointment?.aiConsentAt) {
+      setConsentHighlight(true);
+      toast.error('Debes marcar la autorización del paciente antes de dictar');
+      return;
+    }
+    setAudioTarget('recipe');
+    audioRecorder.start().catch((err) => {
+      console.error('[EspacioClinico] Error iniciando grabación de récipe:', err);
+      toast.error(err.message || 'Error al acceder al micrófono');
+      setAudioTarget(null);
+    });
+  };
+
+  const handleStopRecipeAudio = async () => {
+    const res = await audioRecorder.stop();
+    setAudioTarget(null);
+    if (!res || !res.blob) return;
+
+    try {
+      setIsTranscribing(true);
+      const tRes = await aiService.transcribe({
+        appointmentId: appointment.id,
+        audioBlob: res.blob,
+        mimeType: res.mimeType
+      });
+      fetchAiStatus();
+      if (!tRes?.text) {
+        toast.error('No se obtuvo texto de la grabación');
+        return;
+      }
+
+      setAiRxLoadingSingle(true);
+      setDrawerAiRxReview(true);
+      const rxRes = await aiService.rx({
+        appointmentId: appointment.id,
+        text: tRes.text
+      });
+      setAiRxProposalSingle(rxRes.proposal || {});
+      setAiRxErrorSingle(null);
+      fetchAiStatus();
+    } catch (err) {
+      console.error('[EspacioClinico] Error procesando dictado de récipe:', err);
+      handleAiError(err);
+      setAiRxErrorSingle(formatAiErrorMessage(err));
+    } finally {
+      setIsTranscribing(false);
+      setAiRxLoadingSingle(false);
+    }
+  };
+
+  const handleRxFromText = async (text) => {
+    if (!text?.trim()) return;
+    setDrawerAiRxText(false);
+    setDrawerAiRxReview(true);
+    setAiRxLoadingSingle(true);
+    setAiRxErrorSingle(null);
+
+    try {
+      const rxRes = await aiService.rx({
+        appointmentId: appointment.id,
+        text
+      });
+      setAiRxProposalSingle(rxRes.proposal || {});
+      setAiRxErrorSingle(null);
+      fetchAiStatus();
+    } catch (err) {
+      console.error('[EspacioClinico] Error generando récipe desde texto:', err);
+      handleAiError(err);
+      setAiRxErrorSingle(formatAiErrorMessage(err));
+    } finally {
+      setAiRxLoadingSingle(false);
+    }
+  };
+
+  const handleApplyAiRxProposal = ({ items, indications }) => {
+    if (items && items.length > 0) {
+      setRecipeItems((prev) => {
+        const isSingleEmpty =
+          prev.length === 1 &&
+          !prev[0].medication?.trim() &&
+          !prev[0].presentation?.trim() &&
+          !prev[0].dose?.trim();
+        return isSingleEmpty ? items : [...prev, ...items];
+      });
+      setAiAppliedToRecipe(true);
+    }
+
+    if (indications) {
+      setRecipeIndications((prev) => {
+        if (!prev?.trim()) return indications;
+        return `${prev.trim()}\n${indications}`;
+      });
+    }
+
+    toast.success('Medicamentos agregados al récipe');
   };
 
   // Manejadores de récipe
@@ -1360,10 +1894,19 @@ export default function EspacioClinicoPage() {
               onClick={() => {
                 if (newDraftAlert.soapNote) setSoapNote(newDraftAlert.soapNote);
                 if (newDraftAlert.vitalSigns) setVitalSigns(newDraftAlert.vitalSigns);
-                if (newDraftAlert.physicalExam) setPhysicalExam(newDraftAlert.physicalExam);
+                if (newDraftAlert.physicalExam) {
+                  setPhysicalExam(newDraftAlert.physicalExam);
+                  const hasAnyEvaluated = Object.values(newDraftAlert.physicalExam).some(
+                    (v) => v && v.status && v.status !== 'not_evaluated'
+                  );
+                  if (hasAnyEvaluated || Boolean(newDraftAlert.soapNote?.objective?.trim())) {
+                    setIsPhysicalExamExpanded(true);
+                  }
+                }
                 if (newDraftAlert.doctorNotes) setDoctorNotes(newDraftAlert.doctorNotes);
                 if (newDraftAlert.recipeItems) setRecipeItems(newDraftAlert.recipeItems);
                 if (newDraftAlert.recipeIndications) setRecipeIndications(newDraftAlert.recipeIndications);
+                if (newDraftAlert.aiDraftText) setAiDraftText(newDraftAlert.aiDraftText);
                 if (newDraftAlert.identifiedPatient) setIdentifiedPatient(newDraftAlert.identifiedPatient);
                 setNewDraftAlert(null);
                 toast.success('Borrador restaurado');
@@ -1578,6 +2121,252 @@ export default function EspacioClinicoPage() {
 
         {/* ÁREA PRINCIPAL: SECCIONES ANCLADAS */}
         <main className="space-y-6">
+          {/* TARJETA ASISTENTE IA (D3) */}
+          {!isReadOnly && aiStatus?.enabled && aiStatus?.available && (
+            <div className="ec-card border-sky-300 bg-gradient-to-b from-sky-50/50 via-white to-white shadow-sm overflow-hidden" id="asistente-ia">
+              {/* AVISO FIJO DENTRO DE LA TARJETA (NO SE PUEDE CERRAR) */}
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2.5 text-xs text-amber-900 mb-4">
+                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <p className="leading-relaxed">
+                  <strong>Función experimental de asistencia:</strong> La IA puede equivocarse u omitir datos.
+                  Revisa todo antes de aplicarlo: el diagnóstico, los medicamentos y las dosis son responsabilidad exclusiva del médico tratante.
+                </p>
+              </div>
+
+              {/* ENCABEZADO DE LA TARJETA */}
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center font-bold">
+                    <Sparkles className="w-4 h-4 text-sky-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      Asistente IA en el Espacio Clínico
+                    </h2>
+                    <span className="text-[11px] text-slate-500">
+                      Dicta o escribe la consulta completa en bruto; la IA organizará y estructurará los campos.
+                    </span>
+                  </div>
+                </div>
+
+                {aiStatus?.remaining !== undefined && (
+                  <span className="text-xs font-semibold text-sky-800 bg-sky-100/80 px-2.5 py-1 rounded-full border border-sky-200">
+                    Te quedan {aiStatus.remaining} acciones de IA este mes
+                  </span>
+                )}
+              </div>
+
+              {/* CONSENTIMIENTO DEL PACIENTE */}
+              <div
+                className={`p-3 rounded-lg border transition mb-4 ${
+                  consentHighlight
+                    ? 'bg-rose-50 border-rose-400 ring-2 ring-rose-400/40'
+                    : aiConsent || appointment?.aiConsentAt
+                    ? 'bg-emerald-50/70 border-emerald-200'
+                    : 'bg-slate-50 border-slate-200'
+                }`}
+              >
+                <label className="flex items-start gap-2.5 text-xs font-semibold text-slate-800 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(aiConsent || appointment?.aiConsentAt)}
+                    disabled={
+                      Boolean(aiConsent || appointment?.aiConsentAt) ||
+                      isSettingConsent ||
+                      (isDraftMode && !appointment)
+                    }
+                    onChange={handleGrantConsent}
+                    className="rounded text-primary focus:ring-primary h-4 w-4 mt-0.5 cursor-pointer disabled:cursor-not-allowed"
+                  />
+                  <div className="space-y-0.5 flex-1">
+                    <span className={aiConsent || appointment?.aiConsentAt ? 'text-emerald-900' : 'text-slate-800'}>
+                      El paciente autorizó el uso de IA en esta consulta
+                    </span>
+                    <p className="text-[11px] font-normal text-slate-500 leading-relaxed">
+                      El audio y el texto de la consulta se envían a un proveedor de IA para transcribirlos y ordenarlos. CitaMed no guarda el audio.
+                    </p>
+                    {isDraftMode && !appointment && (
+                      <p className="text-[11px] font-medium text-amber-700 mt-1">
+                        (Identifica al paciente para registrar el consentimiento y habilitar la IA)
+                      </p>
+                    )}
+                  </div>
+                </label>
+              </div>
+
+              {/* ÁREA DE TEXTO: BORRADOR DE LA CONSULTA */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <label htmlFor="ai-draft-textarea" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Borrador de la consulta
+                  </label>
+
+                  {/* BOTONES SOBRE EL ÁREA: DICTAR Y CORREGIR */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Dictado con Micrófono del Navegador (Web Speech API) */}
+                    {draftBrowserSpeech.isSupported && (
+                      <button
+                        type="button"
+                        onClick={draftBrowserSpeech.toggleListening}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border transition ${
+                          draftBrowserSpeech.isListening
+                            ? 'bg-rose-50 border-rose-300 text-rose-700 animate-pulse'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                        title="Dictado por voz local del navegador (no consume acciones de IA)"
+                      >
+                        {draftBrowserSpeech.isListening ? (
+                          <>
+                            <Square className="w-3 h-3 fill-current text-rose-600" />
+                            <span>Escuchando navegador...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Mic className="w-3 h-3 text-slate-500" />
+                            <span>Micrófono local</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    {/* Botón Dictar con IA (transcribe) */}
+                    {audioRecorder.isRecording && audioTarget === 'draft' ? (
+                      <div className="inline-flex items-center gap-1.5 bg-rose-50 border border-rose-300 px-2.5 py-1 rounded-md text-xs font-semibold text-rose-700 animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-rose-600"></span>
+                        <span>{formatTimer(audioRecorder.seconds)}</span>
+                        <button
+                          type="button"
+                          onClick={handleStopDraftAudio}
+                          className="ml-1 px-2 py-0.5 bg-rose-600 text-white rounded text-[11px] font-bold hover:bg-rose-700"
+                        >
+                          Detener
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            audioRecorder.cancel();
+                            setAudioTarget(null);
+                          }}
+                          className="px-1.5 py-0.5 text-slate-500 hover:text-slate-700 text-[11px]"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={
+                          isTranscribing ||
+                          (!aiConsent && !appointment?.aiConsentAt) ||
+                          !aiStatus?.transcriptionAvailable ||
+                          (isDraftMode && !appointment)
+                        }
+                        onClick={handleStartDraftAudio}
+                        title={
+                          isDraftMode && !appointment
+                            ? 'Identifica al paciente para usar la IA'
+                            : (!aiConsent && !appointment?.aiConsentAt)
+                            ? 'Requiere autorización del paciente'
+                            : 'Dictar consulta completa por micrófono'
+                        }
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {isTranscribing && audioTarget === 'draft' ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-purple-600" />
+                            <span>Transcribiendo...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Mic className="w-3.5 h-3.5 text-purple-600" />
+                            <span>Dictar</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    {/* Botón Corregir Redacción (improve) */}
+                    <button
+                      type="button"
+                      disabled={
+                        !aiDraftText?.trim() ||
+                        (!aiConsent && !appointment?.aiConsentAt) ||
+                        aiDraftImproving ||
+                        (isDraftMode && !appointment)
+                      }
+                      onClick={handleImproveDraft}
+                      title={
+                        isDraftMode && !appointment
+                          ? 'Identifica al paciente para usar la IA'
+                          : (!aiConsent && !appointment?.aiConsentAt)
+                          ? 'Requiere autorización del paciente'
+                          : 'Corregir redacción ortográfica y gramatical del borrador'
+                      }
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {aiDraftImproving ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-sky-600" />
+                          <span>Corrigiendo...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5 text-sky-600" />
+                          <span>Corregir</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <textarea
+                  ref={aiDraftTextareaRef}
+                  id="ai-draft-textarea"
+                  value={aiDraftText}
+                  onChange={(e) => setAiDraftText(e.target.value)}
+                  placeholder="Dicta o escribe libremente: síntomas, signos vitales, examen físico, diagnóstico y tratamiento..."
+                  maxLength={15000}
+                  style={{ minHeight: '120px', maxHeight: '60vh', overflowY: 'auto' }}
+                  className="w-full p-3 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white transition leading-relaxed"
+                />
+              </div>
+
+              {/* BOTÓN PRINCIPAL ANCHO: ESTRUCTURAR CONSULTA CON IA */}
+              <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={handleStructureWithAi}
+                  disabled={
+                    !aiDraftText?.trim() ||
+                    (!aiConsent && !appointment?.aiConsentAt) ||
+                    aiStructuringLoading ||
+                    (isDraftMode && !appointment)
+                  }
+                  title="Estructurar consulta médica completa (2 acciones de IA: SOAP y Récipe)"
+                  className="w-full sm:w-auto flex-1 py-3 px-5 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white font-bold rounded-lg shadow-sm hover:shadow transition flex items-center justify-center gap-2 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {aiStructuringLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Estructurando con IA (SOAP y Récipe)...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      <span>Estructurar consulta con IA</span>
+                    </>
+                  )}
+                </button>
+
+                {isDraftMode && !appointment && (
+                  <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-3 py-1.5 rounded-md border border-amber-200">
+                    Identifica al paciente para usar la IA
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* SECCIÓN 1: SUBJETIVO */}
           <section id="subjetivo" className="ec-card">
             <div className="ec-card-header">
@@ -1596,6 +2385,10 @@ export default function EspacioClinicoPage() {
               placeholder="Paciente refiere que desde hace 3 días presenta fiebre, malestar general y congestión nasal..."
               rows={4}
               readOnly={isReadOnly}
+              onImprove={(t) =>
+                handleImproveField('Subjetivo', t, (val) => setSoapNote((p) => ({ ...p, subjective: val })))
+              }
+              improving={improvingFieldId === 'Subjetivo'}
             />
           </section>
 
@@ -1828,86 +2621,114 @@ export default function EspacioClinicoPage() {
               </div>
             </div>
 
-            {/* Examen Físico por Sistemas */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                  <Stethoscope className="w-4 h-4 text-primary" /> Examen Físico por Sistemas
-                </h3>
+            {/* Subsección plegable: Examen Físico por Sistemas y Observaciones (D9) */}
+            <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/50">
+              <div className="p-3 bg-white flex items-center justify-between gap-3 border-b border-slate-200">
+                <button
+                  type="button"
+                  aria-expanded={isPhysicalExamExpanded}
+                  onClick={() => setIsPhysicalExamExpanded((prev) => !prev)}
+                  className="flex items-center gap-2.5 text-left flex-1 hover:opacity-80 transition group"
+                >
+                  <span className="p-1 rounded bg-sky-50 text-sky-700 group-hover:bg-sky-100 transition">
+                    {isPhysicalExamExpanded ? (
+                      <ChevronUp className="w-4 h-4 text-primary" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-primary" />
+                    )}
+                  </span>
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Stethoscope className="w-4 h-4 text-primary" /> Examen Físico por Sistemas
+                    </h3>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      Estado: <span className="font-semibold text-slate-700">{physicalExamSummary}</span>
+                    </span>
+                  </div>
+                </button>
+
                 {!isReadOnly && (
                   <button
                     type="button"
                     onClick={handleMarkAllNormal}
-                    className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200 transition"
+                    className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200 transition flex-shrink-0"
                   >
                     ✓ Todo normal
                   </button>
                 )}
               </div>
 
-              <div className="ec-systems-grid">
-                {PHYSICAL_EXAM_SYSTEMS.map((sys) => {
-                  const currentSys = physicalExam[sys.key] || { status: 'not_evaluated', findings: '' };
-                  const isAbnormal = currentSys.status === 'abnormal';
+              {isPhysicalExamExpanded && (
+                <div className="p-3 space-y-4">
+                  <div className="ec-systems-grid">
+                    {PHYSICAL_EXAM_SYSTEMS.map((sys) => {
+                      const currentSys = physicalExam[sys.key] || { status: 'not_evaluated', findings: '' };
+                      const isAbnormal = currentSys.status === 'abnormal';
 
-                  return (
-                    <div key={sys.key} className={`ec-system-card ${isAbnormal ? 'abnormal' : ''}`}>
-                      <div className="ec-system-header">
-                        <span className="ec-system-name">{sys.label}</span>
-                        <div className="ec-system-buttons">
-                          <button
-                            type="button"
-                            onClick={() => handleSystemStatusChange(sys.key, 'normal')}
-                            className={`ec-sys-btn ${currentSys.status === 'normal' ? 'active-normal' : ''}`}
-                            disabled={isReadOnly}
-                          >
-                            Normal
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleSystemStatusChange(sys.key, 'abnormal')}
-                            className={`ec-sys-btn ${currentSys.status === 'abnormal' ? 'active-abnormal' : ''}`}
-                            disabled={isReadOnly}
-                          >
-                            Anormal
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleSystemStatusChange(sys.key, 'not_evaluated')}
-                            className={`ec-sys-btn ${currentSys.status === 'not_evaluated' ? 'active-ne' : ''}`}
-                            disabled={isReadOnly}
-                          >
-                            N/E
-                          </button>
+                      return (
+                        <div key={sys.key} className={`ec-system-card ${isAbnormal ? 'abnormal' : ''}`}>
+                          <div className="ec-system-header">
+                            <span className="ec-system-name">{sys.label}</span>
+                            <div className="ec-system-buttons">
+                              <button
+                                type="button"
+                                onClick={() => handleSystemStatusChange(sys.key, 'normal')}
+                                className={`ec-sys-btn ${currentSys.status === 'normal' ? 'active-normal' : ''}`}
+                                disabled={isReadOnly}
+                              >
+                                Normal
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSystemStatusChange(sys.key, 'abnormal')}
+                                className={`ec-sys-btn ${currentSys.status === 'abnormal' ? 'active-abnormal' : ''}`}
+                                disabled={isReadOnly}
+                              >
+                                Anormal
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSystemStatusChange(sys.key, 'not_evaluated')}
+                                className={`ec-sys-btn ${currentSys.status === 'not_evaluated' ? 'active-ne' : ''}`}
+                                disabled={isReadOnly}
+                              >
+                                N/E
+                              </button>
+                            </div>
+                          </div>
+
+                          {isAbnormal && (
+                            <input
+                              type="text"
+                              value={currentSys.findings || ''}
+                              onChange={(e) => handleSystemFindingsChange(sys.key, e.target.value)}
+                              placeholder="Describe el hallazgo anormal..."
+                              className="w-full text-xs p-2 rounded border border-red-200 bg-white focus:outline-none focus:border-red-400 mt-2"
+                              readOnly={isReadOnly}
+                            />
+                          )}
                         </div>
-                      </div>
+                      );
+                    })}
+                  </div>
 
-                      {isAbnormal && (
-                        <input
-                          type="text"
-                          value={currentSys.findings || ''}
-                          onChange={(e) => handleSystemFindingsChange(sys.key, e.target.value)}
-                          placeholder="Describe el hallazgo anormal..."
-                          className="w-full text-xs p-2 rounded border border-red-200 bg-white focus:outline-none focus:border-red-400 mt-2"
-                          readOnly={isReadOnly}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                  {/* Texto libre adicional para Objetivo */}
+                  <ClinicalTextField
+                    id="soap-objective"
+                    label="Observaciones adicionales del examen físico:"
+                    value={soapNote.objective}
+                    onChange={(e) => setSoapNote((prev) => ({ ...prev, objective: e.target.value }))}
+                    placeholder="Otros hallazgos, estado mental, hidratación general..."
+                    rows={3}
+                    readOnly={isReadOnly}
+                    onImprove={(t) =>
+                      handleImproveField('Objetivo', t, (val) => setSoapNote((p) => ({ ...p, objective: val })))
+                    }
+                    improving={improvingFieldId === 'Objetivo'}
+                  />
+                </div>
+              )}
             </div>
-
-            {/* Texto libre adicional para Objetivo */}
-            <ClinicalTextField
-              id="soap-objective"
-              label="Observaciones adicionales del examen físico:"
-              value={soapNote.objective}
-              onChange={(e) => setSoapNote((prev) => ({ ...prev, objective: e.target.value }))}
-              placeholder="Otros hallazgos, estado mental, hidratación general..."
-              rows={3}
-              readOnly={isReadOnly}
-            />
           </section>
 
           {/* SECCIÓN 3: EVALUACIÓN / DIAGNÓSTICO */}
@@ -1929,6 +2750,10 @@ export default function EspacioClinicoPage() {
               rows={3}
               readOnly={isReadOnly}
               required
+              onImprove={(t) =>
+                handleImproveField('Evaluación', t, (val) => setSoapNote((p) => ({ ...p, assessment: val })))
+              }
+              improving={improvingFieldId === 'Evaluación'}
             />
           </section>
 
@@ -1950,6 +2775,10 @@ export default function EspacioClinicoPage() {
               placeholder="Reposo relativo por 48 horas, hidratación oral abundante, acudir a control en 7 días si persisten los síntomas..."
               rows={3}
               readOnly={isReadOnly}
+              onImprove={(t) =>
+                handleImproveField('Plan', t, (val) => setSoapNote((p) => ({ ...p, plan: val })))
+              }
+              improving={improvingFieldId === 'Plan'}
             />
           </section>
 
@@ -1963,13 +2792,92 @@ export default function EspacioClinicoPage() {
                 <Pill className="w-5 h-5 text-primary" /> Récipe Médico Electrónico
               </h2>
               {!isReadOnly && (
-                <button
-                  type="button"
-                  onClick={handleAddRecipeItem}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Agregar Medicamento
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Dictar Récipe (D6) */}
+                  {audioRecorder.isRecording && audioTarget === 'recipe' ? (
+                    <div className="inline-flex items-center gap-1.5 bg-rose-50 border border-rose-300 px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-700 animate-pulse">
+                      <span className="w-2 h-2 rounded-full bg-rose-600"></span>
+                      <span>{formatTimer(audioRecorder.seconds)}</span>
+                      <button
+                        type="button"
+                        onClick={handleStopRecipeAudio}
+                        className="ml-1 px-2 py-0.5 bg-rose-600 text-white rounded text-[11px] font-bold hover:bg-rose-700"
+                      >
+                        Detener
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          audioRecorder.cancel();
+                          setAudioTarget(null);
+                        }}
+                        className="px-1.5 py-0.5 text-slate-500 hover:text-slate-700 text-[11px]"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={
+                        isTranscribing ||
+                        (!aiConsent && !appointment?.aiConsentAt) ||
+                        !aiStatus?.transcriptionAvailable ||
+                        (isDraftMode && !appointment)
+                      }
+                      onClick={handleStartRecipeAudio}
+                      title={
+                        isDraftMode && !appointment
+                          ? 'Identifica al paciente para usar la IA'
+                          : (!aiConsent && !appointment?.aiConsentAt)
+                          ? 'Requiere autorización del paciente'
+                          : 'Dictar récipe con micrófono e IA'
+                      }
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {isTranscribing && audioTarget === 'recipe' ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-purple-600" />
+                          <span>Transcribiendo...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Mic className="w-3.5 h-3.5 text-purple-600" />
+                          <span>Dictar récipe</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  {/* Desde Texto (D6) */}
+                  <button
+                    type="button"
+                    disabled={
+                      (!aiConsent && !appointment?.aiConsentAt) ||
+                      (isDraftMode && !appointment)
+                    }
+                    onClick={() => setDrawerAiRxText(true)}
+                    title={
+                      isDraftMode && !appointment
+                        ? 'Identifica al paciente para usar la IA'
+                        : (!aiConsent && !appointment?.aiConsentAt)
+                        ? 'Requiere autorización del paciente'
+                        : 'Estructurar récipe a partir de texto libre'
+                    }
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-sky-600" />
+                    <span>Desde texto</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleAddRecipeItem}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Agregar Medicamento
+                  </button>
+                </div>
               )}
             </div>
 
@@ -2329,6 +3237,10 @@ export default function EspacioClinicoPage() {
               rows={3}
               readOnly={isReadOnly}
               hint="Estas notas no se incluyen en ningún informe, récipe ni resumen que se entregue al paciente."
+              onImprove={(t) =>
+                handleImproveField('Notas privadas', t, (val) => setDoctorNotes(val))
+              }
+              improving={improvingFieldId === 'Notas privadas'}
             />
           </section>
         </main>
@@ -2397,9 +3309,17 @@ export default function EspacioClinicoPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-5 text-center">
             <h3 className="text-base font-bold text-slate-900 mb-2">¿Finalizar consulta médica?</h3>
-            <p className="text-xs text-slate-600 mb-5">
+            <p className="text-xs text-slate-600 mb-3">
               Se registrarán la nota SOAP, signos vitales y examen físico. La consulta pasará a estado completado.
             </p>
+            {aiAppliedToRecipe && (
+              <div className="p-2.5 mb-4 bg-amber-50 border border-amber-200 rounded-lg text-left text-xs text-amber-900 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <span>
+                  Este récipe incluye medicamentos sugeridos por IA. Confirma que revisaste cada medicamento, dosis y duración.
+                </span>
+              </div>
+            )}
             <div className="flex items-center justify-center gap-3">
               <button
                 type="button"
@@ -3107,6 +4027,57 @@ export default function EspacioClinicoPage() {
         onCreateNewPatient={handleCreateNewPatient}
         loading={identifyingLoading}
         errorMessage={identifyError}
+      />
+
+      {/* SideDrawer: Revisión SOAP e IA (D4) */}
+      <AiSoapReviewDrawer
+        open={drawerAiSoapReview}
+        onClose={() => setDrawerAiSoapReview(false)}
+        soapProposal={aiSoapProposal}
+        rxProposal={aiRxProposal}
+        soapError={aiSoapError}
+        rxError={aiRxError}
+        currentSoap={soapNote}
+        currentVitals={vitalSigns}
+        currentPhysicalExam={physicalExam}
+        onApply={handleApplyAiSoapProposal}
+        onCreateLabOrders={(orders) => {
+          if (orders && orders.length > 0) {
+            setLabOtherExams((prev) =>
+              prev ? `${prev}, ${orders.join(', ')}` : orders.join(', ')
+            );
+            setDrawerLabOrder(true);
+          }
+        }}
+      />
+
+      {/* SideDrawer: Mejorar Redacción (D5) */}
+      <AiImproveReviewDrawer
+        open={drawerAiImprove}
+        onClose={() => setDrawerAiImprove(false)}
+        fieldName={improveData.fieldName}
+        originalText={improveData.originalText}
+        improvedText={improveData.improvedText}
+        onApply={improveData.onApply}
+      />
+
+      {/* SideDrawer: Récipe desde Texto (D6) */}
+      <AiRxTextDrawer
+        open={drawerAiRxText}
+        onClose={() => setDrawerAiRxText(false)}
+        onSubmitText={handleRxFromText}
+        loading={aiRxLoadingSingle}
+        error={aiRxErrorSingle}
+      />
+
+      {/* SideDrawer: Revisión de Récipe Médico con IA (D6) */}
+      <AiRxReviewDrawer
+        open={drawerAiRxReview}
+        onClose={() => setDrawerAiRxReview(false)}
+        rxProposal={aiRxProposalSingle}
+        loading={aiRxLoadingSingle}
+        error={aiRxErrorSingle}
+        onApply={handleApplyAiRxProposal}
       />
     </div>
   );
