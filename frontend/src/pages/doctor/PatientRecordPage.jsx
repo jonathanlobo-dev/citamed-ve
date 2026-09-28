@@ -491,6 +491,15 @@ export default function PatientRecordPage() {
             <button
               type="button"
               className="patient-record-btn-secondary"
+              style={{ backgroundColor: 'var(--primary, #0284c7)', color: '#fff', borderColor: 'var(--primary, #0284c7)' }}
+              onClick={() => navigate(`/medico/consulta/nueva?patientId=${patientId}`)}
+            >
+              <Plus className="w-4 h-4 mr-1.5" />
+              Nueva consulta
+            </button>
+            <button
+              type="button"
+              className="patient-record-btn-secondary"
               onClick={() => navigate('/medico/agenda')}
             >
               <Calendar className="w-4 h-4 mr-1.5 text-teal-600" />

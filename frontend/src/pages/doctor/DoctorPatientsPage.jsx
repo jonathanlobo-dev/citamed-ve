@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Users,
   Search,
+  Plus,
   Calendar,
   Clock,
   ArrowRight,
@@ -117,16 +118,25 @@ export default function DoctorPatientsPage() {
         {/* Encabezado */}
         <header className="doctor-patients-header">
           <div className="doctor-patients-header-info">
-            <div className="doctor-patients-title-row">
-              <div className="doctor-patients-icon-wrap">
-                <Users className="w-6 h-6 text-primary" />
+            <div className="doctor-patients-title-row flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
+              <div className="flex items-center gap-3">
+                <div className="doctor-patients-icon-wrap">
+                  <Users className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h1 className="doctor-patients-title">Mis Pacientes</h1>
+                  <p className="doctor-patients-subtitle">
+                    Directorio de pacientes con consultas o citas programadas contigo en CitaMed
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="doctor-patients-title">Mis Pacientes</h1>
-                <p className="doctor-patients-subtitle">
-                  Directorio de pacientes con consultas o citas programadas contigo en CitaMed
-                </p>
-              </div>
+              <Link
+                to="/medico/consulta/nueva"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white font-semibold text-sm rounded-lg hover:bg-primary/90 transition shadow-sm self-start sm:self-auto"
+              >
+                <Plus className="w-4 h-4" />
+                Nueva consulta
+              </Link>
             </div>
           </div>
 

@@ -308,6 +308,16 @@ const DoctorWaitingRoomPage = () => {
         </div>
 
         <div className="header-right">
+          <Link
+            to="/medico/consulta/nueva"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs sm:text-sm font-semibold rounded-lg hover:bg-primary/90 transition shadow-sm mr-2"
+            style={{ backgroundColor: 'var(--primary, #0284c7)', color: '#fff', padding: '6px 12px', borderRadius: '8px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: '600', fontSize: '13px' }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Nueva consulta
+          </Link>
           <nav className="header-nav">
             <Link to="/medico/dashboard" className="nav-link">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20">

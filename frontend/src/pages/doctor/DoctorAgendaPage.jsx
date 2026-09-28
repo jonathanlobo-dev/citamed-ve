@@ -613,7 +613,8 @@ function DoctorAgendaPage() {
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
           <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
             <Calendar className="h-8 w-8 text-primary" />
             Mi Agenda Médica
@@ -621,6 +622,14 @@ function DoctorAgendaPage() {
           <p className="text-gray-600 mt-1">
             Gestiona tus citas programadas y configura los horarios de atención para tus pacientes.
           </p>
+        </div>
+          <Link
+            to="/medico/consulta/nueva"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white font-semibold text-sm rounded-xl shadow-sm hover:bg-primary-dark transition-all duration-200 hover:shadow-md flex-shrink-0"
+          >
+            <Plus className="w-5 h-5" />
+            Nueva consulta
+          </Link>
         </motion.div>
 
         {/* Pestañas de Navegación */}

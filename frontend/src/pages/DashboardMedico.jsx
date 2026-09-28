@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 import {
   Activity,
@@ -18,7 +19,8 @@ import {
   Stethoscope,
   CheckCircle,
   AlertCircle,
-  Star
+  Star,
+  Plus
 } from 'lucide-react';
 import Navbar from '../components/common/Navbar/Navbar';
 import useDoctorProfile from '../hooks/useDoctorProfile';
@@ -34,6 +36,14 @@ function DashboardMedico() {
   }, [fetchMyProfile, fetchCompleteness]);
 
   const modules = [
+    {
+      title: 'Nueva Consulta',
+      icon: Plus,
+      description: 'Atención inmediata de paciente sin cita (Walk-in)',
+      path: '/medico/consulta/nueva',
+      color: 'from-emerald-500 to-teal-600',
+      badge: 'Walk-in'
+    },
     {
       title: 'Estado Actual',
       icon: Activity,
