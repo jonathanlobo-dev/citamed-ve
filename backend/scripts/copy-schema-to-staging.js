@@ -1,7 +1,7 @@
 /**
  * copy-schema-to-staging.js - CITAMED.VE
  *
- * Copia la ESTRUCTURA de la base de producción (backend/.env) a la base de pruebas
+ * Copia la ESTRUCTURA de la base de producción (backend/.env.production) a la base de pruebas
  * (backend/.env.staging): tipos, secuencias, tablas, restricciones, índices, funciones,
  * disparadores y seguridad a nivel de fila. De datos solo copia las tablas de referencia
  * (especialidades, permisos) y la cuenta admin@citamed.ve. Nunca escribe en producción:
@@ -89,7 +89,7 @@ async function copyRows(prod, staging, table, where = '', params = []) {
 }
 
 async function main() {
-  const prodEnv = loadEnv('.env');
+  const prodEnv = loadEnv('.env.production');
   const stagingEnv = loadEnv('.env.staging');
 
   if (prodEnv.DB_HOST === stagingEnv.DB_HOST && prodEnv.DB_USER === stagingEnv.DB_USER) {
