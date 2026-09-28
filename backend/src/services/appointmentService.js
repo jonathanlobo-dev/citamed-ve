@@ -285,6 +285,17 @@ class AppointmentService {
           err.statusCode = 404;
           throw err;
         }
+        // Por id solo se atiende a pacientes que ya tuvieron citas con este médico;
+        // un paciente nuevo para el médico se identifica por cédula (Body B)
+        const priorWithDoctor = await Appointment.count({
+          where: { doctorId: doctorUserId, patientId: targetUser.id },
+          transaction
+        });
+        if (priorWithDoctor === 0) {
+          const err = new Error('Este paciente no está entre tus pacientes. Identifícalo como paciente nuevo con su cédula.');
+          err.statusCode = 403;
+          throw err;
+        }
         targetPatientProfile = await PatientProfile.findOne({
           where: { userId: targetUser.id },
           transaction

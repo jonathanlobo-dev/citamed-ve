@@ -61,8 +61,7 @@ const walkInValidator = [
     .if((value, { req }) => req.body.newPatient && req.body.newPatient.email)
     .trim()
     .isEmail()
-    .withMessage('El correo electrónico no es válido')
-    .normalizeEmail(),
+    .withMessage('El correo electrónico no es válido'),
 
   body('newPatient.dateOfBirth')
     .if((value, { req }) => req.body.newPatient && req.body.newPatient.dateOfBirth)

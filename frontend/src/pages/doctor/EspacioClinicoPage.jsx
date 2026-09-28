@@ -100,6 +100,8 @@ export default function EspacioClinicoPage() {
   const [identifyingLoading, setIdentifyingLoading] = useState(false);
   const [identifyError, setIdentifyError] = useState('');
   const [newDraftAlert, setNewDraftAlert] = useState(null);
+  const autoIdentifyRef = useRef(false);
+  const identifyAndContinueRef = useRef(null);
 
   // Estados de carga inicial y permisos
   const [loading, setLoading] = useState(true);
@@ -232,9 +234,10 @@ export default function EspacioClinicoPage() {
       setRecipeIndications(location.state.recipeIndications);
     }
     if (location.state?.successMessage) {
-      toast.success(location.state.successMessage);
+      toast.success(location.state.successMessage, { duration: 5000 });
+      navigate(location.pathname, { replace: true, state: { ...location.state, successMessage: undefined } });
     }
-  }, [location.state]);
+  }, [location.state, location.pathname, navigate]);
 
   // Consultas anteriores del paciente, sin incluir la que se está atendiendo
   const pastConsultations = (patientRecord?.consultations || []).filter(
@@ -294,26 +297,13 @@ export default function EspacioClinicoPage() {
           console.warn('[EspacioClinico] Error leyendo borrador local walk-in:', e);
         }
 
-        // Si viene ?patientId=123 (desde ficha de paciente)
-        if (urlPatientId) {
-          setLoadingRecord(true);
-          try {
-            const recRes = await clinicalRecordService.getPatientRecordForDoctor(urlPatientId);
-            if (mounted && recRes.data) {
-              setPatientRecord(recRes.data);
-              const p = recRes.data.patient || {};
-              setIdentifiedPatient({
-                id: Number(urlPatientId),
-                firstName: p.firstName || '',
-                lastName: p.lastName || '',
-                patientProfile: recRes.data.patientProfile || p.patientProfile || {}
-              });
-            }
-          } catch (recErr) {
-            console.error('[EspacioClinico] Error cargando ficha del paciente por query param:', recErr);
-          } finally {
-            if (mounted) setLoadingRecord(false);
-          }
+        // Si viene ?patientId=123 (desde la ficha del paciente) se identifica directo
+        if (urlPatientId && !autoIdentifyRef.current) {
+          autoIdentifyRef.current = true;
+          identifyAndContinueRef.current?.({
+            patientId: Number(urlPatientId),
+            reasonForVisit: 'Consulta sin cita'
+          });
         }
         return;
       }
@@ -450,81 +440,61 @@ export default function EspacioClinicoPage() {
   }, [appointmentId, user, isDraftMode, urlPatientId]);
 
   // Handlers para identificar paciente en consulta sin cita (Walk-in)
-  const handleIdentifyExistingPatient = async (patient) => {
+  const identifyAndContinue = async (body) => {
     try {
       setIdentifyingLoading(true);
       setIdentifyError('');
-      const res = await appointmentService.createWalkIn({
-        patientId: patient.id,
-        reasonForVisit: 'Consulta sin cita'
-      });
+      const res = await appointmentService.createWalkIn(body);
       const newApt = res.appointment;
-      const payload = {
-        soapNote,
-        vitalSigns,
-        physicalExam,
-        doctorNotes
-      };
+      const payload = { soapNote, vitalSigns, physicalExam, doctorNotes };
       try {
         await appointmentService.saveClinicalNote(newApt.id, payload);
       } catch (errSave) {
-        console.warn('[EspacioClinico] Error guardando nota clínica al vincular:', errSave);
+        // Si el servidor no guardó la nota, queda como borrador local de la cita
+        // para que la página de la consulta ofrezca restaurarla
+        console.warn('[EspacioClinico] Error guardando nota clínica al identificar:', errSave);
+        try {
+          localStorage.setItem(
+            `citamed_draft_apt_${newApt.id}`,
+            JSON.stringify({ ...payload, savedAt: Date.now() })
+          );
+        } catch {
+          // Ignorar
+        }
       }
-      localStorage.removeItem('citamed_draft_new');
+      try {
+        localStorage.removeItem('citamed_draft_new');
+      } catch {
+        // Ignorar
+      }
       setDrawerIdentifyPatient(false);
+      const fullName = `${res.patient?.firstName || ''} ${res.patient?.lastName || ''}`.trim();
       navigate(`/medico/consulta/${newApt.id}`, {
         replace: true,
         state: {
           recipeItems,
           recipeIndications,
-          successMessage: `Consulta vinculada con ${res.patient?.firstName || patient.fullName}`
+          successMessage: res.linkedExisting && body.newPatient
+            ? 'Este paciente ya estaba registrado en CitaMed; la consulta quedó asociada a su historia.'
+            : `Consulta asociada a ${fullName}`
         }
       });
     } catch (err) {
-      console.error('[EspacioClinico] Error vinculando paciente existente:', err);
-      setIdentifyError(err.response?.data?.message || 'Error al iniciar consulta con este paciente');
+      console.error('[EspacioClinico] Error identificando al paciente:', err);
+      const data = err.response?.data;
+      setIdentifyError(data?.errors?.[0]?.message || data?.message || 'No se pudo identificar al paciente. Intenta de nuevo.');
+      setDrawerIdentifyPatient(true);
     } finally {
       setIdentifyingLoading(false);
     }
   };
+  identifyAndContinueRef.current = identifyAndContinue;
 
-  const handleCreateNewPatient = async (newPatientData) => {
-    try {
-      setIdentifyingLoading(true);
-      setIdentifyError('');
-      const res = await appointmentService.createWalkIn({
-        newPatient: newPatientData,
-        reasonForVisit: newPatientData.reasonForVisit || 'Consulta sin cita'
-      });
-      const newApt = res.appointment;
-      const payload = {
-        soapNote,
-        vitalSigns,
-        physicalExam,
-        doctorNotes
-      };
-      try {
-        await appointmentService.saveClinicalNote(newApt.id, payload);
-      } catch (errSave) {
-        console.warn('[EspacioClinico] Error guardando nota clínica al crear paciente:', errSave);
-      }
-      localStorage.removeItem('citamed_draft_new');
-      setDrawerIdentifyPatient(false);
-      navigate(`/medico/consulta/${newApt.id}`, {
-        replace: true,
-        state: {
-          recipeItems,
-          recipeIndications,
-          successMessage: `Paciente ${res.patient?.firstName} ${res.patient?.lastName} creado y vinculado`
-        }
-      });
-    } catch (err) {
-      console.error('[EspacioClinico] Error creando nuevo paciente:', err);
-      setIdentifyError(err.response?.data?.message || 'Error al crear e iniciar consulta');
-    } finally {
-      setIdentifyingLoading(false);
-    }
-  };
+  const handleIdentifyExistingPatient = (patient) =>
+    identifyAndContinue({ patientId: patient.id, reasonForVisit: 'Consulta sin cita' });
+
+  const handleCreateNewPatient = ({ reasonForVisit, ...newPatientData }) =>
+    identifyAndContinue({ newPatient: newPatientData, reasonForVisit: reasonForVisit || 'Consulta sin cita' });
 
   const guardDraftMode = (actionDescription) => {
     if (isDraftMode) {
@@ -572,6 +542,16 @@ export default function EspacioClinicoPage() {
       if (isReadOnly) return;
 
       if (isDraftMode) {
+        // Mientras se ofrece continuar un borrador previo no se sobrescribe
+        if (newDraftAlert) return;
+        const hasContent =
+          Object.values(payload.soapNote || {}).some((v) => String(v || '').trim()) ||
+          Object.values(payload.vitalSigns || {}).some((v) => String(v ?? '').trim()) ||
+          Object.values(payload.physicalExam || {}).some((v) => v?.status && v.status !== 'not_evaluated') ||
+          String(payload.doctorNotes || '').trim() ||
+          recipeItems.some((it) => String(it.medication || '').trim()) ||
+          String(recipeIndications || '').trim();
+        if (!hasContent) return;
         try {
           const draftData = {
             ...payload,
@@ -637,7 +617,7 @@ export default function EspacioClinicoPage() {
         }
       }
     },
-    [isReadOnly, isDraftMode, appointment, recipeItems, recipeIndications, identifiedPatient]
+    [isReadOnly, isDraftMode, appointment, recipeItems, recipeIndications, identifiedPatient, newDraftAlert]
   );
 
   // Disparar temporizador al modificar notas, signos o examen físico
@@ -2189,7 +2169,9 @@ export default function EspacioClinicoPage() {
             <div className="flex items-center gap-2.5 flex-wrap mb-4 pb-4 border-b border-slate-100">
               <button
                 type="button"
-                onClick={handleOpenLabDrawer}
+                onClick={() => {
+                  if (!guardDraftMode('emitir orden de exámenes')) handleOpenLabDrawer();
+                }}
                 className="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-semibold transition"
               >
                 <FileSpreadsheet className="w-4 h-4" /> Orden de exámenes
@@ -2214,7 +2196,9 @@ export default function EspacioClinicoPage() {
               </button>
               <button
                 type="button"
-                onClick={handleOpenReportDrawer}
+                onClick={() => {
+                  if (!guardDraftMode('emitir informe médico')) handleOpenReportDrawer();
+                }}
                 className="inline-flex items-center gap-1.5 px-3 py-2 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 rounded-lg text-xs font-semibold transition"
               >
                 <FileText className="w-4 h-4" /> Informe médico

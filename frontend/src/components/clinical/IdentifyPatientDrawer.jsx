@@ -53,7 +53,7 @@ export default function IdentifyPatientDrawer({
     noIdentification: false,
     phone: '',
     dateOfBirth: '',
-    gender: 'female',
+    gender: '',
     email: '',
     reasonForVisit: 'Consulta sin cita'
   });
@@ -141,10 +141,19 @@ export default function IdentifyPatientDrawer({
     if (!newPatient.noIdentification) {
       const cleanDigits = (newPatient.identificationNumber || '').replace(/\D/g, '');
       if (!cleanDigits) {
-        errors.identificationNumber = 'Indica el número de cédula o marca "Sin documento"';
+        errors.identificationNumber = 'Indica el número de cédula o marca "Menor de edad sin cédula"';
       } else if (cleanDigits.length < 6 || cleanDigits.length > 9) {
         errors.identificationNumber = 'La cédula debe contener entre 6 y 9 dígitos';
       }
+    }
+
+    const phoneDigits = (newPatient.phone || '').replace(/\D/g, '');
+    if (!phoneDigits) {
+      errors.phone = newPatient.noIdentification
+        ? 'El teléfono del representante es obligatorio'
+        : 'El teléfono es obligatorio';
+    } else if (!/^(0|58)?[24]\d{9}$/.test(phoneDigits)) {
+      errors.phone = 'Teléfono no válido (ej. 0414-1234567)';
     }
 
     if (newPatient.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newPatient.email.trim())) {
@@ -165,7 +174,7 @@ export default function IdentifyPatientDrawer({
       noIdentification: newPatient.noIdentification,
       phone: newPatient.phone.trim() || undefined,
       dateOfBirth: newPatient.dateOfBirth || undefined,
-      gender: newPatient.gender,
+      gender: newPatient.gender || undefined,
       email: newPatient.email.trim() || undefined,
       reasonForVisit: newPatient.reasonForVisit.trim() || 'Consulta sin cita'
     });
@@ -291,7 +300,7 @@ export default function IdentifyPatientDrawer({
                           <div className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
                             {p.identificationNumber && (
                               <span className="font-mono bg-slate-100 px-1 py-0.5 rounded text-[11px]">
-                                {p.identificationNumber}
+                                {String(p.identificationNumber).replace(/^CI-/, '')}
                               </span>
                             )}
                             {p.age && <span>{p.age}</span>}
@@ -408,7 +417,7 @@ export default function IdentifyPatientDrawer({
                     className="rounded text-primary focus:ring-primary"
                     disabled={loading}
                   />
-                  <span>No posee documento</span>
+                  <span>Menor de edad sin cédula</span>
                 </label>
               </div>
 
@@ -453,10 +462,10 @@ export default function IdentifyPatientDrawer({
             </div>
 
             {/* Teléfono y Fecha de Nacimiento */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Teléfono
+                  {newPatient.noIdentification ? 'Teléfono del representante' : 'Teléfono'}
                 </label>
                 <div className="relative">
                   <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-3" />
@@ -466,11 +475,16 @@ export default function IdentifyPatientDrawer({
                     onChange={(e) =>
                       setNewPatient((prev) => ({ ...prev, phone: e.target.value }))
                     }
-                    placeholder="04141234567"
-                    className="w-full pl-8 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="0414-1234567"
+                    className={`w-full pl-8 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
+                      formErrors.phone ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
+                    }`}
                     disabled={loading}
                   />
                 </div>
+                {formErrors.phone && (
+                  <p className="text-[11px] text-rose-600 mt-1">{formErrors.phone}</p>
+                )}
               </div>
 
               <div>
@@ -490,7 +504,7 @@ export default function IdentifyPatientDrawer({
             </div>
 
             {/* Sexo y Correo Electrónico */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Sexo</label>
                 <select
@@ -501,6 +515,7 @@ export default function IdentifyPatientDrawer({
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary"
                   disabled={loading}
                 >
+                  <option value="">Sin indicar</option>
                   <option value="female">Femenino</option>
                   <option value="male">Masculino</option>
                   <option value="other">Otro</option>
@@ -523,8 +538,12 @@ export default function IdentifyPatientDrawer({
                   }`}
                   disabled={loading}
                 />
-                {formErrors.email && (
+                {formErrors.email ? (
                   <p className="text-[11px] text-rose-600 mt-1">{formErrors.email}</p>
+                ) : (
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Recomendado: sirve para enviarle sus documentos y para que active su cuenta.
+                  </p>
                 )}
               </div>
             </div>
