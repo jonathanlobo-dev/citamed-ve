@@ -6,7 +6,7 @@
 const platformSettingsService = require('../platformSettingsService');
 const secretCrypto = require('../../utils/secretCrypto');
 
-const TIMEOUT_MS = 20000; // 20 segundos máximo
+const TIMEOUT_MS = 60000; // un dictado largo puede tardar en subir y transcribirse
 
 // Frases típicas de relleno o alucinación de Whisper en silencios o audios confusos
 const HALLUCINATION_PHRASES = [

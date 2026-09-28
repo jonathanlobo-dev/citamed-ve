@@ -7,7 +7,7 @@
  * guardado automático y panel lateral para antecedentes e historia.
  */
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Activity,
@@ -276,14 +276,15 @@ export default function EspacioClinicoPage() {
   }, []);
   const draftBrowserSpeech = useSpeechDictation(handleDraftBrowserTranscript);
 
-  // Auto-ajuste de altura para el borrador de consulta (D8)
-  useEffect(() => {
+  // Auto-ajuste de altura para el borrador de consulta (D8). También cuando la tarjeta de IA
+  // aparece después de que el texto ya llegó (consulta sin cita identificada o borrador restaurado)
+  useLayoutEffect(() => {
     const el = aiDraftTextareaRef.current;
     if (!el) return;
     el.style.height = 'auto';
     const maxHeight = typeof window !== 'undefined' ? window.innerHeight * 0.6 : 500;
     el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
-  }, [aiDraftText]);
+  }, [aiDraftText, aiStatus, loading]);
 
   // Dictado con IA solo si hay transcripción disponible y la consulta ya existe; si no, el navegador
   const aiDictationReady = Boolean(aiStatus?.transcriptionAvailable && appointment && !isReadOnly);

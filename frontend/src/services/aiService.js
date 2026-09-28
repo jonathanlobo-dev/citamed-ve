@@ -5,6 +5,11 @@
 
 import api from './api';
 
+// La IA recorre una cascada de proveedores (hasta ~12 s por intento), así que no aplica
+// el límite general de 10 s de api.js; el audio además tiene que subir
+const AI_TIMEOUT_MS = 90000;
+const TRANSCRIBE_TIMEOUT_MS = 120000;
+
 const aiService = {
   /**
    * Obtiene el estado del servicio de IA y la cuota mensual del médico.
@@ -20,7 +25,7 @@ const aiService = {
       typeof arg1 === 'object' && arg1 !== null
         ? arg1
         : { appointmentId: arg1, field: arg2, text: arg3 };
-    return api.post('/ai/improve', { appointmentId, field, text }).then((res) => res.data);
+    return api.post('/ai/improve', { appointmentId, field, text }, { timeout: AI_TIMEOUT_MS }).then((res) => res.data);
   },
 
   /**
@@ -31,7 +36,7 @@ const aiService = {
       typeof arg1 === 'object' && arg1 !== null
         ? arg1
         : { appointmentId: arg1, text: arg2 };
-    return api.post('/ai/soap', { appointmentId, text }).then((res) => res.data);
+    return api.post('/ai/soap', { appointmentId, text }, { timeout: AI_TIMEOUT_MS }).then((res) => res.data);
   },
 
   /**
@@ -42,7 +47,7 @@ const aiService = {
       typeof arg1 === 'object' && arg1 !== null
         ? arg1
         : { appointmentId: arg1, text: arg2 };
-    return api.post('/ai/rx', { appointmentId, text }).then((res) => res.data);
+    return api.post('/ai/rx', { appointmentId, text }, { timeout: AI_TIMEOUT_MS }).then((res) => res.data);
   },
 
   /**
@@ -69,7 +74,8 @@ const aiService = {
 
     return api
       .post('/ai/transcribe', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: TRANSCRIBE_TIMEOUT_MS
       })
       .then((res) => res.data);
   },

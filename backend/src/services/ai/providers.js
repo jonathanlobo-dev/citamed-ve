@@ -3,7 +3,8 @@
  * M03 / Semana 7 - Llamadas directas con fetch nativo a proveedores de IA
  */
 
-const TIMEOUT_MS = 20000; // 20 segundos máximo por intento
+// Como NeosVet: si un modelo se cuelga, se corta a los 12 s y la cascada salta al siguiente
+const TIMEOUT_MS = 12000;
 
 /**
  * Limpia bloques <think> y bloques de código markdown (```json ... ```)
@@ -70,6 +71,10 @@ async function callGemini({ apiKey, model, systemPrompt, userText, json = false 
     ],
     generationConfig: {
       temperature: 0.1,
+      // Los modelos con razonamiento gastan tokens pensando; con un tope bajo el JSON sale cortado
+      maxOutputTokens: 8192,
+      // En Gemini 3 el razonamiento bajo responde en segundos y basta para ordenar la consulta
+      ...(/^gemini-3/.test(modelName) ? { thinkingConfig: { thinkingLevel: 'low' } } : {}),
       ...(json ? { responseMimeType: 'application/json' } : {})
     }
   };
@@ -101,7 +106,11 @@ async function callGemini({ apiKey, model, systemPrompt, userText, json = false 
   }
 
   const data = await res.json();
-  const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+  const rawText = parts
+    .filter((p) => !p.thought)
+    .map((p) => p.text || '')
+    .join('');
   return cleanAiText(rawText);
 }
 
