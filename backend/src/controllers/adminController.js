@@ -140,7 +140,7 @@ class AdminController {
       });
     } catch (error) {
       console.error('[AdminController] Error en getDoctors:', error);
-      return res.status(500).json({
+      return res.status(error.status || 500).json({
         success: false,
         message: 'Error al listar médicos',
         error: error.message

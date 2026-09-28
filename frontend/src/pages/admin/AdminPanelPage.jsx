@@ -54,6 +54,47 @@ const DEFAULT_TRANSCRIPTION_MODELS = {
   mock: ['echo', 'fail']
 };
 
+// Adapta la respuesta de GET /api/admin/overview a los nombres que usa esta pantalla
+function normalizeOverview(data) {
+  const doctors = data.doctors || {};
+  const verification = doctors.verification || {};
+  const ai = data.ai || {};
+  const aiMonth = ai.thisMonth || {};
+  return {
+    ...data,
+    doctors: {
+      ...doctors,
+      total: (doctors.active || 0) + (doctors.suspended || 0),
+      byVerification: {
+        verified: verification.approved || 0,
+        pending: (verification.pending || 0) + (verification.documents_incomplete || 0)
+      }
+    },
+    ai: {
+      ...ai,
+      totalThisMonth: aiMonth.total || 0,
+      successThisMonth: aiMonth.success || 0,
+      failedThisMonth: aiMonth.failed || 0
+    },
+    topDoctorsAi: ai.topDoctors || []
+  };
+}
+
+const VERIFICATION_LABELS = {
+  unverified: 'Sin verificar',
+  pending: 'Pendiente de revisión',
+  approved: 'Verificado',
+  rejected: 'Rechazado',
+  documents_incomplete: 'Documentos incompletos'
+};
+
+function doctorTitle(gender) {
+  const g = String(gender || '').toLowerCase();
+  if (g === 'masculino' || g === 'male') return 'Dr.';
+  if (g === 'femenino' || g === 'female') return 'Dra.';
+  return 'Dr(a).';
+}
+
 export default function AdminPanelPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
@@ -69,7 +110,7 @@ export default function AdminPanelPage() {
     try {
       const data = await adminService.getOverview();
       if (data.success) {
-        setOverview(data);
+        setOverview(normalizeOverview(data));
       }
     } catch (err) {
       console.error('Error al cargar métricas generales:', err);
@@ -246,12 +287,8 @@ export default function AdminPanelPage() {
         );
         setShowSuspendInput(false);
         setSuspensionReason('');
-        // Refrescar usuario en el drawer
-        setSelectedUser((prev) => ({
-          ...prev,
-          isActive: shouldBeActive,
-          suspendedReason: shouldBeActive ? null : suspensionReason.trim()
-        }));
+        // Recargar el detalle desde el servidor (estado, motivo y presencia en el directorio)
+        handleOpenUserDetail(userToUpdate.id);
         // Refrescar listas activas
         if (activeTab === 'doctors') loadDoctors();
         if (activeTab === 'users') loadUsers();
@@ -692,10 +729,10 @@ export default function AdminPanelPage() {
                           {overview.topDoctorsAi.map((doc, idx) => (
                             <tr key={doc.doctorId || idx}>
                               <td>
-                                <div className="font-semibold text-gray-900">Dr(a). {doc.name}</div>
+                                <div className="font-semibold text-gray-900">{doc.name}</div>
                                 <div className="text-xs text-gray-500">ID Usuario: #{doc.doctorId}</div>
                               </td>
-                              <td>{doc.specialty || 'Medicina General'}</td>
+                              <td>{doc.specialty || '—'}</td>
                               <td style={{ textAlign: 'right' }}>
                                 <span className="badge badge-info">{doc.count} acciones</span>
                               </td>
@@ -752,10 +789,11 @@ export default function AdminPanelPage() {
                 className="admin-select"
               >
                 <option value="all">Todas las verificaciones</option>
-                <option value="verified">Verificados</option>
+                <option value="approved">Verificados</option>
                 <option value="pending">Pendientes de revisión</option>
+                <option value="documents_incomplete">Documentos incompletos</option>
                 <option value="rejected">Rechazados</option>
-                <option value="unsubmitted">Sin expediente enviado</option>
+                <option value="unverified">Sin expediente enviado</option>
               </select>
 
               <select
@@ -799,7 +837,7 @@ export default function AdminPanelPage() {
                         onClick={() => handleOpenUserDetail(doc.id)}
                       >
                         <td>
-                          <div className="font-semibold text-gray-900">Dr(a). {doc.name}</div>
+                          <div className="font-semibold text-gray-900">{doc.name}</div>
                           <div className="text-xs text-gray-500">{doc.email}</div>
                         </td>
                         <td>
@@ -814,12 +852,12 @@ export default function AdminPanelPage() {
                           </span>
                         </td>
                         <td>
-                          {doc.verificationStatus === 'verified' && (
+                          {doc.verificationStatus === 'approved' && (
                             <span className="badge badge-success">
                               <CheckCircle2 className="w-3 h-3" /> Verificado
                             </span>
                           )}
-                          {doc.verificationStatus === 'pending' && (
+                          {(doc.verificationStatus === 'pending' || doc.verificationStatus === 'documents_incomplete') && (
                             <span className="badge badge-warning">
                               <Clock className="w-3 h-3" /> Pendiente
                             </span>
@@ -829,7 +867,7 @@ export default function AdminPanelPage() {
                               <XCircle className="w-3 h-3" /> Rechazado
                             </span>
                           )}
-                          {(!doc.verificationStatus || doc.verificationStatus === 'unsubmitted') && (
+                          {(!doc.verificationStatus || doc.verificationStatus === 'unverified') && (
                             <span className="badge badge-neutral">No enviado</span>
                           )}
                         </td>
@@ -1817,7 +1855,7 @@ export default function AdminPanelPage() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-gray-900">
-                    {selectedUser.role === 'doctor' ? `Dr(a). ${selectedUser.name}` : selectedUser.name}
+                    {selectedUser.role === 'doctor' ? `${doctorTitle(selectedUser.gender)} ${selectedUser.name}` : selectedUser.name}
                   </h3>
                   <p className="text-xs text-gray-500">{selectedUser.email}</p>
                   <div className="mt-1 flex items-center gap-2">
@@ -1841,7 +1879,7 @@ export default function AdminPanelPage() {
                     <span>Cuenta actualmente suspendida</span>
                   </div>
                   <p className="drawer-suspension-text">
-                    <strong>Motivo registrado:</strong> {selectedUser.suspendedReason || 'No especificado'}
+                    <strong>Motivo registrado:</strong> {selectedUser.suspensionReason || selectedUser.suspendedReason || 'No especificado'}
                   </p>
                   {selectedUser.suspendedAt && (
                     <p className="text-xs text-rose-600 mt-1">
@@ -1903,8 +1941,8 @@ export default function AdminPanelPage() {
 
                     <div className="drawer-info-item">
                       <span className="drawer-info-label">Estado KYC</span>
-                      <div className="drawer-info-val capitalize">
-                        {selectedUser.DoctorProfile.verificationStatus || 'unsubmitted'}
+                      <div className="drawer-info-val">
+                        {VERIFICATION_LABELS[selectedUser.DoctorProfile.verificationStatus] || 'Sin verificar'}
                       </div>
                     </div>
 

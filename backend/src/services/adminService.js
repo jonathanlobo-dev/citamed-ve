@@ -54,8 +54,15 @@ class AdminService {
       }
     });
 
+    const [activeUsers, suspendedUsers] = await Promise.all([
+      User.count({ where: { isActive: true } }),
+      User.count({ where: { isActive: false } })
+    ]);
+
     const users = {
       total: totalUsers,
+      active: activeUsers,
+      suspended: suspendedUsers,
       patients: roleMap.patient,
       doctors: roleMap.doctor,
       admins: roleMap.admin,
@@ -298,7 +305,7 @@ class AdminService {
   async getUserById(id) {
     const user = await User.findByPk(id, {
       attributes: [
-        'id', 'firstName', 'lastName', 'email', 'role',
+        'id', 'firstName', 'lastName', 'email', 'role', 'phone', 'gender',
         'isActive', 'suspendedAt', 'suspensionReason', 'lastLogin', 'createdAt'
       ]
     });
@@ -306,6 +313,11 @@ class AdminService {
     if (!user) {
       return null;
     }
+
+    const patientProfile = await PatientProfile.findOne({
+      where: { userId: user.id },
+      attributes: ['identificationNumber']
+    });
 
     const userData = {
       id: user.id,
@@ -316,6 +328,9 @@ class AdminService {
       isActive: user.isActive,
       suspendedAt: user.suspendedAt,
       suspensionReason: user.suspensionReason,
+      phone: user.phone || null,
+      gender: user.gender || null,
+      identificationNumber: patientProfile?.identificationNumber || null,
       lastLogin: user.lastLogin,
       createdAt: user.createdAt
     };
@@ -465,6 +480,12 @@ class AdminService {
 
     const profileWhere = {};
     if (verification) {
+      // Un valor fuera del ENUM haría fallar la consulta con un 500
+      if (!['unverified', 'pending', 'approved', 'rejected', 'documents_incomplete'].includes(verification)) {
+        const err = new Error('Estado de verificación no válido');
+        err.status = 400;
+        throw err;
+      }
       profileWhere.verificationStatus = verification;
     }
 
