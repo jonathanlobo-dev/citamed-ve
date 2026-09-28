@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Activity,
   AlertCircle,
@@ -40,9 +40,12 @@ import {
   Trash2,
   Upload,
   User,
+  UserCheck,
+  UserPlus,
   WifiOff,
   X
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import appointmentService from '../../services/appointmentService';
 import prescriptionAPI from '../../services/prescriptionService';
@@ -50,6 +53,7 @@ import medicalDocumentService from '../../services/medicalDocumentService';
 import clinicalRecordService from '../../services/clinicalRecordService';
 import ClinicalTextField from '../../components/clinical/ClinicalTextField';
 import SideDrawer from '../../components/common/SideDrawer/SideDrawer';
+import IdentifyPatientDrawer from '../../components/clinical/IdentifyPatientDrawer';
 import { ADULT_VITAL_RANGES, isVitalAbnormal, calculateBMI } from '../../utils/vitalRanges';
 import { shareDocument, prefetchDocumentPdf } from '../../utils/shareDocument';
 import { getCompanionSuggestions, checkMedicationAllergy } from '../../utils/companionRules';
@@ -82,8 +86,20 @@ const PHYSICAL_EXAM_SYSTEMS = [
 
 export default function EspacioClinicoPage() {
   const { appointmentId } = useParams();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  const isDraftMode = !appointmentId || appointmentId === 'nueva';
+  const urlPatientId = searchParams.get('patientId');
+
+  // Estados de consulta sin cita (Walk-in)
+  const [identifiedPatient, setIdentifiedPatient] = useState(null);
+  const [drawerIdentifyPatient, setDrawerIdentifyPatient] = useState(false);
+  const [identifyingLoading, setIdentifyingLoading] = useState(false);
+  const [identifyError, setIdentifyError] = useState('');
+  const [newDraftAlert, setNewDraftAlert] = useState(null);
 
   // Estados de carga inicial y permisos
   const [loading, setLoading] = useState(true);
@@ -205,11 +221,24 @@ export default function EspacioClinicoPage() {
   // Ancla activa de navegación rápida
   const [activeAnchor, setActiveAnchor] = useState('subjetivo');
 
-  const isReadOnly = appointment?.status === 'completed';
+  const isReadOnly = !isDraftMode && appointment?.status === 'completed';
+
+  // Restaurar estado transferido si viene de vincular paciente en consulta sin cita
+  useEffect(() => {
+    if (location.state?.recipeItems && Array.isArray(location.state.recipeItems)) {
+      setRecipeItems(location.state.recipeItems);
+    }
+    if (location.state?.recipeIndications) {
+      setRecipeIndications(location.state.recipeIndications);
+    }
+    if (location.state?.successMessage) {
+      toast.success(location.state.successMessage);
+    }
+  }, [location.state]);
 
   // Consultas anteriores del paciente, sin incluir la que se está atendiendo
   const pastConsultations = (patientRecord?.consultations || []).filter(
-    (c) => c.id !== appointment?.id
+    (c) => !appointment?.id || c.id !== appointment.id
   );
 
   // vitalsSeries viene en orden ascendente: el último elemento es el más reciente
@@ -222,7 +251,9 @@ export default function EspacioClinicoPage() {
     // El backend envía la edad como texto ("34 años"); aquí se necesita el número
     const recordAge = parseInt(patientRecord?.patient?.age, 10);
     if (!Number.isNaN(recordAge)) return recordAge;
-    const dob = appointment?.patient?.patientProfile?.dateOfBirth;
+    const dob = isDraftMode
+      ? (identifiedPatient?.patientProfile?.dateOfBirth || patientRecord?.patientProfile?.dateOfBirth)
+      : appointment?.patient?.patientProfile?.dateOfBirth;
     if (!dob) return null;
     const birth = new Date(dob);
     const now = new Date();
@@ -232,7 +263,7 @@ export default function EspacioClinicoPage() {
       age--;
     }
     return age;
-  }, [appointment, patientRecord]);
+  }, [appointment, patientRecord, isDraftMode, identifiedPatient]);
 
   // Cálculo en vivo de IMC
   const bmiInfo = useMemo(() => {
@@ -250,6 +281,43 @@ export default function EspacioClinicoPage() {
     let mounted = true;
 
     async function loadAppointmentData() {
+      if (isDraftMode) {
+        setLoading(false);
+        // Comprobar borrador en localStorage para consulta sin cita
+        try {
+          const rawDraft = localStorage.getItem('citamed_draft_new');
+          if (rawDraft) {
+            const draftData = JSON.parse(rawDraft);
+            setNewDraftAlert(draftData);
+          }
+        } catch (e) {
+          console.warn('[EspacioClinico] Error leyendo borrador local walk-in:', e);
+        }
+
+        // Si viene ?patientId=123 (desde ficha de paciente)
+        if (urlPatientId) {
+          setLoadingRecord(true);
+          try {
+            const recRes = await clinicalRecordService.getPatientRecordForDoctor(urlPatientId);
+            if (mounted && recRes.data) {
+              setPatientRecord(recRes.data);
+              const p = recRes.data.patient || {};
+              setIdentifiedPatient({
+                id: Number(urlPatientId),
+                firstName: p.firstName || '',
+                lastName: p.lastName || '',
+                patientProfile: recRes.data.patientProfile || p.patientProfile || {}
+              });
+            }
+          } catch (recErr) {
+            console.error('[EspacioClinico] Error cargando ficha del paciente por query param:', recErr);
+          } finally {
+            if (mounted) setLoadingRecord(false);
+          }
+        }
+        return;
+      }
+
       try {
         setLoading(true);
         const res = await appointmentService.getById(appointmentId);
@@ -379,7 +447,93 @@ export default function EspacioClinicoPage() {
       mounted = false;
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
-  }, [appointmentId, user]);
+  }, [appointmentId, user, isDraftMode, urlPatientId]);
+
+  // Handlers para identificar paciente en consulta sin cita (Walk-in)
+  const handleIdentifyExistingPatient = async (patient) => {
+    try {
+      setIdentifyingLoading(true);
+      setIdentifyError('');
+      const res = await appointmentService.createWalkIn({
+        patientId: patient.id,
+        reasonForVisit: 'Consulta sin cita'
+      });
+      const newApt = res.appointment;
+      const payload = {
+        soapNote,
+        vitalSigns,
+        physicalExam,
+        doctorNotes
+      };
+      try {
+        await appointmentService.saveClinicalNote(newApt.id, payload);
+      } catch (errSave) {
+        console.warn('[EspacioClinico] Error guardando nota clínica al vincular:', errSave);
+      }
+      localStorage.removeItem('citamed_draft_new');
+      setDrawerIdentifyPatient(false);
+      navigate(`/medico/consulta/${newApt.id}`, {
+        replace: true,
+        state: {
+          recipeItems,
+          recipeIndications,
+          successMessage: `Consulta vinculada con ${res.patient?.firstName || patient.fullName}`
+        }
+      });
+    } catch (err) {
+      console.error('[EspacioClinico] Error vinculando paciente existente:', err);
+      setIdentifyError(err.response?.data?.message || 'Error al iniciar consulta con este paciente');
+    } finally {
+      setIdentifyingLoading(false);
+    }
+  };
+
+  const handleCreateNewPatient = async (newPatientData) => {
+    try {
+      setIdentifyingLoading(true);
+      setIdentifyError('');
+      const res = await appointmentService.createWalkIn({
+        newPatient: newPatientData,
+        reasonForVisit: newPatientData.reasonForVisit || 'Consulta sin cita'
+      });
+      const newApt = res.appointment;
+      const payload = {
+        soapNote,
+        vitalSigns,
+        physicalExam,
+        doctorNotes
+      };
+      try {
+        await appointmentService.saveClinicalNote(newApt.id, payload);
+      } catch (errSave) {
+        console.warn('[EspacioClinico] Error guardando nota clínica al crear paciente:', errSave);
+      }
+      localStorage.removeItem('citamed_draft_new');
+      setDrawerIdentifyPatient(false);
+      navigate(`/medico/consulta/${newApt.id}`, {
+        replace: true,
+        state: {
+          recipeItems,
+          recipeIndications,
+          successMessage: `Paciente ${res.patient?.firstName} ${res.patient?.lastName} creado y vinculado`
+        }
+      });
+    } catch (err) {
+      console.error('[EspacioClinico] Error creando nuevo paciente:', err);
+      setIdentifyError(err.response?.data?.message || 'Error al crear e iniciar consulta');
+    } finally {
+      setIdentifyingLoading(false);
+    }
+  };
+
+  const guardDraftMode = (actionDescription) => {
+    if (isDraftMode) {
+      setDrawerIdentifyPatient(true);
+      toast(`Identifica al paciente para ${actionDescription}`, { icon: 'ℹ️' });
+      return true;
+    }
+    return false;
+  };
 
   // Cargar catálogo de laboratorio al abrir drawer de órdenes
   const handleOpenLabDrawer = async () => {
@@ -415,7 +569,26 @@ export default function EspacioClinicoPage() {
   // 2. Guardado automático (Debounce 3 segundos)
   const executeAutoSave = useCallback(
     async (payload) => {
-      if (isReadOnly || !appointment) return;
+      if (isReadOnly) return;
+
+      if (isDraftMode) {
+        try {
+          const draftData = {
+            ...payload,
+            recipeItems,
+            recipeIndications,
+            identifiedPatient,
+            savedAt: Date.now()
+          };
+          localStorage.setItem('citamed_draft_new', JSON.stringify(draftData));
+          setSaveStatus('saved');
+        } catch (lsErr) {
+          console.warn('[EspacioClinico] Fallo al escribir borrador en localStorage:', lsErr);
+        }
+        return;
+      }
+
+      if (!appointment) return;
 
       const payloadStr = JSON.stringify(payload);
       if (payloadStr === lastSavedPayloadRef.current) {
@@ -464,12 +637,12 @@ export default function EspacioClinicoPage() {
         }
       }
     },
-    [isReadOnly, appointment]
+    [isReadOnly, isDraftMode, appointment, recipeItems, recipeIndications, identifiedPatient]
   );
 
   // Disparar temporizador al modificar notas, signos o examen físico
   useEffect(() => {
-    if (loading || isReadOnly || !appointment) return;
+    if (loading || isReadOnly || (!appointment && !isDraftMode)) return;
 
     if (autoSaveTimerRef.current) {
       clearTimeout(autoSaveTimerRef.current);
@@ -489,7 +662,7 @@ export default function EspacioClinicoPage() {
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
-  }, [soapNote, vitalSigns, physicalExam, doctorNotes, loading, isReadOnly, appointment, executeAutoSave]);
+  }, [soapNote, vitalSigns, physicalExam, doctorNotes, recipeItems, recipeIndications, loading, isReadOnly, appointment, isDraftMode, executeAutoSave]);
 
   // Restaurar borrador local
   const handleRestoreLocalDraft = () => {
@@ -502,6 +675,15 @@ export default function EspacioClinicoPage() {
   };
 
   const handleDiscardLocalDraft = () => {
+    if (isDraftMode) {
+      try {
+        localStorage.removeItem('citamed_draft_new');
+      } catch {
+        // Ignorar
+      }
+      setNewDraftAlert(null);
+      return;
+    }
     if (appointment) {
       try {
         localStorage.removeItem(`citamed_draft_apt_${appointment.id}`);
@@ -594,6 +776,7 @@ export default function EspacioClinicoPage() {
   // Emisión de Orden de Exámenes
   const handleCreateLabOrder = async (e) => {
     e.preventDefault();
+    if (guardDraftMode('emitir orden de exámenes')) return;
     if (selectedExams.length === 0 && !labOtherExams.trim()) {
       alert('Debes seleccionar al menos un examen o escribir uno en otros exámenes.');
       return;
@@ -629,6 +812,7 @@ export default function EspacioClinicoPage() {
   // Emisión de Reposo Médico
   const handleCreateRestNote = async (e) => {
     e.preventDefault();
+    if (guardDraftMode('emitir reposo médico')) return;
     setSubmittingDoc(true);
     try {
       const res = await medicalDocumentService.create({
@@ -656,6 +840,7 @@ export default function EspacioClinicoPage() {
   // Emisión de Constancia
   const handleCreateCertificate = async (e) => {
     e.preventDefault();
+    if (guardDraftMode('emitir constancia médica')) return;
     setSubmittingDoc(true);
     try {
       const res = await medicalDocumentService.create({
@@ -682,6 +867,7 @@ export default function EspacioClinicoPage() {
   // Emisión de Informe Médico
   const handleCreateReport = async (e) => {
     e.preventDefault();
+    if (guardDraftMode('emitir informe médico')) return;
     if (!reportBody.trim()) {
       alert('El informe médico debe contener texto.');
       return;
@@ -709,6 +895,7 @@ export default function EspacioClinicoPage() {
   // Subir Archivo Adjunto
   const handleUploadAttachment = async (e) => {
     e.preventDefault();
+    if (guardDraftMode('adjuntar archivos')) return;
     if (!attachmentFile) {
       alert('Por favor selecciona un archivo.');
       return;
@@ -778,8 +965,9 @@ export default function EspacioClinicoPage() {
   // Agregar Alergia al paciente
   const handleAddAllergySubmit = async (e) => {
     e.preventDefault();
+    if (guardDraftMode('registrar alergias')) return;
     if (!newAllergen.trim()) return;
-    const pId = appointment.patientId || appointment.patient?.id;
+    const pId = appointment?.patientId || appointment?.patient?.id || identifiedPatient?.id;
     try {
       const res = await clinicalRecordService.addPatientAllergy(pId, {
         allergen: newAllergen.trim(),
@@ -804,8 +992,9 @@ export default function EspacioClinicoPage() {
   // Agregar Antecedente al paciente
   const handleAddConditionSubmit = async (e) => {
     e.preventDefault();
+    if (guardDraftMode('registrar antecedentes')) return;
     if (!newConditionName.trim()) return;
-    const pId = appointment.patientId || appointment.patient?.id;
+    const pId = appointment?.patientId || appointment?.patient?.id || identifiedPatient?.id;
     try {
       const res = await clinicalRecordService.addPatientCondition(pId, {
         condition: newConditionName.trim(),
@@ -919,6 +1108,12 @@ export default function EspacioClinicoPage() {
 
   // 3. Finalizar Consulta Médica
   const handleCompleteConsultation = async () => {
+    if (isDraftMode) {
+      setConfirmCompleteOpen(false);
+      setDrawerIdentifyPatient(true);
+      toast.error('Debes identificar al paciente para finalizar y registrar la consulta');
+      return;
+    }
     setCompleting(true);
     try {
       // 3.1 PUT /api/appointments/:id/complete
@@ -991,7 +1186,7 @@ export default function EspacioClinicoPage() {
     );
   }
 
-  if (accessDenied || !appointment) {
+  if (!isDraftMode && (accessDenied || !appointment)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
         <div className="max-w-md w-full bg-white rounded-xl shadow-lg border border-slate-200 p-6 text-center">
@@ -1011,11 +1206,19 @@ export default function EspacioClinicoPage() {
     );
   }
 
-  const patient = appointment.patient || {};
-  const patientProfile = patient.patientProfile || patientRecord?.patientProfile || {};
-  const patientFullName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Paciente sin nombre';
+  const patient = isDraftMode
+    ? (identifiedPatient || {})
+    : (appointment?.patient || {});
+  const patientProfile = isDraftMode
+    ? (identifiedPatient?.patientProfile || patientRecord?.patientProfile || {})
+    : (patient.patientProfile || patientRecord?.patientProfile || {});
+  const patientFullName = isDraftMode
+    ? (identifiedPatient
+        ? `${identifiedPatient.firstName || ''} ${identifiedPatient.lastName || ''}`.trim()
+        : 'Paciente sin identificar')
+    : (`${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Paciente sin nombre');
   const allergiesList = patientRecord?.allergies || patientProfile?.allergies || [];
-  const currentDocs = documents.filter((d) => d.appointmentId === appointment.id);
+  const currentDocs = isDraftMode ? [] : documents.filter((d) => d.appointmentId === appointment?.id);
 
   return (
     <div className="espacio-clinico-container">
@@ -1032,6 +1235,29 @@ export default function EspacioClinicoPage() {
             </Link>
             <div className="ec-patient-meta">
               <span className="ec-patient-name">{patientFullName}</span>
+              {isDraftMode && !identifiedPatient && (
+                <button
+                  type="button"
+                  onClick={() => setDrawerIdentifyPatient(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary text-white text-xs font-bold rounded-lg shadow-sm hover:bg-primary/90 transition animate-pulse"
+                >
+                  <UserPlus className="w-3.5 h-3.5" /> Identificar paciente
+                </button>
+              )}
+              {isDraftMode && identifiedPatient && (
+                <div className="inline-flex items-center gap-1">
+                  <span className="ec-chip font-bold text-teal-800 bg-teal-100">
+                    <Check className="w-3 h-3 text-teal-600 inline mr-0.5" /> Identificado
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setDrawerIdentifyPatient(true)}
+                    className="text-xs text-primary font-medium hover:underline ml-1"
+                  >
+                    Cambiar
+                  </button>
+                </div>
+              )}
               {patientAge !== null && <span className="ec-chip">{patientAge} años</span>}
               {patientProfile.gender && (
                 <span className="ec-chip">
@@ -1043,10 +1269,10 @@ export default function EspacioClinicoPage() {
               )}
               <span className="ec-chip flex items-center gap-1">
                 <Clock className="w-3 h-3 text-slate-400" />
-                {appointment.appointmentDate} · {appointment.appointmentTime}
+                {appointment?.appointmentDate || 'Hoy'} · {appointment?.appointmentTime || 'Ahora'}
               </span>
-              <span className={`ec-chip ${isReadOnly ? 'ec-chip-completed' : 'ec-chip-in-progress'}`}>
-                {isReadOnly ? 'Consulta finalizada' : 'En consulta'}
+              <span className={`ec-chip ${isDraftMode ? 'ec-chip-draft bg-amber-100 text-amber-800 border-amber-300' : isReadOnly ? 'ec-chip-completed' : 'ec-chip-in-progress'}`}>
+                {isDraftMode ? 'Consulta sin cita' : isReadOnly ? 'Consulta finalizada' : 'En consulta'}
               </span>
             </div>
           </div>
@@ -1054,7 +1280,14 @@ export default function EspacioClinicoPage() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setDrawerFullRecord(true)}
+              onClick={() => {
+                if (isDraftMode && !identifiedPatient) {
+                  setDrawerIdentifyPatient(true);
+                  toast('Identifica al paciente para consultar su historia clínica', { icon: 'ℹ️' });
+                } else {
+                  setDrawerFullRecord(true);
+                }
+              }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary bg-primary/10 border border-primary/20 rounded-lg hover:bg-primary/20 transition"
             >
               <History className="w-3.5 h-3.5" />
@@ -1131,8 +1364,55 @@ export default function EspacioClinicoPage() {
         </nav>
       </header>
 
-      {/* Banner de aviso de borrador local no guardado */}
-      {localDraftAlert && (
+      {/* Banner de aviso de borrador no guardado para nueva consulta sin cita */}
+      {isDraftMode && newDraftAlert && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-amber-800 text-sm">
+            <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600" />
+            <span>
+              Tienes un borrador previo de consulta sin cita en este equipo (guardado a las{' '}
+              {new Date(newDraftAlert.savedAt).toLocaleTimeString('es-VE')}). ¿Deseas continuarlo?
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (newDraftAlert.soapNote) setSoapNote(newDraftAlert.soapNote);
+                if (newDraftAlert.vitalSigns) setVitalSigns(newDraftAlert.vitalSigns);
+                if (newDraftAlert.physicalExam) setPhysicalExam(newDraftAlert.physicalExam);
+                if (newDraftAlert.doctorNotes) setDoctorNotes(newDraftAlert.doctorNotes);
+                if (newDraftAlert.recipeItems) setRecipeItems(newDraftAlert.recipeItems);
+                if (newDraftAlert.recipeIndications) setRecipeIndications(newDraftAlert.recipeIndications);
+                if (newDraftAlert.identifiedPatient) setIdentifiedPatient(newDraftAlert.identifiedPatient);
+                setNewDraftAlert(null);
+                toast.success('Borrador restaurado');
+              }}
+              className="px-3 py-1 bg-amber-600 text-white rounded text-xs font-semibold hover:bg-amber-700 transition"
+            >
+              Continuar borrador
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  localStorage.removeItem('citamed_draft_new');
+                } catch {
+                  // Ignorar
+                }
+                setNewDraftAlert(null);
+                toast('Borrador descartado', { icon: '🗑️' });
+              }}
+              className="px-3 py-1 border border-amber-300 text-amber-700 rounded text-xs font-medium hover:bg-amber-100 transition"
+            >
+              Empezar de cero
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Banner de aviso de borrador local no guardado para cita existente */}
+      {!isDraftMode && localDraftAlert && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-amber-800 text-sm">
             <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600" />
@@ -1172,7 +1452,7 @@ export default function EspacioClinicoPage() {
               </span>
             </div>
             <p className="text-xs text-slate-700 italic">
-              "{appointment.reasonForVisit || 'Sin motivo registrado al agendar'}"
+              "{appointment?.reasonForVisit || (isDraftMode ? 'Consulta sin cita previa' : 'Sin motivo registrado al agendar')}"
             </p>
           </div>
 
@@ -1185,7 +1465,9 @@ export default function EspacioClinicoPage() {
               {!isReadOnly && (
                 <button
                   type="button"
-                  onClick={() => setDrawerAddCondition(true)}
+                  onClick={() => {
+                    if (!guardDraftMode('registrar antecedentes')) setDrawerAddCondition(true);
+                  }}
                   className="text-xs font-semibold text-primary hover:underline flex items-center gap-0.5"
                 >
                   <Plus className="w-3 h-3" /> Agregar
@@ -1203,7 +1485,11 @@ export default function EspacioClinicoPage() {
                   </div>
                 ))
               ) : (
-                <p className="text-xs text-slate-400">Sin antecedentes patológicos registrados</p>
+                <p className="text-xs text-slate-400">
+                  {isDraftMode && !identifiedPatient
+                    ? 'Identifica al paciente para ver antecedentes'
+                    : 'Sin antecedentes patológicos registrados'}
+                </p>
               )}
             </div>
           </div>
@@ -1217,7 +1503,9 @@ export default function EspacioClinicoPage() {
               {!isReadOnly && (
                 <button
                   type="button"
-                  onClick={() => setDrawerAddAllergy(true)}
+                  onClick={() => {
+                    if (!guardDraftMode('registrar alergias')) setDrawerAddAllergy(true);
+                  }}
                   className="text-xs font-semibold text-primary hover:underline flex items-center gap-0.5"
                 >
                   <Plus className="w-3 h-3" /> Agregar
@@ -1232,7 +1520,11 @@ export default function EspacioClinicoPage() {
                   </div>
                 ))
               ) : (
-                <p className="text-xs text-slate-400">Sin alergias conocidas</p>
+                <p className="text-xs text-slate-400">
+                  {isDraftMode && !identifiedPatient
+                    ? 'Identifica al paciente para ver alergias'
+                    : 'Sin alergias conocidas'}
+                </p>
               )}
             </div>
           </div>
@@ -1245,7 +1537,9 @@ export default function EspacioClinicoPage() {
               </span>
             </div>
             <div className="space-y-2">
-              {pastConsultations.length > 0 ? (
+              {isDraftMode && !identifiedPatient ? (
+                <p className="text-xs text-slate-400">Identifica al paciente para ver consultas anteriores</p>
+              ) : pastConsultations.length > 0 ? (
                 pastConsultations.slice(0, 5).map((past) => (
                   <div
                     key={past.id}
@@ -1874,6 +2168,23 @@ export default function EspacioClinicoPage() {
               </h2>
             </div>
 
+            {/* Banner en modo borrador */}
+            {isDraftMode && (
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between text-xs text-amber-800">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  Identifica al paciente para emitir órdenes, reposos, constancias e informes oficiales.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setDrawerIdentifyPatient(true)}
+                  className="px-2.5 py-1 bg-primary text-white font-bold rounded text-xs hover:bg-primary/90 flex-shrink-0 shadow-sm"
+                >
+                  Identificar paciente
+                </button>
+              </div>
+            )}
+
             {/* Botones de Emisión Rápida */}
             <div className="flex items-center gap-2.5 flex-wrap mb-4 pb-4 border-b border-slate-100">
               <button
@@ -1885,14 +2196,18 @@ export default function EspacioClinicoPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setDrawerRestNote(true)}
+                onClick={() => {
+                  if (!guardDraftMode('emitir reposo médico')) setDrawerRestNote(true);
+                }}
                 className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-semibold transition"
               >
                 <Clock className="w-4 h-4" /> Reposo médico
               </button>
               <button
                 type="button"
-                onClick={() => setDrawerCertificate(true)}
+                onClick={() => {
+                  if (!guardDraftMode('emitir constancia médica')) setDrawerCertificate(true);
+                }}
                 className="inline-flex items-center gap-1.5 px-3 py-2 bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 rounded-lg text-xs font-semibold transition"
               >
                 <FileCheck className="w-4 h-4" /> Constancia médica
@@ -1906,7 +2221,9 @@ export default function EspacioClinicoPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setDrawerAttachment(true)}
+                onClick={() => {
+                  if (!guardDraftMode('adjuntar archivos')) setDrawerAttachment(true);
+                }}
                 disabled={!storageAvailable}
                 className={`inline-flex items-center gap-1.5 px-3 py-2 border rounded-lg text-xs font-semibold transition ${
                   storageAvailable
@@ -2038,7 +2355,8 @@ export default function EspacioClinicoPage() {
         <div className="ec-save-indicator">
           {saveStatus === 'saved' && (
             <span className="text-emerald-700 flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Guardado
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              {isDraftMode ? 'Borrador guardado en este equipo' : 'Guardado'}
             </span>
           )}
           {saveStatus === 'saving' && (
@@ -2066,6 +2384,17 @@ export default function EspacioClinicoPage() {
               className="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-semibold hover:bg-slate-700 transition"
             >
               Ver resumen de documentos
+            </button>
+          ) : isDraftMode ? (
+            <button
+              type="button"
+              onClick={() => {
+                setDrawerIdentifyPatient(true);
+                toast('Identifica al paciente para finalizar y guardar la consulta', { icon: 'ℹ️' });
+              }}
+              className="px-5 py-2.5 bg-primary text-white rounded-lg text-sm font-bold shadow hover:bg-primary/90 transition flex items-center gap-2"
+            >
+              <UserPlus className="w-4 h-4" /> Identificar paciente para finalizar
             </button>
           ) : (
             <button
@@ -2782,6 +3111,19 @@ export default function EspacioClinicoPage() {
           </div>
         </div>
       </SideDrawer>
+
+      {/* SideDrawer: Identificar Paciente (Consulta sin cita / Walk-in) */}
+      <IdentifyPatientDrawer
+        open={drawerIdentifyPatient}
+        onClose={() => {
+          setDrawerIdentifyPatient(false);
+          setIdentifyError('');
+        }}
+        onSelectExistingPatient={handleIdentifyExistingPatient}
+        onCreateNewPatient={handleCreateNewPatient}
+        loading={identifyingLoading}
+        errorMessage={identifyError}
+      />
     </div>
   );
 }

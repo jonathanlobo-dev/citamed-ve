@@ -32,6 +32,14 @@ const appointmentService = {
     api.post('/appointments', appointmentData).then((res) => res.data),
 
   /**
+   * Crear una consulta médica sin cita previa (Walk-in).
+   * @param {Object} data - { patientId, reasonForVisit } o { newPatient: {...}, reasonForVisit }
+   * @returns {Promise<{success: boolean, appointment: Object, patient: Object, linkedExisting: boolean}>}
+   */
+  createWalkIn: (data) =>
+    api.post('/appointments/walk-in', data).then((res) => res.data),
+
+  /**
    * Obtener las citas del usuario autenticado (paciente o médico).
    * @param {Object} [params] - { page, limit, upcoming }
    * @returns {Promise<{success: boolean, data: Array}>} data = lista de citas

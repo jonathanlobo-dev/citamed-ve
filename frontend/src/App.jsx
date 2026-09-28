@@ -131,6 +131,16 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/medico/consulta/nueva"
+        element={
+          <ProtectedRoute allowedRoles={['doctor']}>
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
+              <EspacioClinicoPage />
+            </Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/medico/consulta/:appointmentId"
         element={
           <ProtectedRoute allowedRoles={['doctor']}>
