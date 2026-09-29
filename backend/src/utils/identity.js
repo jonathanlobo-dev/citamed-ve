@@ -64,7 +64,24 @@ function normalizePhoneVE(phone) {
   return cleaned;
 }
 
+/**
+ * Cédula para mostrar. El número se guarda ya con su letra ('V-18222333'); identificationType
+ * es el tipo de documento ('CI', 'passport'), no la letra, así que no se antepone.
+ * Registros viejos sin guion ('V18222333') o solo con dígitos se completan.
+ * @param {string} identificationNumber
+ * @returns {string|null}
+ */
+function formatCedula(identificationNumber) {
+  if (!identificationNumber) return null;
+  const raw = String(identificationNumber).trim().toUpperCase();
+  const withLetter = raw.match(/^([VEJ])-?(\d[\d.]*)$/);
+  if (withLetter) return `${withLetter[1]}-${withLetter[2].replace(/\./g, '')}`;
+  if (/^\d[\d.]*$/.test(raw)) return `V-${raw.replace(/\./g, '')}`;
+  return raw;
+}
+
 module.exports = {
   normalizeCedula,
-  normalizePhoneVE
+  normalizePhoneVE,
+  formatCedula
 };

@@ -4,6 +4,7 @@
  */
 
 const { Op } = require('sequelize');
+const { formatCedula } = require('../utils/identity');
 const db = require('../models');
 const { todayCaracas } = require('../utils/dateCaracas');
 const { calculateAge, doctorTitle } = require('./pdf/pdfLayout');
@@ -123,7 +124,7 @@ async function getDoctorPatients(doctorId, { search = '', page = 1, limit = 20 }
         phone: p.phone,
         gender: p.gender,
         identificationNumber: profile.identificationNumber
-          ? `${profile.identificationType || 'V'}-${profile.identificationNumber}`
+          ? formatCedula(profile.identificationNumber)
           : 'No registrada',
         age: calculateAge(profile.dateOfBirth),
         bloodType: profile.bloodType || null,
@@ -294,7 +295,7 @@ async function getPatientRecordForDoctor(patientId, doctorId, userRole) {
       phone: patient.phone,
       gender: patient.gender,
       identificationNumber: profile.identificationNumber
-        ? `${profile.identificationType || 'V'}-${profile.identificationNumber}`
+        ? formatCedula(profile.identificationNumber)
         : 'No registrada',
       age: calculateAge(profile.dateOfBirth),
       dateOfBirth: profile.dateOfBirth || null,
@@ -585,7 +586,7 @@ async function getMyClinicalRecord(patientUserId) {
       phone: patient.phone,
       gender: patient.gender,
       identificationNumber: profile.identificationNumber
-        ? `${profile.identificationType || 'V'}-${profile.identificationNumber}`
+        ? formatCedula(profile.identificationNumber)
         : 'No registrada',
       age: calculateAge(profile.dateOfBirth),
       dateOfBirth: profile.dateOfBirth || null,
