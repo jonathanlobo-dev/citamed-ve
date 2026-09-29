@@ -56,6 +56,7 @@ import medicalDocumentService from '../../services/medicalDocumentService';
 import clinicalRecordService from '../../services/clinicalRecordService';
 import ClinicalTextField from '../../components/clinical/ClinicalTextField';
 import SideDrawer from '../../components/common/SideDrawer/SideDrawer';
+import { CONDITION_STATUS_LABELS } from '../../utils/physicalExamLabels';
 import IdentifyPatientDrawer from '../../components/clinical/IdentifyPatientDrawer';
 import useSpeechDictation from '../../hooks/useSpeechDictation';
 import aiService from '../../services/aiService';
@@ -68,6 +69,17 @@ import { ADULT_VITAL_RANGES, isVitalAbnormal, calculateBMI } from '../../utils/v
 import { shareDocument, prefetchDocumentPdf } from '../../utils/shareDocument';
 import { getCompanionSuggestions, checkMedicationAllergy } from '../../utils/companionRules';
 import './EspacioClinicoPage.css';
+
+const APPOINTMENT_STATUS_LABELS = {
+  pending: 'Pendiente',
+  confirmed: 'Confirmada',
+  in_progress: 'En curso',
+  completed: 'Finalizada',
+  cancelled_patient: 'Cancelada',
+  cancelled_doctor: 'Cancelada',
+  no_show: 'No asistió',
+  rescheduled: 'Reprogramada'
+};
 
 const SEVERITY_LABELS = {
   mild: 'leve',
@@ -1483,7 +1495,7 @@ export default function EspacioClinicoPage() {
       });
       setPatientRecord((prev) => ({
         ...prev,
-        conditions: [...(prev?.conditions || []), res.data]
+        medicalHistory: [...(prev?.medicalHistory || []), res.data]
       }));
       setDrawerAddCondition(false);
       setNewConditionName('');
@@ -1698,6 +1710,7 @@ export default function EspacioClinicoPage() {
         ? `${identifiedPatient.firstName || ''} ${identifiedPatient.lastName || ''}`.trim()
         : 'Paciente sin identificar')
     : (`${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Paciente sin nombre');
+  const recordPatient = patientRecord?.patient || {};
   const allergiesList = patientRecord?.allergies || patientProfile?.allergies || [];
   const currentDocs = isDraftMode ? [] : documents.filter((d) => d.appointmentId === appointment?.id);
 
@@ -1947,11 +1960,13 @@ export default function EspacioClinicoPage() {
             <div className="space-y-1.5">
               {loadingRecord ? (
                 <p className="text-xs text-slate-400 animate-pulse">Cargando ficha del paciente...</p>
-              ) : patientRecord?.conditions?.length > 0 ? (
-                patientRecord.conditions.map((c, i) => (
-                  <div key={i} className="text-xs text-slate-700 py-0.5 border-b border-slate-50">
-                    <span className="font-semibold text-slate-800">{c.condition || c.name}</span>
-                    {c.type && <span className="text-slate-400 ml-1">({c.type})</span>}
+              ) : patientRecord?.medicalHistory?.length > 0 ? (
+                patientRecord.medicalHistory.map((c, i) => (
+                  <div key={c.id || i} className="text-xs text-slate-700 py-0.5 border-b border-slate-50">
+                    <span className="font-semibold text-slate-800">{c.condition}</span>
+                    {c.status && (
+                      <span className="text-slate-400 ml-1">({CONDITION_STATUS_LABELS[c.status] || c.status})</span>
+                    )}
                   </div>
                 ))
               ) : (
@@ -3281,10 +3296,18 @@ export default function EspacioClinicoPage() {
       >
         <div className="space-y-4">
           <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs space-y-1">
-            <p><strong>Cédula:</strong> {patientProfile.identificationNumber || 'N/A'}</p>
-            <p><strong>Teléfono:</strong> {patient.phone || 'N/A'}</p>
-            <p><strong>Tipo de sangre:</strong> {patientProfile.bloodType || 'No especificado'}</p>
-            <p><strong>Contacto de emergencia:</strong> {patientProfile.emergencyContactName || 'N/A'} ({patientProfile.emergencyContactPhone || 'N/A'})</p>
+            <p>
+              <strong>Cédula:</strong>{' '}
+              {recordPatient.identificationNumber
+                ? String(recordPatient.identificationNumber).replace(/^CI-/, '')
+                : 'No registrada'}
+            </p>
+            <p><strong>Teléfono:</strong> {recordPatient.phone || patient.phone || 'No registrado'}</p>
+            {recordPatient.age && <p><strong>Edad:</strong> {recordPatient.age}</p>}
+            <p>
+              <strong>Tipo de sangre:</strong>{' '}
+              {recordPatient.bloodType && recordPatient.bloodType !== 'unknown' ? recordPatient.bloodType : 'No registrado'}
+            </p>
           </div>
 
           <div>
@@ -3304,11 +3327,13 @@ export default function EspacioClinicoPage() {
 
           <div>
             <h4 className="text-xs font-bold text-slate-700 uppercase mb-1">Antecedentes Médicos</h4>
-            {patientRecord?.conditions?.length > 0 ? (
+            {patientRecord?.medicalHistory?.length > 0 ? (
               <ul className="text-xs space-y-1 list-disc list-inside text-slate-700">
-                {patientRecord.conditions.map((c, i) => (
-                  <li key={i}>
-                    <strong>{c.condition || c.name}:</strong> {c.notes || c.type || ''}
+                {patientRecord.medicalHistory.map((c, i) => (
+                  <li key={c.id || i}>
+                    <strong>{c.condition}</strong>
+                    {c.status ? ` (${CONDITION_STATUS_LABELS[c.status] || c.status})` : ''}
+                    {c.notes ? `: ${c.notes}` : ''}
                   </li>
                 ))}
               </ul>
@@ -3321,16 +3346,35 @@ export default function EspacioClinicoPage() {
             <h4 className="text-xs font-bold text-slate-700 uppercase mb-1">Historial de Consultas</h4>
             {patientRecord?.consultations?.length > 0 ? (
               <div className="space-y-2">
-                {patientRecord.consultations.map((c) => (
-                  <div key={c.id} className="p-2.5 rounded border border-slate-200 bg-white text-xs space-y-1">
-                    <div className="flex justify-between font-bold text-slate-800">
-                      <span>{c.appointmentDate} · {c.appointmentTime}</span>
-                      <span className="text-emerald-700">{c.status}</span>
-                    </div>
-                    <p><strong>Diagnóstico:</strong> {c.diagnosis || 'N/A'}</p>
-                    {c.soapNote?.assessment && <p><strong>SOAP:</strong> {c.soapNote.assessment}</p>}
-                  </div>
-                ))}
+                {patientRecord.consultations.map((c) => {
+                  const isCurrent = c.id === appointment?.id;
+                  const diagnosis = c.diagnosis || c.soapNote?.assessment;
+                  return (
+                    <button
+                      type="button"
+                      key={c.id}
+                      disabled={isCurrent}
+                      onClick={() => {
+                        setDrawerFullRecord(false);
+                        setDrawerPastConsultation(c);
+                      }}
+                      className="w-full text-left p-2.5 rounded border border-slate-200 bg-white text-xs space-y-1 hover:border-primary/40 hover:bg-slate-50 transition disabled:hover:border-slate-200 disabled:hover:bg-white disabled:cursor-default"
+                    >
+                      <div className="flex justify-between gap-2 font-bold text-slate-800">
+                        <span>
+                          {c.appointmentDate} · {String(c.appointmentTime || '').slice(0, 5)}
+                        </span>
+                        <span className={isCurrent ? 'text-sky-700' : c.status === 'completed' ? 'text-emerald-700' : 'text-slate-500'}>
+                          {isCurrent ? 'Consulta actual' : APPOINTMENT_STATUS_LABELS[c.status] || c.status}
+                        </span>
+                      </div>
+                      <p className="text-slate-600">{c.reasonForVisit || 'Sin motivo registrado'}</p>
+                      <p>
+                        <strong>Diagnóstico:</strong> {diagnosis || 'Sin diagnóstico todavía'}
+                      </p>
+                    </button>
+                  );
+                })}
               </div>
             ) : (
               <p className="text-xs text-slate-400">Sin consultas registradas previamente</p>
