@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import { FEATURES } from '../../../config/features';
 import Button from '../Button/button';
 import { LogOut, User, Calendar, Menu, X, Home, Grid, Stethoscope, Building2, Shield, HelpCircle, Search, MapPin, Star } from 'lucide-react';
 import searchService from '../../../services/searchService';
@@ -272,7 +273,7 @@ function Navbar() {
                     </span>
                   </div>
                 </div>
-                {user.role === 'admin' ? (
+                {user.role === 'admin' && FEATURES.superadmin ? (
                   <Button
                     variant="primary"
                     size="sm"
@@ -385,7 +386,7 @@ function Navbar() {
                         : 'Proveedor'}
                     </span>
                   </div>
-                  {user.role === 'admin' ? (
+                  {user.role === 'admin' && FEATURES.superadmin ? (
                     <Button
                       variant="primary"
                       size="md"

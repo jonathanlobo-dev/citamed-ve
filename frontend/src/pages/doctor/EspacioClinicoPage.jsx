@@ -58,6 +58,7 @@ import ClinicalTextField from '../../components/clinical/ClinicalTextField';
 import SideDrawer from '../../components/common/SideDrawer/SideDrawer';
 import { CONDITION_STATUS_LABELS } from '../../utils/physicalExamLabels';
 import IdentifyPatientDrawer from '../../components/clinical/IdentifyPatientDrawer';
+import { FEATURES } from '../../config/features';
 import useSpeechDictation from '../../hooks/useSpeechDictation';
 import aiService from '../../services/aiService';
 import useAudioRecorder from '../../hooks/useAudioRecorder';
@@ -304,7 +305,8 @@ export default function EspacioClinicoPage() {
   }, [aiDraftText, aiStatus, loading, activeTab]);
 
   // Dictado con IA solo si hay transcripción disponible y la consulta ya existe; si no, el navegador
-  const aiDictationReady = Boolean(aiStatus?.transcriptionAvailable && appointment && !isReadOnly);
+  const aiEnabled = Boolean(FEATURES.ai && aiStatus?.enabled && aiStatus?.available);
+  const aiDictationReady = Boolean(aiEnabled && aiStatus?.transcriptionAvailable && appointment && !isReadOnly);
   const transcribeForField = useCallback(
     async (blob, mimeType) => {
       const res = await aiService.transcribe({ appointmentId: appointment.id, audioBlob: blob, mimeType });
@@ -353,7 +355,8 @@ export default function EspacioClinicoPage() {
   }, [physicalExam, soapNote.objective]);
 
   useEffect(() => {
-    fetchAiStatus();
+    // En producción la IA se libera por entrega (config/features.js); sin estado no se muestra nada de IA
+    if (FEATURES.ai) fetchAiStatus();
   }, [fetchAiStatus]);
 
   // Restaurar estado transferido si viene de vincular paciente en consulta sin cita
@@ -2297,9 +2300,9 @@ export default function EspacioClinicoPage() {
               rows={4}
               readOnly={isReadOnly}
               onAiTranscribe={aiDictationReady ? transcribeForField : null}
-              onImprove={(t) =>
+              onImprove={aiEnabled ? (t) =>
                 handleImproveField('Subjetivo', t, (val) => setSoapNote((p) => ({ ...p, subjective: val })))
-              }
+              : null}
               improving={improvingFieldId === 'Subjetivo'}
             />
           </section>
@@ -2634,9 +2637,9 @@ export default function EspacioClinicoPage() {
                     rows={3}
                     readOnly={isReadOnly}
                     onAiTranscribe={aiDictationReady ? transcribeForField : null}
-                    onImprove={(t) =>
+                    onImprove={aiEnabled ? (t) =>
                       handleImproveField('Objetivo', t, (val) => setSoapNote((p) => ({ ...p, objective: val })))
-                    }
+                    : null}
                     improving={improvingFieldId === 'Objetivo'}
                   />
                 </div>
@@ -2664,9 +2667,9 @@ export default function EspacioClinicoPage() {
               readOnly={isReadOnly}
               required
               onAiTranscribe={aiDictationReady ? transcribeForField : null}
-              onImprove={(t) =>
+              onImprove={aiEnabled ? (t) =>
                 handleImproveField('Evaluación', t, (val) => setSoapNote((p) => ({ ...p, assessment: val })))
-              }
+              : null}
               improving={improvingFieldId === 'Evaluación'}
             />
           </section>
@@ -2690,9 +2693,9 @@ export default function EspacioClinicoPage() {
               rows={3}
               readOnly={isReadOnly}
               onAiTranscribe={aiDictationReady ? transcribeForField : null}
-              onImprove={(t) =>
+              onImprove={aiEnabled ? (t) =>
                 handleImproveField('Plan', t, (val) => setSoapNote((p) => ({ ...p, plan: val })))
-              }
+              : null}
               improving={improvingFieldId === 'Plan'}
             />
           </section>
@@ -2711,6 +2714,8 @@ export default function EspacioClinicoPage() {
               </h2>
               {!isReadOnly && (
                 <div className="flex items-center gap-2 flex-wrap">
+                  {aiEnabled && (
+                  <>
                   {/* Dictar Récipe (D6) */}
                   {audioRecorder.isRecording && audioTarget === 'recipe' ? (
                     <div className="inline-flex items-center gap-1.5 bg-rose-50 border border-rose-300 px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-700 animate-pulse">
@@ -2781,6 +2786,8 @@ export default function EspacioClinicoPage() {
                     <FileText className="w-3.5 h-3.5 text-sky-600" />
                     <span>Desde texto</span>
                   </button>
+                  </>
+                  )}
 
                   <button
                     type="button"
@@ -3155,9 +3162,9 @@ export default function EspacioClinicoPage() {
               readOnly={isReadOnly}
               hint="Estas notas no se incluyen en ningún informe, récipe ni resumen que se entregue al paciente."
               onAiTranscribe={aiDictationReady ? transcribeForField : null}
-              onImprove={(t) =>
+              onImprove={aiEnabled ? (t) =>
                 handleImproveField('Notas privadas', t, (val) => setDoctorNotes(val))
-              }
+              : null}
               improving={improvingFieldId === 'Notas privadas'}
             />
           </section>

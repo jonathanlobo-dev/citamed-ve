@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { FEATURES } from '../config/features';
 
 const AuthContext = createContext(null);
 
@@ -169,7 +170,7 @@ export function AuthProvider({ children }) {
       case 'provider':
         return '/proveedor/dashboard';
       case 'admin':
-        return '/admin';
+        return FEATURES.superadmin ? '/admin' : '/admin/audit';
       default:
         return '/';
     }

@@ -10,6 +10,7 @@ const PatientMyRecordPage = lazy(() => import('./pages/patient/PatientMyRecordPa
 const EspacioClinicoPage = lazy(() => import('./pages/doctor/EspacioClinicoPage'));
 const VerificarDocumentoPage = lazy(() => import('./pages/public/VerificarDocumentoPage'));
 const AdminPanelPage = lazy(() => import('./pages/admin/AdminPanelPage'));
+import { FEATURES } from './config/features';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegistroPage from './pages/RegistroPage';
@@ -456,11 +457,15 @@ function AppRoutes() {
       <Route
         path="/admin"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
-              <AdminPanelPage />
-            </Suspense>
-          </ProtectedRoute>
+          FEATURES.superadmin ? (
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
+                <AdminPanelPage />
+              </Suspense>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to="/admin/audit" replace />
+          )
         }
       />
     </Routes>
