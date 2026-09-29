@@ -137,6 +137,13 @@
   gap: 1rem;
 }
 
+/* En pantallas angostas, la columna lateral solo acompaña a la pestaña Consulta */
+@media (max-width: 1024px) {
+  .ec-sidebar.ec-sidebar-hide-mobile {
+    display: none;
+  }
+}
+
 .ec-card {
   background: #ffffff;
   border-radius: 0.75rem;

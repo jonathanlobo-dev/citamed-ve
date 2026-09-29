@@ -231,7 +231,12 @@ export default function EspacioClinicoPage() {
   const [completing, setCompleting] = useState(false);
 
   // Ancla activa de navegación rápida
-  const [activeAnchor, setActiveAnchor] = useState('subjetivo');
+  // Pestañas del Espacio Clínico (como en NeosVet): consulta, récipe y órdenes/documentos
+  const [activeTab, setActiveTab] = useState('consulta');
+  const goToTab = (tab) => {
+    setActiveTab(tab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const isReadOnly = !isDraftMode && appointment?.status === 'completed';
 
@@ -284,7 +289,7 @@ export default function EspacioClinicoPage() {
     el.style.height = 'auto';
     const maxHeight = typeof window !== 'undefined' ? window.innerHeight * 0.6 : 500;
     el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
-  }, [aiDraftText, aiStatus, loading]);
+  }, [aiDraftText, aiStatus, loading, activeTab]);
 
   // Dictado con IA solo si hay transcripción disponible y la consulta ya existe; si no, el navegador
   const aiDictationReady = Boolean(aiStatus?.transcriptionAvailable && appointment && !isReadOnly);
@@ -491,6 +496,10 @@ export default function EspacioClinicoPage() {
 
           // Comprobar borrador en localStorage
           try {
+            // El borrador de IA solo vive en este equipo: se recupera siempre, sin preguntar
+            const savedAiDraft = localStorage.getItem(`citamed_ai_draft_${apt.id}`);
+            if (savedAiDraft) setAiDraftText((prev) => prev || savedAiDraft);
+
             const draftKey = `citamed_draft_apt_${apt.id}`;
             const rawDraft = localStorage.getItem(draftKey);
             if (rawDraft) {
@@ -696,24 +705,27 @@ export default function EspacioClinicoPage() {
 
       if (!appointment) return;
 
-      // Copia local primero: incluye el borrador de IA, que no va al servidor
+      // El borrador de IA no va al servidor: se guarda aparte en este equipo, para no
+      // disparar el aviso de "borrador local más reciente" de los campos clínicos
       try {
-        const draftKey = `citamed_draft_apt_${appointment.id}`;
-        localStorage.setItem(
-          draftKey,
-          JSON.stringify({
-            ...payload,
-            aiDraftText,
-            savedAt: Date.now()
-          })
-        );
-      } catch (lsErr) {
-        console.warn('[EspacioClinico] Fallo al escribir en localStorage:', lsErr);
+        localStorage.setItem(`citamed_ai_draft_${appointment.id}`, aiDraftText || '');
+      } catch {
+        // Ignorar
       }
 
       const payloadStr = JSON.stringify(payload);
       if (payloadStr === lastSavedPayloadRef.current) {
         return; // Sin cambios para el servidor
+      }
+
+      // Copia local de los campos clínicos por si falla la red
+      try {
+        localStorage.setItem(
+          `citamed_draft_apt_${appointment.id}`,
+          JSON.stringify({ ...payload, savedAt: Date.now() })
+        );
+      } catch (lsErr) {
+        console.warn('[EspacioClinico] Fallo al escribir en localStorage:', lsErr);
       }
 
       setSaveStatus('saving');
@@ -1057,7 +1069,12 @@ export default function EspacioClinicoPage() {
       setAiAppliedToRecipe(true);
     }
 
-    toast.success('Propuesta de IA aplicada a la consulta');
+    toast.success(
+      hasRecipeApplied
+        ? 'Propuesta aplicada. Los medicamentos están en la pestaña Récipe.'
+        : 'Propuesta de IA aplicada a la consulta',
+      { duration: 5000 }
+    );
   };
 
   const handleImproveField = async (fieldName, text, setter) => {
@@ -1613,6 +1630,7 @@ export default function EspacioClinicoPage() {
       // 3.3 Borrar borrador local
       try {
         localStorage.removeItem(`citamed_draft_apt_${appointment.id}`);
+        localStorage.removeItem(`citamed_ai_draft_${appointment.id}`);
       } catch {
         // Ignorar error al limpiar storage
       }
@@ -1773,57 +1791,37 @@ export default function EspacioClinicoPage() {
           </div>
         )}
 
-        {/* Anclas de navegación rápida */}
-        <nav className="ec-nav-anchors">
-          <a
-            href="#subjetivo"
-            onClick={() => setActiveAnchor('subjetivo')}
-            className={`ec-anchor-btn ${activeAnchor === 'subjetivo' ? 'active' : ''}`}
+        {/* Pestañas del Espacio Clínico */}
+        <nav className="ec-nav-anchors" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'consulta'}
+            onClick={() => goToTab('consulta')}
+            className={`ec-anchor-btn ${activeTab === 'consulta' ? 'active' : ''}`}
           >
-            1. Subjetivo
-          </a>
-          <a
-            href="#objetivo"
-            onClick={() => setActiveAnchor('objetivo')}
-            className={`ec-anchor-btn ${activeAnchor === 'objetivo' ? 'active' : ''}`}
+            Consulta
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'recipe'}
+            onClick={() => goToTab('recipe')}
+            className={`ec-anchor-btn ${activeTab === 'recipe' ? 'active' : ''}`}
           >
-            2. Objetivo (Signos y Examen)
-          </a>
-          <a
-            href="#evaluacion"
-            onClick={() => setActiveAnchor('evaluacion')}
-            className={`ec-anchor-btn ${activeAnchor === 'evaluacion' ? 'active' : ''}`}
+            Récipe{recipeItems.filter((it) => String(it.medication || '').trim()).length > 0
+              ? ` (${recipeItems.filter((it) => String(it.medication || '').trim()).length})`
+              : ''}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'documentos'}
+            onClick={() => goToTab('documentos')}
+            className={`ec-anchor-btn ${activeTab === 'documentos' ? 'active' : ''}`}
           >
-            3. Evaluación
-          </a>
-          <a
-            href="#plan"
-            onClick={() => setActiveAnchor('plan')}
-            className={`ec-anchor-btn ${activeAnchor === 'plan' ? 'active' : ''}`}
-          >
-            4. Plan
-          </a>
-          <a
-            href="#recipe"
-            onClick={() => setActiveAnchor('recipe')}
-            className={`ec-anchor-btn ${activeAnchor === 'recipe' ? 'active' : ''}`}
-          >
-            5. Récipe
-          </a>
-          <a
-            href="#documentos"
-            onClick={() => setActiveAnchor('documentos')}
-            className={`ec-anchor-btn ${activeAnchor === 'documentos' ? 'active' : ''}`}
-          >
-            6. Órdenes y Documentos ({currentDocs.length})
-          </a>
-          <a
-            href="#notas-privadas"
-            onClick={() => setActiveAnchor('notas-privadas')}
-            className={`ec-anchor-btn ${activeAnchor === 'notas-privadas' ? 'active' : ''}`}
-          >
-            7. Notas Privadas
-          </a>
+            Órdenes y documentos ({currentDocs.length})
+          </button>
         </nav>
       </header>
 
@@ -1915,7 +1913,7 @@ export default function EspacioClinicoPage() {
       {/* 2. LAYOUT PRINCIPAL: COLUMNA LATERAL Y ÁREA PRINCIPAL */}
       <div className="ec-main-layout">
         {/* COLUMNA LATERAL IZQUIERDA (Plegable) */}
-        <aside className="ec-sidebar">
+        <aside className={`ec-sidebar ${activeTab !== 'consulta' ? 'ec-sidebar-hide-mobile' : ''}`}>
           {/* Tarjeta: Motivo de la Cita */}
           <div className="ec-card">
             <div className="ec-card-header">
@@ -2070,6 +2068,8 @@ export default function EspacioClinicoPage() {
 
         {/* ÁREA PRINCIPAL: SECCIONES ANCLADAS */}
         <main className="space-y-6">
+          {activeTab === 'consulta' && (
+          <>
           {/* TARJETA ASISTENTE IA (D3) */}
           {!isReadOnly && aiStatus?.enabled && aiStatus?.available && (
             <div className="ec-card border-sky-300 bg-gradient-to-b from-sky-50/50 via-white to-white shadow-sm overflow-hidden" id="asistente-ia">
@@ -2681,8 +2681,11 @@ export default function EspacioClinicoPage() {
               improving={improvingFieldId === 'Plan'}
             />
           </section>
+          </>
+          )}
 
           {/* SECCIÓN 5: RÉCIPE MÉDICO */}
+          {activeTab === 'recipe' && (
           <section id="recipe" className="ec-card">
             <div className="ec-card-header">
               <h2 className="ec-card-title text-base">
@@ -2938,8 +2941,10 @@ export default function EspacioClinicoPage() {
             </div>
             )}
           </section>
+          )}
 
           {/* SECCIÓN 6: ÓRDENES Y DOCUMENTOS MÉDICOS */}
+          {activeTab === 'documentos' && (
           <section id="documentos" className="ec-card">
             <div className="ec-card-header">
               <h2 className="ec-card-title text-base">
@@ -3111,8 +3116,11 @@ export default function EspacioClinicoPage() {
               )}
             </div>
           </section>
+          )}
 
           {/* SECCIÓN 7: NOTAS PRIVADAS (doctorNotes) */}
+          {activeTab === 'consulta' && (
+          <>
           <section id="notas-privadas" className="ec-card border-amber-200 bg-amber-50/20">
             <div className="ec-card-header">
               <h2 className="ec-card-title text-base text-amber-900">
@@ -3138,6 +3146,26 @@ export default function EspacioClinicoPage() {
               improving={improvingFieldId === 'Notas privadas'}
             />
           </section>
+
+          {/* Paso siguiente, para no tener que volver arriba a las pestañas */}
+          <div className="flex flex-col sm:flex-row gap-3 justify-end">
+            <button
+              type="button"
+              onClick={() => goToTab('recipe')}
+              className="px-4 py-2.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-sm font-semibold hover:bg-primary/10 transition"
+            >
+              Ir al récipe →
+            </button>
+            <button
+              type="button"
+              onClick={() => goToTab('documentos')}
+              className="px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm font-semibold hover:bg-slate-50 transition"
+            >
+              Ir a órdenes y documentos →
+            </button>
+          </div>
+          </>
+          )}
         </main>
       </div>
 
