@@ -10,8 +10,8 @@
  */
 
 const RELEASED_IN_PRODUCTION = {
-  AI: false, // IA en el Espacio Clínico
-  SUPERADMIN: false // Panel de superadministración
+  AI: true, // IA en el Espacio Clínico (liberada)
+  SUPERADMIN: true // Panel de superadministración (liberado)
 };
 
 const branch = typeof __BUILD_BRANCH__ !== 'undefined' ? __BUILD_BRANCH__ : 'local';
