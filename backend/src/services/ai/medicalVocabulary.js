@@ -39,7 +39,7 @@ const DRUGS = [
   'ipratropio', 'beclometasona', 'loratadina', 'desloratadina', 'cetirizina', 'levocetirizina',
   'clorfeniramina', 'difenhidramina',
   // Neurología y salud mental
-  'sertralina', 'fluoxetina', 'escitalopram', 'amitriptilina', 'alprazolam', 'clonazepam', 'diazepam',
+  'sertralina', 'fluoxetina', 'escitalopram', 'amitriptilina', 'ciclobenzaprina', 'alprazolam', 'clonazepam', 'diazepam',
   'lorazepam', 'carbamazepina', 'fenitoína', 'levetiracetam', 'gabapentina', 'pregabalina', 'sumatriptán',
   // Otros
   'sildenafil', 'tamsulosina', 'finasterida', 'misoprostol', 'metilergometrina', 'oxitocina'
