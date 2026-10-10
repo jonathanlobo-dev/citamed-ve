@@ -442,12 +442,105 @@ module.exports = (sequelize) => {
   // HOOKS
   // ========================================
 
-  Appointment.beforeCreate(async (instance) => {
+  // Siguiente número de cita: el mayor número del año más uno. Contar las filas no sirve, porque
+  // al borrar citas el conteo baja y el número siguiente choca con uno que ya existe.
+  const nextAppointmentNumber = async (transaction) => {
+    const prefix = `CITA-${new Date().getFullYear()}-`;
+    if (transaction) {
+      // Serializa a quienes crean citas a la vez dentro de una transacción
+      await sequelize.query('SELECT pg_advisory_xact_lock(7001)', { transaction });
+    }
+    const [rows] = await sequelize.query(
+      `SELECT COALESCE(MAX(CAST(SUBSTRING("appointmentNumber" FROM '[0-9]+
+
+    // Calcular hora de finalización
+    instance.calculateEndTime();
+
+    // Inicializar historial de estado
+    if (!instance.statusHistory || instance.statusHistory.length === 0) {
+      instance.statusHistory = [{
+        status: instance.status,
+        timestamp: new Date(),
+        reason: 'Cita creada'
+      }];
+    }
+  });
+
+  Appointment.beforeUpdate(async (instance) => {
+    // Si cambió la duración o la hora, recalcular endTime
+    if (instance.changed('duration') || instance.changed('appointmentTime')) {
+      instance.calculateEndTime();
+    }
+
+    // Si cambió el estado, agregar al historial
+    if (instance.changed('status')) {
+      const previousStatus = instance._previousDataValues.status;
+      instance.statusHistory.push({
+        status: instance.status,
+        timestamp: new Date(),
+        previousStatus: previousStatus
+      });
+    }
+  });
+
+  // ========================================
+  // MÉTODOS ESTÁTICOS
+  // ========================================
+
+  Appointment.generateAppointmentNumber = async function() {
+    return nextAppointmentNumber();
+  };
+
+  Appointment.getUpcomingAppointments = async function(userId, userType = 'patient') {
+    const whereClause = userType === 'patient' 
+      ? { patientId: userId }
+      : { doctorId: userId };
+
+    const now = new Date();
+    const { Op } = require('sequelize');
+
+    return await this.findAll({
+      where: {
+        ...whereClause,
+        status: { [Op.in]: ['pending', 'confirmed'] },
+        appointmentDate: { [Op.gte]: now.toISOString().split('T')[0] }
+      },
+      order: [['appointmentDate', 'ASC'], ['appointmentTime', 'ASC']]
+    });
+  };
+
+  Appointment.getPastAppointments = async function(userId, userType = 'patient') {
+    const whereClause = userType === 'patient'
+      ? { patientId: userId }
+      : { doctorId: userId };
+
+    const now = new Date();
+    const { Op } = require('sequelize');
+
+    return await this.findAll({
+      where: {
+        ...whereClause,
+        [Op.or]: [
+          { appointmentDate: { [Op.lt]: now.toISOString().split('T')[0] } },
+          { status: { [Op.in]: ['completed', 'no_show'] } }
+        ]
+      },
+      order: [['appointmentDate', 'DESC'], ['appointmentTime', 'DESC']]
+    });
+  };
+
+  return Appointment;
+};) AS INTEGER)), 0) AS n
+       FROM appointments WHERE "appointmentNumber" LIKE :prefix`,
+      { replacements: { prefix: `${prefix}%` }, transaction }
+    );
+    return `${prefix}${String(Number(rows[0].n) + 1).padStart(6, '0')}`;
+  };
+
+  Appointment.beforeCreate(async (instance, options) => {
     // Generar número de cita único
     if (!instance.appointmentNumber) {
-      const year = new Date().getFullYear();
-      const count = await Appointment.count();
-      instance.appointmentNumber = `CITA-${year}-${String(count + 1).padStart(6, '0')}`;
+      instance.appointmentNumber = await nextAppointmentNumber(options && options.transaction);
     }
 
     // Calcular hora de finalización

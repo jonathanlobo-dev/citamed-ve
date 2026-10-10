@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   Calendar,
   Check,
+  Eraser,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -265,6 +266,7 @@ export default function EspacioClinicoPage() {
 
   // Estructuración paralela SOAP + Rx (D3/D4)
   const [aiStructuringLoading, setAiStructuringLoading] = useState(false);
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [aiSoapProposal, setAiSoapProposal] = useState({});
   const [aiRxProposal, setAiRxProposal] = useState({});
   const [aiSoapError, setAiSoapError] = useState(null);
@@ -939,6 +941,44 @@ export default function EspacioClinicoPage() {
     } finally {
       setIsTranscribing(false);
     }
+  };
+
+  // Vacía todos los campos de la consulta y el borrador de IA, para empezar de cero sin salir de la página
+  const handleClearAll = () => {
+    setAiDraftText('');
+    setSoapNote({ subjective: '', objective: '', assessment: '', plan: '' });
+    setVitalSigns({
+      systolic: '', diastolic: '', heartRate: '', respiratoryRate: '', temperature: '',
+      oxygenSaturation: '', weightKg: '', heightCm: '', glucose: ''
+    });
+    const emptyExam = {};
+    PHYSICAL_EXAM_SYSTEMS.forEach((sys) => {
+      emptyExam[sys.key] = { status: 'not_evaluated', findings: '' };
+    });
+    setPhysicalExam(emptyExam);
+    setIsPhysicalExamExpanded(false);
+    setDoctorNotes('');
+    setRecipeItems([{ medication: '', presentation: '', dose: '', frequency: '', duration: '', instructions: '' }]);
+    setRecipeIndications('');
+    setDismissedCompanionCategories([]);
+    setAiAppliedToRecipe(false);
+    setAiSoapProposal({});
+    setAiRxProposal({});
+    setAiSoapError(null);
+    setAiRxError(null);
+    setLocalDraftAlert(null);
+    setNewDraftAlert(null);
+    try {
+      if (appointment?.id) {
+        localStorage.removeItem(`citamed_draft_apt_${appointment.id}`);
+        localStorage.removeItem(`citamed_ai_draft_${appointment.id}`);
+      }
+      localStorage.removeItem('citamed_draft_new');
+    } catch {
+      // Ignorar
+    }
+    setConfirmClearOpen(false);
+    toast.success('Consulta limpia');
   };
 
   const handleImproveDraft = async () => {
@@ -3140,6 +3180,36 @@ export default function EspacioClinicoPage() {
       {/* 3. BARRA INFERIOR FIJA */}
       <footer className="ec-bottom-bar">
         <div className="ec-save-indicator">
+          {!isReadOnly && (
+            confirmClearOpen ? (
+              <span className="flex items-center gap-2 text-xs text-slate-700 mr-3">
+                ¿Limpiar toda la consulta?
+                <button
+                  type="button"
+                  onClick={handleClearAll}
+                  className="px-2.5 py-1 rounded-md bg-rose-600 text-white font-semibold hover:bg-rose-700"
+                >
+                  Sí, limpiar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmClearOpen(false)}
+                  className="px-2.5 py-1 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50"
+                >
+                  Cancelar
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmClearOpen(true)}
+                title="Vacía todos los campos de esta consulta para empezar de cero"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 mr-3 text-xs font-medium text-slate-600 border border-slate-200 rounded-md hover:bg-slate-50 hover:text-slate-800"
+              >
+                <Eraser className="w-3.5 h-3.5" /> Limpiar
+              </button>
+            )
+          )}
           {saveStatus === 'saved' && (
             <span className="text-emerald-700 flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
