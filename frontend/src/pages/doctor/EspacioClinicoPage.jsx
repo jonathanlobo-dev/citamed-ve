@@ -307,10 +307,10 @@ export default function EspacioClinicoPage() {
 
   // Dictado con IA solo si hay transcripción disponible y la consulta ya existe; si no, el navegador
   const aiEnabled = Boolean(FEATURES.ai && aiStatus?.enabled && aiStatus?.available);
-  const aiDictationReady = Boolean(aiEnabled && aiStatus?.transcriptionAvailable && appointment && !isReadOnly);
+  const aiDictationReady = Boolean(aiEnabled && aiStatus?.transcriptionAvailable && !isReadOnly);
   const transcribeForField = useCallback(
     async (blob, mimeType) => {
-      const res = await aiService.transcribe({ appointmentId: appointment.id, audioBlob: blob, mimeType });
+      const res = await aiService.transcribe({ appointmentId: appointment?.id, audioBlob: blob, mimeType });
       return res?.text || '';
     },
     [appointment]
@@ -899,10 +899,6 @@ export default function EspacioClinicoPage() {
 
 
   const handleStartDraftAudio = () => {
-    if (isDraftMode && !appointment) {
-      toast('Identifica al paciente para usar la IA', { icon: 'ℹ️' });
-      return;
-    }
     setAudioTarget('draft');
     audioRecorder.start().catch((err) => {
       console.error('[EspacioClinico] Error iniciando grabación:', err);
@@ -916,15 +912,11 @@ export default function EspacioClinicoPage() {
     setAudioTarget(null);
     if (!res || !res.blob) return;
 
-    if (isDraftMode && !appointment) {
-      toast('Identifica al paciente para usar la transcripción con IA', { icon: 'ℹ️' });
-      return;
-    }
 
     try {
       setIsTranscribing(true);
       const tRes = await aiService.transcribe({
-        appointmentId: appointment.id,
+        appointmentId: appointment?.id,
         audioBlob: res.blob,
         mimeType: res.mimeType
       });
@@ -983,15 +975,11 @@ export default function EspacioClinicoPage() {
 
   const handleImproveDraft = async () => {
     if (!aiDraftText?.trim()) return;
-    if (isDraftMode && !appointment) {
-      toast('Identifica al paciente para usar la IA', { icon: 'ℹ️' });
-      return;
-    }
 
     try {
       setAiDraftImproving(true);
       const res = await aiService.improve({
-        appointmentId: appointment.id,
+        appointmentId: appointment?.id,
         text: aiDraftText
       });
       fetchAiStatus();
@@ -1015,10 +1003,6 @@ export default function EspacioClinicoPage() {
 
   const handleStructureWithAi = async () => {
     if (!aiDraftText?.trim()) return;
-    if (isDraftMode && !appointment) {
-      toast('Identifica al paciente para estructurar la consulta con IA', { icon: 'ℹ️' });
-      return;
-    }
 
     try {
       setAiStructuringLoading(true);
@@ -1026,8 +1010,8 @@ export default function EspacioClinicoPage() {
       setAiRxError(null);
 
       const [soapResult, rxResult] = await Promise.allSettled([
-        aiService.soap({ appointmentId: appointment.id, text: aiDraftText }),
-        aiService.rx({ appointmentId: appointment.id, text: aiDraftText })
+        aiService.soap({ appointmentId: appointment?.id, text: aiDraftText }),
+        aiService.rx({ appointmentId: appointment?.id, text: aiDraftText })
       ]);
 
       fetchAiStatus();
@@ -1132,10 +1116,6 @@ export default function EspacioClinicoPage() {
   };
 
   const handleStartRecipeAudio = () => {
-    if (isDraftMode && !appointment) {
-      toast('Identifica al paciente para usar la IA', { icon: 'ℹ️' });
-      return;
-    }
     setAudioTarget('recipe');
     audioRecorder.start().catch((err) => {
       console.error('[EspacioClinico] Error iniciando grabación de récipe:', err);
@@ -1152,7 +1132,7 @@ export default function EspacioClinicoPage() {
     try {
       setIsTranscribing(true);
       const tRes = await aiService.transcribe({
-        appointmentId: appointment.id,
+        appointmentId: appointment?.id,
         audioBlob: res.blob,
         mimeType: res.mimeType
       });
@@ -1165,7 +1145,7 @@ export default function EspacioClinicoPage() {
       setAiRxLoadingSingle(true);
       setDrawerAiRxReview(true);
       const rxRes = await aiService.rx({
-        appointmentId: appointment.id,
+        appointmentId: appointment?.id,
         text: tRes.text
       });
       setAiRxProposalSingle(rxRes.proposal || {});
@@ -1190,7 +1170,7 @@ export default function EspacioClinicoPage() {
 
     try {
       const rxRes = await aiService.rx({
-        appointmentId: appointment.id,
+        appointmentId: appointment?.id,
         text
       });
       setAiRxProposalSingle(rxRes.proposal || {});
@@ -2189,9 +2169,7 @@ export default function EspacioClinicoPage() {
                         }
                         onClick={handleStartDraftAudio}
                         title={
-                          isDraftMode && !appointment
-                            ? 'Identifica al paciente para usar la IA'
-                            : 'Dictar consulta completa por micrófono'
+                          'Dictar consulta completa por micrófono'
                         }
                         className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 transition disabled:opacity-40 disabled:cursor-not-allowed"
                       >
@@ -2214,14 +2192,11 @@ export default function EspacioClinicoPage() {
                       type="button"
                       disabled={
                         !aiDraftText?.trim() ||
-                        aiDraftImproving ||
-                        (isDraftMode && !appointment)
+                        aiDraftImproving
                       }
                       onClick={handleImproveDraft}
                       title={
-                        isDraftMode && !appointment
-                          ? 'Identifica al paciente para usar la IA'
-                          : 'Corregir redacción ortográfica y gramatical del borrador'
+                        'Corregir redacción ortográfica y gramatical del borrador'
                       }
                       className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition disabled:opacity-40 disabled:cursor-not-allowed"
                     >
@@ -2259,8 +2234,7 @@ export default function EspacioClinicoPage() {
                   onClick={handleStructureWithAi}
                   disabled={
                     !aiDraftText?.trim() ||
-                    aiStructuringLoading ||
-                    (isDraftMode && !appointment)
+                    aiStructuringLoading
                   }
                   title="Estructurar consulta médica completa (2 acciones de IA: SOAP y Récipe)"
                   className="w-full sm:w-auto flex-1 py-3 px-5 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white font-bold rounded-lg shadow-sm hover:shadow transition flex items-center justify-center gap-2 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
@@ -2278,11 +2252,6 @@ export default function EspacioClinicoPage() {
                   )}
                 </button>
 
-                {isDraftMode && !appointment && (
-                  <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-3 py-1.5 rounded-md border border-amber-200">
-                    Identifica al paciente para usar la IA
-                  </span>
-                )}
               </div>
             </div>
           )}
@@ -2734,14 +2703,11 @@ export default function EspacioClinicoPage() {
                       type="button"
                       disabled={
                         isTranscribing ||
-                        !aiStatus?.transcriptionAvailable ||
-                        (isDraftMode && !appointment)
+                        !aiStatus?.transcriptionAvailable
                       }
                       onClick={handleStartRecipeAudio}
                       title={
-                        isDraftMode && !appointment
-                          ? 'Identifica al paciente para usar la IA'
-                          : 'Dictar récipe con micrófono e IA'
+                        'Dictar récipe con micrófono e IA'
                       }
                       className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
                     >
@@ -2763,13 +2729,11 @@ export default function EspacioClinicoPage() {
                   <button
                     type="button"
                     disabled={
-                      (isDraftMode && !appointment)
+                      false
                     }
                     onClick={() => setDrawerAiRxText(true)}
                     title={
-                      isDraftMode && !appointment
-                        ? 'Identifica al paciente para usar la IA'
-                        : 'Estructurar récipe a partir de texto libre'
+                      'Estructurar récipe a partir de texto libre'
                     }
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
                   >

@@ -60,7 +60,7 @@ const aiService = {
         : { appointmentId: arg1, audioBlob: arg2, mimeType: arg3 };
 
     const formData = new FormData();
-    formData.append('appointmentId', String(appointmentId));
+    if (appointmentId) formData.append('appointmentId', String(appointmentId));
 
     const finalMime = mimeType || audioBlob?.type || 'audio/webm';
     let ext = 'webm';
@@ -70,7 +70,7 @@ const aiService = {
       ext = 'ogg';
     }
 
-    formData.append('audio', audioBlob, `consulta_${appointmentId}_${Date.now()}.${ext}`);
+    formData.append('audio', audioBlob, `consulta_${appointmentId || 'borrador'}_${Date.now()}.${ext}`);
 
     return api
       .post('/ai/transcribe', formData, {

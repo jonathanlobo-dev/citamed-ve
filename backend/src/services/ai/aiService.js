@@ -70,11 +70,9 @@ class AiService {
    * Valida permisos y estado de la cita
    */
   async getValidatedAppointment(appointmentId, userId, requiresConsent = false) {
-    if (!appointmentId) {
-      const err = new Error('ID de cita requerido');
-      err.status = 400;
-      throw err;
-    }
+    // Sin cita (consulta sin cita aún no identificada): la IA se usa igual, sin datos del paciente
+    // que anonimizar más allá de los patrones genéricos, y el uso se cuenta igual al médico.
+    if (!appointmentId) return null;
 
     const appointment = await Appointment.findByPk(appointmentId, {
       include: [
@@ -184,7 +182,7 @@ class AiService {
    * Extrae datos del paciente para anonimización
    */
   getPatientData(appointment) {
-    const patientUser = appointment.patient || {};
+    const patientUser = (appointment && appointment.patient) || {};
     const patientProfile = patientUser.patientProfile || {};
 
     return {
@@ -231,7 +229,7 @@ class AiService {
 
       await this.logUsageAttempts({
         userId,
-        appointmentId: appointment.id,
+        appointmentId: appointment ? appointment.id : null,
         mode: 'improve',
         inputChars,
         attempts: result.attempts,
@@ -244,7 +242,7 @@ class AiService {
     } catch (err) {
       await this.logUsageAttempts({
         userId,
-        appointmentId: appointment.id,
+        appointmentId: appointment ? appointment.id : null,
         mode: 'improve',
         inputChars,
         attempts: err.attempts,
@@ -330,7 +328,7 @@ class AiService {
 
       await this.logUsageAttempts({
         userId,
-        appointmentId: appointment.id,
+        appointmentId: appointment ? appointment.id : null,
         mode: 'soap',
         inputChars,
         attempts: result.attempts,
@@ -344,7 +342,7 @@ class AiService {
     } catch (err) {
       await this.logUsageAttempts({
         userId,
-        appointmentId: appointment.id,
+        appointmentId: appointment ? appointment.id : null,
         mode: 'soap',
         inputChars,
         attempts: err.attempts,
@@ -472,7 +470,7 @@ class AiService {
 
       await this.logUsageAttempts({
         userId,
-        appointmentId: appointment.id,
+        appointmentId: appointment ? appointment.id : null,
         mode: 'rx',
         inputChars,
         attempts: result.attempts,
@@ -486,7 +484,7 @@ class AiService {
     } catch (err) {
       await this.logUsageAttempts({
         userId,
-        appointmentId: appointment.id,
+        appointmentId: appointment ? appointment.id : null,
         mode: 'rx',
         inputChars,
         attempts: err.attempts,
@@ -558,7 +556,7 @@ class AiService {
 
       await this.logUsageAttempts({
         userId,
-        appointmentId: appointment.id,
+        appointmentId: appointment ? appointment.id : null,
         mode: 'transcribe',
         audioSeconds: result.seconds,
         attempts: result.attempts,
@@ -572,7 +570,7 @@ class AiService {
     } catch (err) {
       await this.logUsageAttempts({
         userId,
-        appointmentId: appointment.id,
+        appointmentId: appointment ? appointment.id : null,
         mode: 'transcribe',
         attempts: err.attempts,
         fallback: { success: false, errorCode: err.code || `HTTP_${err.status || 500}` }
