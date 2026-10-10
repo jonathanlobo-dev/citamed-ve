@@ -274,7 +274,6 @@ export default function EspacioClinicoPage() {
   // Corrección de redacción (D5)
   const [drawerAiImprove, setDrawerAiImprove] = useState(false);
   const [improveData, setImproveData] = useState({ fieldName: '', originalText: '', improvedText: '', onApply: null });
-  const [improvingFieldId, setImprovingFieldId] = useState(null);
   const [aiDraftImproving, setAiDraftImproving] = useState(false);
 
   // Récipe desde dictado / texto (D6)
@@ -1090,39 +1089,6 @@ export default function EspacioClinicoPage() {
         : 'Propuesta de IA aplicada a la consulta',
       { duration: 5000 }
     );
-  };
-
-  const handleImproveField = async (fieldName, text, setter) => {
-    if (!text?.trim()) return;
-    if (isDraftMode && !appointment) {
-      toast('Identifica al paciente para usar la IA', { icon: 'ℹ️' });
-      return;
-    }
-
-    try {
-      setImprovingFieldId(fieldName);
-      const res = await aiService.improve({
-        appointmentId: appointment.id,
-        field: fieldName,
-        text
-      });
-      fetchAiStatus();
-      setImproveData({
-        fieldName,
-        originalText: text,
-        improvedText: res.text,
-        onApply: (improved) => {
-          setter(improved);
-          toast.success(`Texto de ${fieldName} actualizado`);
-        }
-      });
-      setDrawerAiImprove(true);
-    } catch (err) {
-      console.error(`[EspacioClinico] Error mejorando campo ${fieldName}:`, err);
-      handleAiError(err);
-    } finally {
-      setImprovingFieldId(null);
-    }
   };
 
   const handleStartRecipeAudio = () => {
@@ -2300,10 +2266,6 @@ export default function EspacioClinicoPage() {
               rows={4}
               readOnly={isReadOnly}
               onAiTranscribe={aiDictationReady ? transcribeForField : null}
-              onImprove={aiEnabled ? (t) =>
-                handleImproveField('Subjetivo', t, (val) => setSoapNote((p) => ({ ...p, subjective: val })))
-              : null}
-              improving={improvingFieldId === 'Subjetivo'}
             />
           </section>
 
@@ -2637,10 +2599,6 @@ export default function EspacioClinicoPage() {
                     rows={3}
                     readOnly={isReadOnly}
                     onAiTranscribe={aiDictationReady ? transcribeForField : null}
-                    onImprove={aiEnabled ? (t) =>
-                      handleImproveField('Objetivo', t, (val) => setSoapNote((p) => ({ ...p, objective: val })))
-                    : null}
-                    improving={improvingFieldId === 'Objetivo'}
                   />
                 </div>
               )}
@@ -2667,10 +2625,6 @@ export default function EspacioClinicoPage() {
               readOnly={isReadOnly}
               required
               onAiTranscribe={aiDictationReady ? transcribeForField : null}
-              onImprove={aiEnabled ? (t) =>
-                handleImproveField('Evaluación', t, (val) => setSoapNote((p) => ({ ...p, assessment: val })))
-              : null}
-              improving={improvingFieldId === 'Evaluación'}
             />
           </section>
 
@@ -2693,10 +2647,6 @@ export default function EspacioClinicoPage() {
               rows={3}
               readOnly={isReadOnly}
               onAiTranscribe={aiDictationReady ? transcribeForField : null}
-              onImprove={aiEnabled ? (t) =>
-                handleImproveField('Plan', t, (val) => setSoapNote((p) => ({ ...p, plan: val })))
-              : null}
-              improving={improvingFieldId === 'Plan'}
             />
           </section>
           </>
@@ -3162,10 +3112,6 @@ export default function EspacioClinicoPage() {
               readOnly={isReadOnly}
               hint="Estas notas no se incluyen en ningún informe, récipe ni resumen que se entregue al paciente."
               onAiTranscribe={aiDictationReady ? transcribeForField : null}
-              onImprove={aiEnabled ? (t) =>
-                handleImproveField('Notas privadas', t, (val) => setDoctorNotes(val))
-              : null}
-              improving={improvingFieldId === 'Notas privadas'}
             />
           </section>
 

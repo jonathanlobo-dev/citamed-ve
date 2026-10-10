@@ -4,6 +4,7 @@
  */
 
 const platformSettingsService = require('../platformSettingsService');
+const { buildTranscriptionPrompt } = require('./medicalVocabulary');
 const secretCrypto = require('../../utils/secretCrypto');
 
 const TIMEOUT_MS = 60000; // un dictado largo puede tardar en subir y transcribirse
@@ -33,10 +34,7 @@ const HALLUCINATION_PHRASES = [
   'hasta la proxima'
 ];
 
-const MEDICAL_PROMPT = 
-  'Vocabulario médico venezolano: acetaminofén, ibuprofeno, amoxicilina, losartán, metformina, omeprazol, ' +
-  'tensión arterial, glicemia, cada 8 horas, vía oral, cefalea, odinofagia, fiebre, saturación de oxígeno, ' +
-  'hematología completa, examen físico.';
+const MEDICAL_PROMPT = buildTranscriptionPrompt();
 
 /**
  * Filtra alucinaciones comunes de Whisper y colas de relleno
