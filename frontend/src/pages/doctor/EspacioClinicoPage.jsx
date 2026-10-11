@@ -659,14 +659,33 @@ export default function EspacioClinicoPage() {
   // Cargar catálogo de laboratorio al abrir drawer de órdenes
   const handleOpenLabDrawer = async () => {
     setDrawerLabOrder(true);
-    if (labCatalog.length === 0) {
-      try {
-        const res = await medicalDocumentService.getLabCatalog();
-        setLabCatalog(res.data || []);
-      } catch (err) {
-        console.error('[EspacioClinico] Error cargando catálogo de laboratorios:', err);
-      }
+    if (!labDiagnosis.trim() && soapNote.assessment.trim()) setLabDiagnosis(soapNote.assessment.trim());
+    if (labCatalog.length > 0) return labCatalog;
+    try {
+      const res = await medicalDocumentService.getLabCatalog();
+      setLabCatalog(res.data || []);
+      return res.data || [];
+    } catch (err) {
+      console.error('[EspacioClinico] Error cargando catálogo de laboratorios:', err);
+      return [];
     }
+  };
+
+  // Abre la orden con los exámenes que propuso la IA: marca los que están en el catálogo
+  // y deja el resto en "Otros exámenes"
+  const handleCreateLabOrderFromAi = async () => {
+    const catalog = await handleOpenLabDrawer();
+    const norm = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+    const matched = [];
+    const others = [];
+    for (const lab of aiSuggestedLabs) {
+      const n = norm(lab);
+      const hit = catalog.find((e) => norm(e.name) === n)
+        || catalog.find((e) => norm(e.name).includes(n) || n.includes(norm(e.name)));
+      if (hit) matched.push(hit); else others.push(lab);
+    }
+    setSelectedExams((prev) => [...prev, ...matched.filter((m) => !prev.some((p) => p.name === m.name))]);
+    if (others.length) setLabOtherExams((prev) => (prev ? `${prev}, ${others.join(', ')}` : others.join(', ')));
   };
 
   // Pre-llenar informe médico con SOAP actual
@@ -2972,8 +2991,7 @@ export default function EspacioClinicoPage() {
                     type="button"
                     onClick={() => {
                       if (guardDraftMode('emitir la orden de exámenes')) return;
-                      setLabOtherExams((prev) => (prev ? `${prev}, ${aiSuggestedLabs.join(', ')}` : aiSuggestedLabs.join(', ')));
-                      handleOpenLabDrawer();
+                      handleCreateLabOrderFromAi();
                     }}
                     className="px-3 py-1.5 bg-primary text-white font-semibold rounded-md hover:bg-primary/90"
                   >
