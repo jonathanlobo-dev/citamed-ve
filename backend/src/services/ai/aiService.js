@@ -11,7 +11,7 @@ const { VITAL_RANGES, PHYSICAL_EXAM_SYSTEMS } = require('../../utils/clinicalNot
 const { deidentify } = require('./deidentify');
 const aiChain = require('./aiChain');
 const transcriptionService = require('./transcription');
-const { correctMedicalText, correctSoapProposal, correctRxProposal } = require('./medicalVocabulary');
+const { correctMedicalText, correctSoapProposal, correctRxProposal, enforceRxFidelity } = require('./medicalVocabulary');
 const {
   IMPROVE_SYSTEM_PROMPT,
   SOAP_SYSTEM_PROMPT,
@@ -478,7 +478,7 @@ class AiService {
       });
 
       return {
-        proposal: correctRxProposal(validatedProposal),
+        proposal: correctRxProposal(enforceRxFidelity(validatedProposal, anonymizedText)),
         provider: result.provider
       };
     } catch (err) {

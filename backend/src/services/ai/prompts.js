@@ -66,6 +66,7 @@ E. No agregues clasificaciones, grados, estadios, causas ni diagnósticos difere
 F. Incluye en subjective los datos negativos relevantes que se mencionen (ej: "niega dolor torácico", "sin alergias medicamentosas conocidas") y los antecedentes personales y familiares.
 G. La medicación que el paciente ya toma (tratamiento habitual o automedicación) va en subjective como antecedente. En plan solo van las indicaciones que da el médico, incluidas las suspensiones ("suspender el ibuprofeno") y las continuaciones que el médico indique.
 H. Si el médico se corrige a sí mismo en el dictado ("no irradia... perdón, sí irradia"), vale la versión corregida. Ignora muletillas y frases de relleno ("eh", "este", "bueno").
+J. En plan escribe las indicaciones del médico tal como las dijo, incluida la lista de exámenes que pidió ("Solicitar: hematología completa, glicemia..."). No agregues recomendaciones que no dijo (dietas, hábitos, protectores, probióticos).
 I. Un valor que el paciente o un familiar cuenta de memoria o de otro momento (un peso "del mes pasado", una temperatura de ayer) NO es un signo vital de hoy: déjalo en subjective con su origen.
 
 REGLAS DE EXTRACCIÓN Y VALIDACIÓN:
@@ -81,7 +82,9 @@ REGLAS DE EXTRACCIÓN Y VALIDACIÓN:
    - Incluye ÚNICAMENTE los sistemas que hayan sido evaluados o mencionados por el médico en la consulta.
    - Cada sistema presente debe tener "status": "normal" o "abnormal", y "findings": descripción concisa de los hallazgos.
    - Si un sistema no fue examinado ni mencionado, puedes omitirlo del objeto physicalExam.
-3. labOrders:
+3. labOrders (solo lo que se hará DESPUÉS de la consulta):
+   - Si el médico ya lo hizo durante la consulta y dijo el resultado ("le hago un electrocardiograma... salió normal"), NO va en labOrders: va en objective como hallazgo.
+   - Un estudio condicional ("si no mejora, radiografía") tampoco va en labOrders; queda en plan con su condición.
    - Lista de cadenas de texto con los exámenes de laboratorio o estudios de imágenes que el médico indicó solicitar (ej: ["Hematología completa", "Uroanálisis", "Radiografía de tórax PA"]).
 4. warnings:
    - Lista de advertencias o dudas detectadas: términos ambiguos, dosis dudosas o incoherencias observadas en el relato.
@@ -159,6 +162,9 @@ REGLAS DE EXTRACCIÓN Y ESTANDARIZACIÓN:
 4. Si una dosis o frecuencia parece dudosa, inconsistente o peligrosa, regístrala en el arreglo "warnings".
 5. instructions: solo lo que el médico indicó (ej: "en la mañana", "si hay dolor o fiebre", "con las comidas"). No agregues frases genéricas como "con un vaso de agua". Si no dijo nada, deja "".
 6. duration: si el médico no indicó duración, deja "".
+9. frequency es solo el intervalo ("cada 8 horas", "cada 24 horas"). El momento o la condición de la toma ("en la noche", "en ayunas", "con las comidas", "si hay dolor") va en instructions, nunca en frequency. "Una tableta en la noche" es frequency "cada 24 horas" e instructions "en la noche".
+10. duration es solo el tiempo que dura el medicamento. No uses como duración el tiempo de un registro de tensión, de un monitoreo, de un reposo ni la fecha del control.
+11. indications: copia solo las recomendaciones no farmacológicas que el médico dijo. No agregues dieta, hábitos ni consejos que no dijo.
 7. dose: copia la dosis tal como la dijo el médico (100 mg, 1 tableta, 5 ml). No conviertas miligramos en tabletas ni al revés.
 8. warnings por duración: agrega UNA sola advertencia que agrupe los medicamentos de tratamiento agudo (antibióticos, analgésicos, antiinflamatorios, corticoides, antihistamínicos, antieméticos) sin duración: "No se indicó la duración de: A, B". No la agregues para medicamentos de uso crónico (antihipertensivos como losartán, amlodipino o enalapril, antidiabéticos como metformina, hormonas tiroideas, estatinas, anticoagulantes).`;
 

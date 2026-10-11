@@ -267,6 +267,8 @@ export default function EspacioClinicoPage() {
   // Estructuración paralela SOAP + Rx (D3/D4)
   const [aiStructuringLoading, setAiStructuringLoading] = useState(false);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+  // Exámenes que la IA propuso y que el médico todavía no convirtió en orden
+  const [aiSuggestedLabs, setAiSuggestedLabs] = useState([]);
   const [aiSoapProposal, setAiSoapProposal] = useState({});
   const [aiRxProposal, setAiRxProposal] = useState({});
   const [aiSoapError, setAiSoapError] = useState(null);
@@ -954,6 +956,7 @@ export default function EspacioClinicoPage() {
     setRecipeIndications('');
     setDismissedCompanionCategories([]);
     setAiAppliedToRecipe(false);
+    setAiSuggestedLabs([]);
     setAiSoapProposal({});
     setAiRxProposal({});
     setAiSoapError(null);
@@ -1060,6 +1063,9 @@ export default function EspacioClinicoPage() {
     hasRecipeApplied,
     hasExamApplied
   }) => {
+    if (Array.isArray(aiSoapProposal?.labOrders) && aiSoapProposal.labOrders.length > 0) {
+      setAiSuggestedLabs(aiSoapProposal.labOrders);
+    }
     // 1. SOAP
     setSoapNote((prev) => ({
       ...prev,
@@ -1279,6 +1285,7 @@ export default function EspacioClinicoPage() {
       setDrawerLabOrder(false);
       setSelectedExams([]);
       setLabOtherExams('');
+      setAiSuggestedLabs([]);
       setLabIndication('');
       setLabDiagnosis('');
       alert('Orden de exámenes emitida exitosamente.');
@@ -1823,6 +1830,11 @@ export default function EspacioClinicoPage() {
             className={`ec-anchor-btn ${activeTab === 'documentos' ? 'active' : ''}`}
           >
             Órdenes y documentos ({currentDocs.length})
+            {aiSuggestedLabs.length > 0 && (
+              <span className="ml-1.5 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-amber-500 text-white text-[11px] font-bold">
+                {aiSuggestedLabs.length}
+              </span>
+            )}
           </button>
         </nav>
       </header>
@@ -2323,7 +2335,7 @@ export default function EspacioClinicoPage() {
                     onChange={(e) =>
                       setVitalSigns((prev) => ({ ...prev, systolic: e.target.value }))
                     }
-                    placeholder="120"
+                    placeholder=""
                     className="ec-vital-input"
                     readOnly={isReadOnly}
                   />
@@ -2350,7 +2362,7 @@ export default function EspacioClinicoPage() {
                     onChange={(e) =>
                       setVitalSigns((prev) => ({ ...prev, diastolic: e.target.value }))
                     }
-                    placeholder="80"
+                    placeholder=""
                     className="ec-vital-input"
                     readOnly={isReadOnly}
                   />
@@ -2373,7 +2385,7 @@ export default function EspacioClinicoPage() {
                     type="number"
                     value={vitalSigns.heartRate}
                     onChange={(e) => setVitalSigns((prev) => ({ ...prev, heartRate: e.target.value }))}
-                    placeholder="75"
+                    placeholder=""
                     className="ec-vital-input"
                     readOnly={isReadOnly}
                   />
@@ -2398,7 +2410,7 @@ export default function EspacioClinicoPage() {
                     onChange={(e) =>
                       setVitalSigns((prev) => ({ ...prev, respiratoryRate: e.target.value }))
                     }
-                    placeholder="16"
+                    placeholder=""
                     className="ec-vital-input"
                     readOnly={isReadOnly}
                   />
@@ -2422,7 +2434,7 @@ export default function EspacioClinicoPage() {
                     step="0.1"
                     value={vitalSigns.temperature}
                     onChange={(e) => setVitalSigns((prev) => ({ ...prev, temperature: e.target.value }))}
-                    placeholder="36.5"
+                    placeholder=""
                     className="ec-vital-input"
                     readOnly={isReadOnly}
                   />
@@ -2447,7 +2459,7 @@ export default function EspacioClinicoPage() {
                     onChange={(e) =>
                       setVitalSigns((prev) => ({ ...prev, oxygenSaturation: e.target.value }))
                     }
-                    placeholder="98"
+                    placeholder=""
                     className="ec-vital-input"
                     readOnly={isReadOnly}
                   />
@@ -2467,7 +2479,7 @@ export default function EspacioClinicoPage() {
                     step="0.1"
                     value={vitalSigns.weightKg}
                     onChange={(e) => setVitalSigns((prev) => ({ ...prev, weightKg: e.target.value }))}
-                    placeholder="70"
+                    placeholder=""
                     className="ec-vital-input"
                     readOnly={isReadOnly}
                   />
@@ -2483,7 +2495,7 @@ export default function EspacioClinicoPage() {
                     type="number"
                     value={vitalSigns.heightCm}
                     onChange={(e) => setVitalSigns((prev) => ({ ...prev, heightCm: e.target.value }))}
-                    placeholder="170"
+                    placeholder=""
                     className="ec-vital-input"
                     readOnly={isReadOnly}
                   />
@@ -2499,7 +2511,7 @@ export default function EspacioClinicoPage() {
                     type="number"
                     value={vitalSigns.glucose}
                     onChange={(e) => setVitalSigns((prev) => ({ ...prev, glucose: e.target.value }))}
-                    placeholder="95"
+                    placeholder=""
                     className="ec-vital-input"
                     readOnly={isReadOnly}
                   />
@@ -2945,6 +2957,36 @@ export default function EspacioClinicoPage() {
                 >
                   Identificar paciente
                 </button>
+              </div>
+            )}
+
+            {/* Exámenes sugeridos por la IA pendientes de convertir en orden */}
+            {aiSuggestedLabs.length > 0 && (
+              <div className="mb-4 p-3 bg-sky-50 border border-sky-200 rounded-lg text-xs text-sky-900">
+                <p className="font-semibold mb-1 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-sky-600" /> Exámenes que pediste en la consulta (propuestos por la IA)
+                </p>
+                <p className="mb-2">{aiSuggestedLabs.join(', ')}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (guardDraftMode('emitir la orden de exámenes')) return;
+                      setLabOtherExams((prev) => (prev ? `${prev}, ${aiSuggestedLabs.join(', ')}` : aiSuggestedLabs.join(', ')));
+                      handleOpenLabDrawer();
+                    }}
+                    className="px-3 py-1.5 bg-primary text-white font-semibold rounded-md hover:bg-primary/90"
+                  >
+                    Crear orden de exámenes con estos
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAiSuggestedLabs([])}
+                    className="px-3 py-1.5 border border-sky-300 rounded-md hover:bg-sky-100"
+                  >
+                    Descartar
+                  </button>
+                </div>
               </div>
             )}
 

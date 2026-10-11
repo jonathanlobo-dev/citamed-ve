@@ -190,7 +190,88 @@ function correctRxProposal(proposal) {
   return proposal;
 }
 
+// Formas farmacéuticas y las palabras del médico que las justifican
+const FORM_GROUPS = [
+  { form: /tableta|comprimido|pastilla|gragea/, said: /tableta|comprimido|pastilla|gragea/ },
+  { form: /capsula/, said: /capsula/ },
+  { form: /jarabe/, said: /jarabe/ },
+  { form: /suspension/, said: /suspension/ },
+  { form: /gota/, said: /gota/ },
+  { form: /ampolla|inyectable|vial/, said: /ampolla|inyectable|inyeccion|vial|intramuscular|endovenos|intravenos|subcutane/ },
+  { form: /spray|aerosol|inhalador|nebuliz/, said: /spray|aerosol|inhalador|inhalacion|puff|disparo|aplicacion|nebuliz/ },
+  { form: /crema|unguento|gel|pomada|locion/, said: /crema|unguento|gel|pomada|locion/ },
+  { form: /supositorio/, said: /supositorio/ },
+  { form: /ovulo/, said: /ovulo/ },
+  { form: /parche/, said: /parche/ },
+  { form: /sobre/, said: /sobre/ }
+];
+
+function formNotSaid(value, source) {
+  const v = normalize(value);
+  return FORM_GROUPS.some((g) => g.form.test(v) && !g.said.test(source));
+}
+
+// Medicamentos de uso continuo: no se advierte que falte la duración
+const CHRONIC = [
+  'losartan', 'valsartan', 'telmisartan', 'irbesartan', 'enalapril', 'captopril', 'lisinopril', 'amlodipino',
+  'nifedipino', 'atenolol', 'metoprolol', 'carvedilol', 'bisoprolol', 'propranolol', 'hidroclorotiazida',
+  'furosemida', 'espironolactona', 'clortalidona', 'digoxina', 'metformina', 'glibenclamida', 'glimepirida',
+  'sitagliptina', 'empagliflozina', 'insulina', 'levotiroxina', 'atorvastatina', 'rosuvastatina', 'simvastatina',
+  'ezetimiba', 'fenofibrato', 'acetilsalicilico', 'aspirina', 'clopidogrel', 'warfarina', 'rivaroxaban',
+  'alopurinol', 'acido folico', 'tamsulosina', 'finasterida', 'levetiracetam', 'carbamazepina', 'acido valproico'
+];
+const isChronic = (name) => {
+  const n = normalize(name || '');
+  return CHRONIC.some((c) => n.includes(c));
+};
+
+/**
+ * Quita lo que la IA dedujo sin que el médico lo dijera: una presentación (tableta, cápsula, gotas...)
+ * que no aparece en el texto, o una dosis expresada en esa forma cuando el médico dio los miligramos.
+ */
+function enforceRxFidelity(proposal, sourceText) {
+  if (!proposal || !Array.isArray(proposal.items) || !sourceText) return proposal;
+  const source = normalize(sourceText);
+  const firstWord = (it) => normalize(String((it && it.medication) || '')).split(/[^a-z]+/).find((w) => w.length >= 4) || '';
+  const starts = proposal.items.map((it) => {
+    const w = firstWord(it);
+    return w ? source.indexOf(w) : -1;
+  });
+  for (let i = 0; i < proposal.items.length; i++) {
+    const item = proposal.items[i];
+    if (!item) continue;
+    // Tramo del texto que habla de este medicamento: desde su nombre hasta el siguiente medicamento
+    let segment = source;
+    if (starts[i] >= 0) {
+      const next = starts.filter((p) => p > starts[i]).sort((x, y) => x - y)[0];
+      segment = source.slice(starts[i], next !== undefined ? next : starts[i] + 160);
+    }
+    if (item.presentation && formNotSaid(item.presentation, segment)) item.presentation = '';
+    // La duración del récipe debe aparecer en el texto de ese medicamento; si no, se deja vacía
+    if (item.duration && /\d/.test(item.duration)) {
+      const num = item.duration.match(/\d+/)[0];
+      const words = { 1: 'un', 2: 'dos', 3: 'tres', 4: 'cuatro', 5: 'cinco', 6: 'seis', 7: 'siete', 8: 'ocho', 9: 'nueve', 10: 'diez', 12: 'doce', 14: 'catorce', 15: 'quince', 20: 'veinte', 21: 'veintiun', 30: 'treinta' };
+      const said = segment.includes(num) || (words[num] && segment.includes(words[num]));
+      if (!said && isChronic(item.medication)) item.duration = '';
+    }
+    if (item.dose && formNotSaid(item.dose, segment)) {
+      const strength = String(item.medication || '').match(/\d+(?:[.,]\d+)?\s*(?:mg|mcg|g|ml|ui)\b/i);
+      if (strength) item.dose = strength[0];
+    }
+  }
+  // Rehace la advertencia de duración: una sola y sin los medicamentos de uso continuo
+  const others = (proposal.warnings || []).filter((w) => !/^No se indic[oó] la duraci[oó]n/i.test(String(w)));
+  const missing = proposal.items
+    .filter((it) => it && !String(it.duration || '').trim() && !isChronic(it.medication))
+    .map((it) => it.medication);
+  proposal.warnings = missing.length
+    ? [...others, `No se indicó la duración de: ${missing.join(', ')}`]
+    : others;
+  return proposal;
+}
+
 module.exports = {
+  enforceRxFidelity,
   buildTranscriptionPrompt,
   correctMedicalText,
   correctSoapProposal,
