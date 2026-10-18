@@ -33,6 +33,7 @@ import Navbar from '../../components/common/Navbar/Navbar';
 import appointmentService from '../../services/appointmentService';
 import prescriptionAPI from '../../services/prescriptionService';
 import paymentService from '../../services/paymentService';
+import PayConsultationDrawer from '../../components/payments/PayConsultationDrawer';
 import { shareRecipe, prefetchRecipePdf } from '../../utils/shareRecipe';
 import toast from 'react-hot-toast';
 import './MisCitasPage.css';
@@ -731,6 +732,20 @@ const MisCitasPage = () => {
           })}
         </div>
       </div>
+
+      {/* Panel lateral para pagar consulta y reportar pago (C2 y C3) */}
+      <PayConsultationDrawer
+        open={payDrawerOpen}
+        onClose={() => {
+          setPayDrawerOpen(false);
+          setSelectedAppointmentForPay(null);
+        }}
+        appointment={selectedAppointmentForPay}
+        onPaymentReported={() => {
+          fetchAppointments();
+          fetchMyPayments();
+        }}
+      />
     </div>
   );
 };
