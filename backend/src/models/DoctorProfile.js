@@ -159,6 +159,12 @@ module.exports = (sequelize) => {
       field: 'accepted_insurances',
       comment: 'Lista de seguros médicos aceptados (texto libre)'
     },
+    paymentSettings: {
+      type: DataTypes.JSONB,
+      defaultValue: {},
+      field: 'paymentSettings',
+      comment: 'Configuración de métodos de cobro del médico (Pago Móvil, Zelle, Transferencia, Efectivo)'
+    },
 
     // ========================================
     // HORARIOS SIMPLIFICADOS

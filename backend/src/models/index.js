@@ -193,6 +193,11 @@ try {
   db.ExchangeRate = ExchangeRateModel(sequelize);
   console.log('  ExchangeRate cargado');
 
+  // M05 / Semana 8 - Cobros y Pagos
+  const PaymentModel = require('./Payment');
+  db.Payment = PaymentModel(sequelize);
+  console.log('  ✅ Payment cargado');
+
   console.log('✅ Todos los modelos cargados exitosamente\n');
 } catch (error) {
   console.error('❌ Error cargando modelos:', error.message);
@@ -880,6 +885,56 @@ try {
     as: 'updatedByUser'
   });
   console.log('  ✅ PlatformSetting <-> User');
+
+  // ═══════════════════════════════════════════════════════════════
+  // M05 / Semana 8 - Cobros y Recibos de Pago
+  // ═══════════════════════════════════════════════════════════════
+
+  // PAYMENT <-> APPOINTMENT (N:1)
+  db.Payment.belongsTo(db.Appointment, {
+    foreignKey: 'appointmentId',
+    as: 'appointment'
+  });
+  db.Appointment.hasMany(db.Payment, {
+    foreignKey: 'appointmentId',
+    as: 'payments'
+  });
+  console.log('  ✅ Payment <-> Appointment');
+
+  // PAYMENT <-> USER (Doctor) (N:1)
+  db.Payment.belongsTo(db.User, {
+    foreignKey: 'doctorId',
+    as: 'doctor'
+  });
+  db.User.hasMany(db.Payment, {
+    foreignKey: 'doctorId',
+    as: 'doctorPayments'
+  });
+  console.log('  ✅ Payment <-> User (Doctor)');
+
+  // PAYMENT <-> USER (Patient) (N:1)
+  db.Payment.belongsTo(db.User, {
+    foreignKey: 'patientId',
+    as: 'patient'
+  });
+  db.User.hasMany(db.Payment, {
+    foreignKey: 'patientId',
+    as: 'patientPayments'
+  });
+  console.log('  ✅ Payment <-> User (Patient)');
+
+  // PAYMENT <-> USER (ReportedBy) (N:1)
+  db.Payment.belongsTo(db.User, {
+    foreignKey: 'reportedBy',
+    as: 'reporter'
+  });
+
+  // PAYMENT <-> USER (ReviewedBy) (N:1)
+  db.Payment.belongsTo(db.User, {
+    foreignKey: 'reviewedBy',
+    as: 'reviewer'
+  });
+  console.log('  ✅ Payment <-> User (Reporter/Reviewer)');
 
   console.log('✅ Asociaciones establecidas correctamente\n');
 } catch (error) {
