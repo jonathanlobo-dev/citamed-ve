@@ -29,7 +29,8 @@ import {
   Activity,
   Calendar,
   Lock,
-  ExternalLink
+  ExternalLink,
+  Landmark
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Navbar from '../../components/common/Navbar/Navbar';
@@ -105,8 +106,61 @@ export default function AdminPanelPage() {
   const [overview, setOverview] = useState(null);
   const [overviewLoading, setOverviewLoading] = useState(false);
 
+  // Tasa oficial BCV
+  const [fx, setFx] = useState(null);
+  const [fxBusy, setFxBusy] = useState(false);
+  const [fxEditing, setFxEditing] = useState(false);
+  const [fxManual, setFxManual] = useState('');
+
+  const loadFx = useCallback(async () => {
+    try {
+      const res = await adminService.getExchangeRate();
+      if (res.success) setFx(res.data.current);
+    } catch (err) {
+      console.error('Error al cargar la tasa BCV:', err);
+    }
+  }, []);
+
+  const handleFxSync = async () => {
+    setFxBusy(true);
+    try {
+      const res = await adminService.syncExchangeRate();
+      if (res.success) {
+        setFx(res.data.current);
+        toast.success('Tasa actualizada');
+      }
+    } catch (err) {
+      toast.error('No se pudo consultar la tasa en este momento');
+    } finally {
+      setFxBusy(false);
+    }
+  };
+
+  const handleFxManual = async () => {
+    const value = Number(String(fxManual).replace(',', '.'));
+    if (!Number.isFinite(value) || value <= 1) {
+      toast.error('Escribe una tasa válida');
+      return;
+    }
+    setFxBusy(true);
+    try {
+      const res = await adminService.setExchangeRateManual(value);
+      if (res.success) {
+        setFxEditing(false);
+        setFxManual('');
+        await loadFx();
+        toast.success('Tasa corregida. Se mantiene por 12 horas');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'No se pudo guardar la tasa');
+    } finally {
+      setFxBusy(false);
+    }
+  };
+
   const loadOverview = useCallback(async () => {
     setOverviewLoading(true);
+    loadFx();
     try {
       const data = await adminService.getOverview();
       if (data.success) {
@@ -118,7 +172,7 @@ export default function AdminPanelPage() {
     } finally {
       setOverviewLoading(false);
     }
-  }, []);
+  }, [loadFx]);
 
   // ==========================================
   // ESTADO: MÉDICOS
@@ -705,6 +759,74 @@ export default function AdminPanelPage() {
                       )}
                     </div>
                   </div>
+                </div>
+
+                {/* Tarjeta: Tasa oficial BCV */}
+                <div className="admin-card" style={{ marginBottom: 16 }}>
+                  <div className="admin-card-header">
+                    <h2 className="admin-card-title">
+                      <Landmark className="w-5 h-5 text-emerald-600" />
+                      <span>Tasa oficial BCV</span>
+                    </h2>
+                  </div>
+                  {fx?.usd ? (
+                    <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
+                      <div>
+                        <div className="admin-stat-value">
+                          {Number(fx.usd.rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} Bs
+                        </div>
+                        <div className="text-xs text-gray-500">por dólar</div>
+                      </div>
+                      {fx.eur && (
+                        <div>
+                          <div className="text-lg font-semibold text-gray-800">
+                            {Number(fx.eur.rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} Bs
+                          </div>
+                          <div className="text-xs text-gray-500">por euro</div>
+                        </div>
+                      )}
+                      <div className="text-xs text-gray-600 space-y-1">
+                        <div>
+                          Fuente: <strong>{fx.usd.isManual ? 'corrección manual' : fx.usd.source}</strong>
+                        </div>
+                        <div>Revisada: {new Date(fx.usd.checkedAt).toLocaleString('es-VE')}</div>
+                        {fx.usd.stale && (
+                          <div className="text-rose-600 font-semibold">Desactualizada: no se pudo consultar en más de 36 horas</div>
+                        )}
+                        <div className="text-gray-500">Se actualiza sola cada 30 minutos.</div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button type="button" onClick={handleFxSync} disabled={fxBusy} className="admin-btn-page">
+                          <RefreshCw className={`w-4 h-4 ${fxBusy ? 'animate-spin' : ''}`} /> Actualizar ahora
+                        </button>
+                        {!fxEditing ? (
+                          <button type="button" onClick={() => setFxEditing(true)} className="admin-btn-page">
+                            Corregir a mano
+                          </button>
+                        ) : (
+                          <>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={fxManual}
+                              onChange={(e) => setFxManual(e.target.value)}
+                              placeholder="Ej. 880,50"
+                              className="px-2 py-1 border rounded w-28 text-sm"
+                              autoFocus
+                            />
+                            <button type="button" onClick={handleFxManual} disabled={fxBusy} className="admin-btn-page">
+                              Guardar
+                            </button>
+                            <button type="button" onClick={() => { setFxEditing(false); setFxManual(''); }} className="admin-btn-page">
+                              Cancelar
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 py-2">Cargando la tasa del día...</p>
+                  )}
                 </div>
 
                 {/* Top Médicos Usuarios de IA */}

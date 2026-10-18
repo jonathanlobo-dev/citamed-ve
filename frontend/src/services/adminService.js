@@ -108,6 +108,30 @@ export const adminService = {
   async getAiUsage({ days = 30 } = {}) {
     const res = await api.get('/admin/ai/usage', { params: { days } });
     return res.data;
+  },
+
+  /**
+   * Tasa oficial BCV: vigente e historial
+   */
+  async getExchangeRate() {
+    const res = await api.get('/admin/exchange-rate');
+    return res.data;
+  },
+
+  /**
+   * Fuerza la consulta de la tasa a las fuentes externas
+   */
+  async syncExchangeRate() {
+    const res = await api.post('/admin/exchange-rate/sync');
+    return res.data;
+  },
+
+  /**
+   * Corrige la tasa a mano (se conserva 12 horas)
+   */
+  async setExchangeRateManual(rate, pair = 'USD/VES') {
+    const res = await api.post('/admin/exchange-rate/manual', { rate, pair });
+    return res.data;
   }
 };
 

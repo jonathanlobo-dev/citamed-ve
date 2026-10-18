@@ -188,6 +188,11 @@ try {
   db.AiUsage = AiUsageModel(sequelize);
   console.log('  ✅ AiUsage cargado');
 
+  // M05 / Semana 8 - Tasa oficial BCV
+  const ExchangeRateModel = require('./ExchangeRate');
+  db.ExchangeRate = ExchangeRateModel(sequelize);
+  console.log('  ExchangeRate cargado');
+
   console.log('✅ Todos los modelos cargados exitosamente\n');
 } catch (error) {
   console.error('❌ Error cargando modelos:', error.message);

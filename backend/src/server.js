@@ -29,6 +29,7 @@ const {
 
 // Session Cleanup Job
 const { setupSessionCleanup } = require('./jobs/sessionCleanup');
+const { setupExchangeRateSync } = require('./jobs/exchangeRateSync');
 
 // Setup process error handlers
 setupProcessErrorHandlers();
@@ -109,6 +110,7 @@ const doctorPatientsRoutes = require("./routes/doctorPatients");
 const myClinicalRecordRoutes = require("./routes/myClinicalRecord");
 const adminRoutes = require("./routes/admin");
 const aiRoutes = require("./routes/ai");
+const exchangeRateRoutes = require("./routes/exchangeRates");
 
 // ==================== USAR RUTAS ====================
 // Auth routes con rate limiting estricto (5 req/15min)
@@ -144,6 +146,7 @@ app.use("/api/doctor/patients", doctorPatientsRoutes);
 app.use("/api/patients", myClinicalRecordRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/exchange-rate", exchangeRateRoutes);
 
 // ==================== RUTAS BÁSICAS ====================
 app.get("/", (req, res) => {
@@ -424,6 +427,7 @@ async function startServer() {
 
       // Initialize scheduled jobs
       setupSessionCleanup();
+      setupExchangeRateSync();
       logger.info('Scheduled jobs initialized');
 
       // Console output for development visibility
