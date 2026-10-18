@@ -4,13 +4,15 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { FEATURES } from '../../../config/features';
 import Button from '../Button/button';
-import { LogOut, User, Calendar, Menu, X, Home, Grid, Stethoscope, Building2, Shield, HelpCircle, Search, MapPin, Star } from 'lucide-react';
+import { LogOut, User, Calendar, Menu, X, Home, Grid, Stethoscope, Building2, Shield, HelpCircle, Search, MapPin, Star, Download } from 'lucide-react';
+import usePwaInstall from '../../../hooks/usePwaInstall';
 import searchService from '../../../services/searchService';
 
 function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { canInstall, install } = usePwaInstall();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
@@ -292,6 +294,16 @@ function Navbar() {
                     <span className="hidden xl:inline">Dashboard</span>
                   </Button>
                 )}
+                {canInstall && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<Download className="w-4 h-4" />}
+                    onClick={install}
+                  >
+                    <span className="hidden xl:inline">Instalar app</span>
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -411,6 +423,17 @@ function Navbar() {
                       className="w-full"
                     >
                       Dashboard
+                    </Button>
+                  )}
+                  {canInstall && (
+                    <Button
+                      variant="outline"
+                      size="md"
+                      icon={<Download className="w-4 h-4" />}
+                      onClick={install}
+                      className="w-full"
+                    >
+                      Instalar app
                     </Button>
                   )}
                   <Button
