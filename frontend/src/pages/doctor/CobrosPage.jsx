@@ -176,6 +176,15 @@ export default function CobrosPage() {
   }, [activeTab, historyFilters]);
 
   // Carga inicial
+  // Nombres de los bancos para mostrar "0134 - Banesco" en vez del código solo
+  const [bankNames, setBankNames] = useState({});
+  useEffect(() => {
+    paymentService.getBanks()
+      .then((res) => setBankNames(Object.fromEntries((res.data || []).map((b) => [b.code, b.name]))))
+      .catch(() => {});
+  }, []);
+  const bankLabel = (code) => (bankNames[code] ? `${code} - ${bankNames[code]}` : code);
+
   useEffect(() => {
     loadRates();
   }, [loadRates]);
@@ -495,7 +504,7 @@ export default function CobrosPage() {
                           </div>
                           <div>
                             <span className="text-slate-500 block">Banco pagador:</span>
-                            <span className="text-slate-900">{payment.payerBank || 'No especificado'}</span>
+                            <span className="text-slate-900">{payment.payerBank ? bankLabel(payment.payerBank) : 'No especificado'}</span>
                           </div>
                           {payment.payerNote && (
                             <div className="col-span-1 sm:col-span-3 pt-1 border-t border-slate-200 text-slate-600 italic">
@@ -790,6 +799,11 @@ export default function CobrosPage() {
                                 <h4 className="font-bold text-slate-900 text-sm sm:text-base">
                                   {patName}
                                 </h4>
+                                {payment.status === 'reported' && (
+                                  <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                    Por validar
+                                  </span>
+                                )}
                                 {isApproved && (
                                   <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                     Aprobado
@@ -842,7 +856,7 @@ export default function CobrosPage() {
                             )}
                             {payment.payerBank && (
                               <div>
-                                Banco: <span className="text-slate-800">{payment.payerBank}</span>
+                                Banco: <span className="text-slate-800">{bankLabel(payment.payerBank)}</span>
                               </div>
                             )}
                           </div>
