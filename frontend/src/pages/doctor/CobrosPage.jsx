@@ -140,7 +140,13 @@ export default function CobrosPage() {
       } else if (activeTab === 'receivable') {
         const res = await paymentService.listReceivable();
         if (res.success) {
-          setReceivableData(res);
+          // El servidor responde { items, totalUsd, count }; la pantalla usa { data, totalAmountUsd, totalCount }
+          const r = res.data || {};
+          setReceivableData({
+            totalCount: r.count || 0,
+            totalAmountUsd: r.totalUsd || 0,
+            data: (r.items || []).map((item) => ({ ...item, daysAgo: item.daysElapsed }))
+          });
         }
       } else if (activeTab === 'history') {
         const res = await paymentService.listHistory({
@@ -150,7 +156,15 @@ export default function CobrosPage() {
           page: historyFilters.page
         });
         if (res.success) {
-          setHistoryData(res);
+          // El servidor responde { items, total, page, totalPages, totals: { approvedUsd, approvedVes } }
+          const h = res.data || {};
+          setHistoryData({
+            total: h.total || 0,
+            page: h.page || 1,
+            totalPages: h.totalPages || 1,
+            data: h.items || [],
+            totals: { totalUsd: h.totals?.approvedUsd || 0, totalVes: h.totals?.approvedVes || 0 }
+          });
         }
       }
     } catch (err) {
