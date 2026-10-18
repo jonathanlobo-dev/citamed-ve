@@ -16,6 +16,7 @@ const {
   drawPatientBox,
   drawFooter
 } = require('./pdf/pdfLayout');
+const { getBankByCode } = require('../utils/venezuelanBanks');
 
 const METHOD_LABELS = {
   pago_movil: 'Pago Móvil',
@@ -116,7 +117,7 @@ async function generatePaymentReceiptPdf(payment) {
     // Fila 4: Banco emisor si aplica
     if (payment.payerBank) {
       doc.fillColor('#64748b').fontSize(8.5).font('Helvetica-Bold').text('Banco emisor:', col1X, rowY);
-      doc.fillColor('#0f172a').fontSize(9).font('Helvetica').text(payment.payerBank, col1X + 80, rowY);
+      doc.fillColor('#0f172a').fontSize(9).font('Helvetica').text((getBankByCode(payment.payerBank) ? `${payment.payerBank} - ${getBankByCode(payment.payerBank).name}` : payment.payerBank), col1X + 80, rowY);
       rowY += 20;
     }
 
