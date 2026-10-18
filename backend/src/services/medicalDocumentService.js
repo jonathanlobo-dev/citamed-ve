@@ -460,6 +460,73 @@ async function verifyDocument(code) {
     };
   }
 
+  // Verificación unificada: buscar en payments (recibos de pago)
+  if (db.Payment) {
+    const payment = await db.Payment.findOne({
+      where: { verificationCode: upperCode },
+      include: [
+        {
+          model: User,
+          as: 'doctor',
+          attributes: ['id', 'firstName', 'lastName', 'gender'],
+          include: [
+            {
+              model: DoctorProfile,
+              as: 'doctorProfile',
+              attributes: ['firstName', 'lastName', 'mppsNumber', 'mpps_number'],
+              include: [{ model: Specialty, as: 'specialty', attributes: ['id', 'name'] }]
+            }
+          ]
+        },
+        {
+          model: User,
+          as: 'patient',
+          attributes: ['id', 'firstName', 'lastName'],
+          include: [
+            {
+              model: PatientProfile,
+              as: 'patientProfile',
+              attributes: ['firstName', 'lastName']
+            }
+          ]
+        }
+      ]
+    });
+
+    if (payment) {
+      const doctor = payment.doctor || {};
+      const docProfile = doctor.doctorProfile || {};
+      const doctorName = `${doctorTitle(doctor.gender)} ${docProfile.firstName || doctor.firstName || ''} ${docProfile.lastName || doctor.lastName || ''}`.trim();
+      const specialty = docProfile.specialty?.name || 'Medicina General';
+      const mpps = docProfile.mppsNumber || docProfile.mpps_number || 'N/A';
+
+      const patient = payment.patient || {};
+      const patientProfile = patient.patientProfile || {};
+      const patientInitials = getInitials(
+        patientProfile.firstName || patient.firstName,
+        patientProfile.lastName || patient.lastName
+      );
+
+      return {
+        valid: payment.status === 'approved',
+        status: payment.status,
+        type: 'payment_receipt',
+        title: `Recibo de Pago ${payment.receiptNumber || ''}`.trim(),
+        date: payment.approvedAt || payment.createdAt,
+        doctorName,
+        specialty,
+        mpps,
+        patientInitials,
+        summary: {
+          amountUsd: payment.amountUsd,
+          amountVes: payment.amountVes,
+          exchangeRate: payment.exchangeRate,
+          method: payment.method
+        }
+      };
+    }
+  }
+
   return {
     valid: false,
     message: 'Documento no encontrado'
