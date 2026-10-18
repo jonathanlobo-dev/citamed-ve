@@ -3,9 +3,14 @@ import { createRoot } from 'react-dom/client'
 import { Toaster } from 'react-hot-toast'
 import './index.css'
 import App from './App.jsx'
+import { FEATURES } from './config/features'
 
-// App instalable: el service worker solo se registra en el sitio publicado, no en desarrollo local
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+// App instalable (interruptor FEATURES.pwa): manifiesto y service worker solo en el sitio publicado
+if (FEATURES.pwa && 'serviceWorker' in navigator && import.meta.env.PROD) {
+  const manifest = document.createElement('link');
+  manifest.rel = 'manifest';
+  manifest.href = '/manifest.webmanifest';
+  document.head.appendChild(manifest);
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch((err) => {
       console.warn('[CitaMed] No se pudo registrar el service worker:', err);
