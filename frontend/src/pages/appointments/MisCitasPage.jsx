@@ -26,11 +26,13 @@ import {
   FileText,
   Navigation,
   Download,
-  Share2
+  Share2,
+  CreditCard
 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar/Navbar';
 import appointmentService from '../../services/appointmentService';
 import prescriptionAPI from '../../services/prescriptionService';
+import paymentService from '../../services/paymentService';
 import { shareRecipe, prefetchRecipePdf } from '../../utils/shareRecipe';
 import toast from 'react-hot-toast';
 import './MisCitasPage.css';
@@ -43,10 +45,81 @@ const MisCitasPage = () => {
   const [filter, setFilter] = useState('all'); // all, upcoming, past, cancelled
   const [recipeLoadingId, setRecipeLoadingId] = useState(null);
   const [recipesByAppointment, setRecipesByAppointment] = useState({});
+  const [paymentsByAppointment, setPaymentsByAppointment] = useState({});
+  const [selectedAppointmentForPay, setSelectedAppointmentForPay] = useState(null);
+  const [payDrawerOpen, setPayDrawerOpen] = useState(false);
 
   useEffect(() => {
     fetchAppointments();
+    fetchMyPayments();
   }, []);
+
+  const fetchMyPayments = async () => {
+    try {
+      const res = await paymentService.listMine();
+      const list = res?.data || (Array.isArray(res) ? res : []);
+      const map = {};
+      list.forEach((p) => {
+        const aptId = p.appointmentId || p.appointment?.id;
+        if (aptId && !map[aptId]) {
+          map[aptId] = p;
+        }
+      });
+      setPaymentsByAppointment(map);
+    } catch (err) {
+      console.error('Error fetching payments:', err);
+    }
+  };
+
+  const getPaymentBadge = (appointment) => {
+    const fee = Number(appointment.consultationFee);
+    const activePayment = paymentsByAppointment[appointment.id];
+    const isPaid = appointment.paymentStatus === 'paid' || activePayment?.status === 'approved';
+
+    if (isPaid) {
+      return {
+        label: 'Pagado',
+        color: 'bg-emerald-50 text-emerald-700 border border-emerald-300',
+        icon: CheckCircle
+      };
+    }
+
+    if (activePayment?.status === 'reported') {
+      return {
+        label: 'En revisión',
+        color: 'bg-amber-50 text-amber-700 border border-amber-300',
+        icon: Clock
+      };
+    }
+
+    if (activePayment?.status === 'rejected') {
+      const reason = activePayment.reviewNote ? `: ${activePayment.reviewNote}` : '';
+      return {
+        label: `Rechazado${reason}`,
+        color: 'bg-red-50 text-red-700 border border-red-300',
+        icon: AlertCircle
+      };
+    }
+
+    if (['in_progress', 'completed'].includes(appointment.status)) {
+      if (fee > 0) {
+        return {
+          label: 'Por pagar',
+          color: 'bg-blue-50 text-blue-700 border border-blue-300',
+          icon: CreditCard
+        };
+      }
+      if (fee === 0) {
+        return {
+          label: 'Sin costo',
+          color: 'bg-gray-100 text-gray-600 border border-gray-200',
+          icon: CheckCircle
+        };
+      }
+    }
+
+    return null;
+  };
 
   useEffect(() => {
     appointments
@@ -68,6 +141,7 @@ const MisCitasPage = () => {
       setError(null);
       const response = await appointmentService.getMyAppointments({ all: 'true' });
       setAppointments(response.data || []);
+      fetchMyPayments();
     } catch (err) {
       console.error('Error fetching appointments:', err);
       setError('No pudimos cargar tus citas. Por favor intenta de nuevo.');
@@ -433,10 +507,24 @@ const MisCitasPage = () => {
                       </div>
                     </div>
 
-                    {/* Status Badge */}
-                    <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm ${statusConfig.color} ${statusConfig.animate ? 'animate-pulse' : ''}`}>
-                      <StatusIcon className="w-4 h-4" />
-                      {statusConfig.label}
+                    {/* Status Badges */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm ${statusConfig.color} ${statusConfig.animate ? 'animate-pulse' : ''}`}>
+                        <StatusIcon className="w-4 h-4" />
+                        {statusConfig.label}
+                      </div>
+
+                      {(() => {
+                        const payBadge = getPaymentBadge(appointment);
+                        if (!payBadge) return null;
+                        const PayBadgeIcon = payBadge.icon;
+                        return (
+                          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${payBadge.color}`}>
+                            <PayBadgeIcon className="w-4 h-4 shrink-0" />
+                            <span className="truncate max-w-[220px]" title={payBadge.label}>{payBadge.label}</span>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -485,6 +573,38 @@ const MisCitasPage = () => {
 
                   {/* Action Buttons */}
                   <div className="mt-6 flex flex-wrap gap-3">
+                    {/* Botón Pagar consulta / Ver mi pago (C1) */}
+                    {['in_progress', 'completed'].includes(appointment.status) && Number(appointment.consultationFee) > 0 && (() => {
+                      const activePayment = paymentsByAppointment[appointment.id];
+                      const isPaid = appointment.paymentStatus === 'paid' || activePayment?.status === 'approved';
+                      const isReported = activePayment?.status === 'reported';
+
+                      const btnLabel = isPaid
+                        ? 'Ver mi pago'
+                        : isReported
+                        ? 'Ver mi pago'
+                        : 'Pagar consulta';
+
+                      return (
+                        <button
+                          onClick={() => {
+                            setSelectedAppointmentForPay(appointment);
+                            setPayDrawerOpen(true);
+                          }}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition text-sm ${
+                            isPaid
+                              ? 'border border-emerald-300 text-emerald-700 bg-emerald-50/60 hover:bg-emerald-100'
+                              : isReported
+                              ? 'border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100'
+                              : 'bg-primary text-white hover:bg-primary-dark shadow-sm'
+                          }`}
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          {btnLabel}
+                        </button>
+                      );
+                    })()}
+
                     {/* Indicador de cita reprogramada */}
                     {appointment.status === 'rescheduled' && (
                       <span className="inline-flex items-center gap-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-300 px-3 py-2 rounded-lg font-medium">
