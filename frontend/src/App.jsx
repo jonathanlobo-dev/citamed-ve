@@ -8,6 +8,7 @@ const DoctorPatientsPage = lazy(() => import('./pages/doctor/DoctorPatientsPage'
 const PatientRecordPage = lazy(() => import('./pages/doctor/PatientRecordPage'));
 const PatientMyRecordPage = lazy(() => import('./pages/patient/PatientMyRecordPage'));
 const EspacioClinicoPage = lazy(() => import('./pages/doctor/EspacioClinicoPage'));
+const CobrosPage = lazy(() => import('./pages/doctor/CobrosPage'));
 const VerificarDocumentoPage = lazy(() => import('./pages/public/VerificarDocumentoPage'));
 const AdminPanelPage = lazy(() => import('./pages/admin/AdminPanelPage'));
 import { FEATURES } from './config/features';
@@ -200,12 +201,16 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/medico/facturacion"
+        path="/medico/cobros"
         element={
           <ProtectedRoute allowedRoles={['doctor']}>
-            <ComingSoonPage />
+            <CobrosPage />
           </ProtectedRoute>
         }
+      />
+      <Route
+        path="/medico/facturacion"
+        element={<Navigate to="/medico/cobros" replace />}
       />
       <Route
         path="/medico/mensajeria"

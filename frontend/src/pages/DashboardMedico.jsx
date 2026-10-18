@@ -97,10 +97,10 @@ function DashboardMedico() {
       color: 'from-orange-500 to-orange-600'
     },
     {
-      title: 'Facturación',
+      title: 'Cobros',
       icon: DollarSign,
-      description: 'Gestión de pagos, honorarios y reportes',
-      path: '/medico/facturacion',
+      description: 'Validación de pagos, cobros pendientes y recibos',
+      path: '/medico/cobros',
       color: 'from-yellow-500 to-yellow-600'
     },
     {
