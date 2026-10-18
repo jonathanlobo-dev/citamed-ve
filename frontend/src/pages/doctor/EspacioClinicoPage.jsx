@@ -55,6 +55,8 @@ import appointmentService from '../../services/appointmentService';
 import prescriptionAPI from '../../services/prescriptionService';
 import medicalDocumentService from '../../services/medicalDocumentService';
 import clinicalRecordService from '../../services/clinicalRecordService';
+import paymentService from '../../services/paymentService';
+import RecordPaymentDrawer from '../../components/payments/RecordPaymentDrawer';
 import ClinicalTextField from '../../components/clinical/ClinicalTextField';
 import SideDrawer from '../../components/common/SideDrawer/SideDrawer';
 import { CONDITION_STATUS_LABELS } from '../../utils/physicalExamLabels';
@@ -243,6 +245,41 @@ export default function EspacioClinicoPage() {
   // Diálogo corto de confirmación para finalizar consulta
   const [confirmCompleteOpen, setConfirmCompleteOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
+
+  // Cobro de la consulta (Semana 8 / B5)
+  const [drawerRecordPayment, setDrawerRecordPayment] = useState(false);
+  const [paymentSummary, setPaymentSummary] = useState(null);
+  const [downloadingReceipt, setDownloadingReceipt] = useState(false);
+
+  const handlePaymentRecorded = (payment) => {
+    setDrawerRecordPayment(false);
+    toast.success(`Cobro registrado exitosamente (Recibo ${payment.receiptNumber || ''})`);
+    if (appointment?.id) {
+      paymentService.getAppointmentSummary(appointment.id).then((res) => {
+        if (res?.success) setPaymentSummary(res.data);
+      }).catch(console.warn);
+    }
+  };
+
+  const handleDownloadReceipt = async (paymentId, receiptNumber) => {
+    setDownloadingReceipt(true);
+    try {
+      const blob = await paymentService.downloadReceipt(paymentId);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `recibo-${receiptNumber || paymentId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error descargando recibo:', err);
+      toast.error('No se pudo descargar el recibo en PDF');
+    } finally {
+      setDownloadingReceipt(false);
+    }
+  };
 
   // Ancla activa de navegación rápida
   // Pestañas del Espacio Clínico (como en NeosVet): consulta, récipe y órdenes/documentos
@@ -572,6 +609,16 @@ export default function EspacioClinicoPage() {
             .forEach((p) => prefetchDocumentPdf('prescription', p.id, prescriptionAPI.downloadPdf));
         } catch (prescErr) {
           console.error('[EspacioClinico] Error cargando récipes de la cita:', prescErr);
+        }
+
+        // Cargar resumen de cobro de esta cita (B5)
+        try {
+          const payRes = await paymentService.getAppointmentSummary(apt.id);
+          if (mounted && payRes?.success) {
+            setPaymentSummary(payRes.data);
+          }
+        } catch (payErr) {
+          console.warn('[EspacioClinico] Error cargando cobro de la cita:', payErr);
         }
       } catch (err) {
         console.error('[EspacioClinico] Error cargando datos de la cita:', err);
@@ -2962,6 +3009,93 @@ export default function EspacioClinicoPage() {
               </h2>
             </div>
 
+            {/* Tarjeta: Cobro de esta consulta (Semana 8 / B5) */}
+            {(!isDraftMode || identifiedPatient) && (
+              (() => {
+                const rawFee = paymentSummary?.feeUsd ?? appointment?.consultationFee ?? 0;
+                const feeNum = Number(rawFee) || 0;
+                const isFree = feeNum === 0;
+                const activePayment = paymentSummary?.activePayment;
+                const isPaid = activePayment?.status === 'approved' || appointment?.paymentStatus === 'paid';
+                const isUnderReview = activePayment?.status === 'reported';
+                const isRejected = activePayment?.status === 'rejected';
+
+                let statusLabel = 'Sin cobrar';
+                let statusBadgeClass = 'bg-slate-100 text-slate-700 border-slate-200';
+                if (isFree) {
+                  statusLabel = 'Sin costo';
+                  statusBadgeClass = 'bg-slate-100 text-slate-600 border-slate-200';
+                } else if (isPaid) {
+                  statusLabel = 'Pagado';
+                  statusBadgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                } else if (isUnderReview) {
+                  statusLabel = 'En revisión';
+                  statusBadgeClass = 'bg-amber-50 text-amber-800 border-amber-200';
+                } else if (isRejected) {
+                  statusLabel = 'Rechazado';
+                  statusBadgeClass = 'bg-red-50 text-red-700 border-red-200';
+                }
+
+                return (
+                  <div className="mb-4 p-4 bg-gradient-to-r from-slate-50 to-white border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-2xs">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                        <DollarSign className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-slate-900 text-sm">Cobro de esta consulta</h3>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${statusBadgeClass}`}>
+                            {statusLabel}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {isFree ? (
+                            'Esta consulta fue agendada sin costo'
+                          ) : (
+                            <>
+                              Tarifa: <strong className="text-slate-900">${feeNum.toFixed(2)} USD</strong>
+                              {paymentSummary?.feeVes && (
+                                <span className="ml-1 text-slate-600 font-medium">
+                                  (~ Bs. {Number(paymentSummary.feeVes).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                                </span>
+                              )}
+                              {activePayment?.receiptNumber && ` • Recibo ${activePayment.receiptNumber}`}
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
+                      {!isFree && (
+                        isPaid ? (
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadReceipt(activePayment?.id, activePayment?.receiptNumber)}
+                            disabled={downloadingReceipt}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg transition shadow-2xs"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>{downloadingReceipt ? 'Descargando...' : 'Ver recibo'}</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setDrawerRecordPayment(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-primary hover:bg-primary/90 rounded-lg transition shadow-2xs"
+                          >
+                            <DollarSign className="w-3.5 h-3.5" />
+                            <span>Registrar cobro</span>
+                          </button>
+                        )
+                      )}
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+
             {/* Banner en modo borrador */}
             {isDraftMode && (
               <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between text-xs text-amber-800">
@@ -4092,6 +4226,14 @@ export default function EspacioClinicoPage() {
         loading={aiRxLoadingSingle}
         error={aiRxErrorSingle}
         onApply={handleApplyAiRxProposal}
+      />
+
+      {/* SideDrawer: Registrar Cobro (Semana 8 / B5) */}
+      <RecordPaymentDrawer
+        open={drawerRecordPayment}
+        onClose={() => setDrawerRecordPayment(false)}
+        appointment={appointment}
+        onRecorded={handlePaymentRecorded}
       />
     </div>
   );
