@@ -111,6 +111,7 @@ const myClinicalRecordRoutes = require("./routes/myClinicalRecord");
 const adminRoutes = require("./routes/admin");
 const aiRoutes = require("./routes/ai");
 const exchangeRateRoutes = require("./routes/exchangeRates");
+const paymentRoutes = require("./routes/payments");
 
 // ==================== USAR RUTAS ====================
 // Auth routes con rate limiting estricto (5 req/15min)
@@ -147,6 +148,7 @@ app.use("/api/patients", myClinicalRecordRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/exchange-rate", exchangeRateRoutes);
+app.use("/api/payments", paymentRoutes);
 
 // ==================== RUTAS BÁSICAS ====================
 app.get("/", (req, res) => {
