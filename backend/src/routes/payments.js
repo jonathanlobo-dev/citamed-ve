@@ -87,6 +87,13 @@ router.post(
   creationLimiter,
   paymentController.reportPayment.bind(paymentController)
 );
+router.post(
+  '/appointments/:appointmentId/report',
+  authenticateToken,
+  requireRoles(['patient', 'admin']),
+  creationLimiter,
+  paymentController.reportPayment.bind(paymentController)
+);
 
 // Registro de cobro en consultorio (médico) con rate limiting
 router.post(
@@ -96,30 +103,31 @@ router.post(
   creationLimiter,
   paymentController.recordPayment.bind(paymentController)
 );
-
-// Validación: Aprobar pago reportado
-router.put(
-  '/:id/approve',
+router.post(
+  '/appointments/:appointmentId/record',
   authenticateToken,
   requireRoles(['doctor', 'admin']),
-  paymentController.approve.bind(paymentController)
+  creationLimiter,
+  paymentController.recordPayment.bind(paymentController)
 );
 
-// Validación: Rechazar pago reportado
-router.put(
-  '/:id/reject',
-  authenticateToken,
-  requireRoles(['doctor', 'admin']),
-  paymentController.reject.bind(paymentController)
-);
+// Validación: Aprobar pago reportado (PUT o POST)
+router.route('/:id/approve')
+  .all(authenticateToken, requireRoles(['doctor', 'admin']))
+  .put(paymentController.approve.bind(paymentController))
+  .post(paymentController.approve.bind(paymentController));
 
-// Anulación de cobro aprobado
-router.put(
-  '/:id/void',
-  authenticateToken,
-  requireRoles(['doctor', 'admin']),
-  paymentController.voidPayment.bind(paymentController)
-);
+// Validación: Rechazar pago reportado (PUT o POST)
+router.route('/:id/reject')
+  .all(authenticateToken, requireRoles(['doctor', 'admin']))
+  .put(paymentController.reject.bind(paymentController))
+  .post(paymentController.reject.bind(paymentController));
+
+// Anulación de cobro aprobado (PUT o POST)
+router.route('/:id/void')
+  .all(authenticateToken, requireRoles(['doctor', 'admin']))
+  .put(paymentController.voidPayment.bind(paymentController))
+  .post(paymentController.voidPayment.bind(paymentController));
 
 // ==========================================
 // DOCUMENTOS

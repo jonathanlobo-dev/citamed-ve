@@ -85,7 +85,11 @@ class PaymentController {
    */
   async reportPayment(req, res) {
     try {
-      const payment = await paymentService.reportPayment(req.body, req.user);
+      const payload = {
+        ...req.body,
+        appointmentId: req.params.appointmentId || req.body.appointmentId
+      };
+      const payment = await paymentService.reportPayment(payload, req.user);
       res.status(201).json({
         success: true,
         message: 'Pago reportado exitosamente. El médico validará la recepción.',
@@ -104,7 +108,11 @@ class PaymentController {
    */
   async recordPayment(req, res) {
     try {
-      const payment = await paymentService.recordPayment(req.body, req.user);
+      const payload = {
+        ...req.body,
+        appointmentId: req.params.appointmentId || req.body.appointmentId
+      };
+      const payment = await paymentService.recordPayment(payload, req.user);
       res.status(201).json({
         success: true,
         message: 'Cobro registrado exitosamente y recibo emitido.',
@@ -142,7 +150,7 @@ class PaymentController {
    */
   async reject(req, res) {
     try {
-      const { reason } = req.body;
+      const reason = req.body.reason || req.body.rejectionReason || req.body.reviewNote;
       const payment = await paymentService.reject(req.params.id, reason, req.user);
       res.json({
         success: true,
@@ -162,7 +170,7 @@ class PaymentController {
    */
   async voidPayment(req, res) {
     try {
-      const { reason } = req.body;
+      const reason = req.body.reason || req.body.voidReason || req.body.reviewNote;
       const payment = await paymentService.voidPayment(req.params.id, reason, req.user);
       res.json({
         success: true,
