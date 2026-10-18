@@ -257,6 +257,13 @@ describe('Semana 8 - Flujo Completo de Cobros y Recibos Verificables', () => {
       cy.contains('DoctorCy Prueba').should('be.visible');
       cy.contains(verificationCode).should('be.visible');
 
+      // Un recibo aprobado debe mostrarse como válido, con su monto
+      cy.contains('Recibo de Pago').should('be.visible');
+      cy.contains('Activo / Válido').should('be.visible');
+      cy.contains('Anulado').should('not.exist');
+      cy.contains('Monto del recibo').should('be.visible');
+      cy.screenshot('recibo_verificado', { capture: 'viewport', overwrite: true });
+
       // Regla 9 de privacidad: NINGÚN dato sensible debe mostrarse públicamente
       cy.contains(testData.patientEmail).should('not.exist');
       cy.contains('+584123334455').should('not.exist');
