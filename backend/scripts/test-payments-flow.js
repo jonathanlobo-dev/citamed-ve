@@ -21,6 +21,12 @@
 
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+
+// Esta prueba crea y borra usuarios, citas y cobros: nunca contra producción
+if (!String(process.env.DB_USER || '').endsWith('bvdjfxihcohexgvtyhto')) {
+  console.error('ABORTADO: test-payments-flow.js solo corre contra la base de Pruebas.');
+  process.exit(1);
+}
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const app = require('../src/server');
@@ -122,6 +128,7 @@ async function run() {
       specialtyId: 1,
       paymentSettings: {
         pagoMovil: {
+          enabled: true,
           phone: '+584141112233',
           bankCode: '0102',
           idDoc: 'V-12345678',

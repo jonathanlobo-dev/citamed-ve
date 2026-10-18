@@ -509,10 +509,11 @@ async function verifyDocument(code) {
 
       return {
         valid: payment.status === 'approved',
-        status: payment.status,
+        // La página pública usa el vocabulario de los documentos: active (válido) o voided (anulado)
+        status: payment.status === 'approved' ? 'active' : 'voided',
         type: 'payment_receipt',
         title: `Recibo de Pago ${payment.receiptNumber || ''}`.trim(),
-        date: payment.approvedAt || payment.createdAt,
+        date: payment.reviewedAt || payment.createdAt,
         doctorName,
         specialty,
         mpps,

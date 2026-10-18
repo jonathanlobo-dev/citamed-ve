@@ -52,7 +52,7 @@ async function getSettings(doctorId) {
  * Actualiza los métodos de cobro del médico (solo el médico dueño o admin)
  */
 async function updateSettings(doctorId, rawSettings, user) {
-  if (user.role !== 'admin' && user.id !== Number(doctorId)) {
+  if (user.id !== Number(doctorId)) {
     const err = new Error('No autorizado para modificar los métodos de cobro de este médico');
     err.statusCode = 403;
     throw err;
@@ -222,6 +222,11 @@ async function reportPayment(
   if (idempotencyKey) {
     const existing = await Payment.findOne({ where: { idempotencyKey } });
     if (existing) {
+      if (existing.reportedBy !== user.id) {
+        const err = new Error('Solicitud de pago no válida');
+        err.statusCode = 409;
+        throw err;
+      }
       return existing;
     }
   }
@@ -256,9 +261,21 @@ async function reportPayment(
     }
 
     // Regla 3: El paciente solo reporta sobre sus propias citas
-    if (user.role !== 'admin' && appointment.patientId !== user.id) {
+    if (appointment.patientId !== user.id) {
       const err = new Error('No tienes permiso para reportar pagos en esta cita');
       err.statusCode = 403;
+      throw err;
+    }
+
+    const doctorProfile = await DoctorProfile.findOne({
+      where: { userId: appointment.doctorId },
+      attributes: ['paymentSettings'],
+      transaction: t
+    });
+    const settingsKey = { pago_movil: 'pagoMovil', transferencia: 'transferencia', zelle: 'zelle', efectivo_usd: 'efectivoUsd', efectivo_ves: 'efectivoVes' }[method];
+    if (!doctorProfile?.paymentSettings?.[settingsKey]?.enabled) {
+      const err = new Error('El médico no tiene habilitado ese método de pago');
+      err.statusCode = 400;
       throw err;
     }
 
@@ -403,7 +420,7 @@ async function recordPayment(
     }
 
     // Solo el médico de la cita o admin
-    if (user.role !== 'admin' && appointment.doctorId !== user.id) {
+    if (appointment.doctorId !== user.id) {
       const err = new Error('No estás autorizado para registrar cobros en esta cita');
       err.statusCode = 403;
       throw err;
@@ -541,7 +558,7 @@ async function approve(id, user) {
       throw err;
     }
 
-    if (user.role !== 'admin' && payment.doctorId !== user.id) {
+    if (payment.doctorId !== user.id) {
       const err = new Error('No estás autorizado para validar este cobro');
       err.statusCode = 403;
       throw err;
@@ -621,7 +638,7 @@ async function reject(id, reason, user) {
       throw err;
     }
 
-    if (user.role !== 'admin' && payment.doctorId !== user.id) {
+    if (payment.doctorId !== user.id) {
       const err = new Error('No estás autorizado para rechazar este cobro');
       err.statusCode = 403;
       throw err;
@@ -679,7 +696,7 @@ async function voidPayment(id, reason, user) {
       throw err;
     }
 
-    if (user.role !== 'admin' && payment.doctorId !== user.id) {
+    if (payment.doctorId !== user.id) {
       const err = new Error('Solo el médico puede anular este cobro');
       err.statusCode = 403;
       throw err;

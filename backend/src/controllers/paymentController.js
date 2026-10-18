@@ -7,6 +7,10 @@ const paymentService = require('../services/paymentService');
 const { VENEZUELAN_BANKS } = require('../utils/venezuelanBanks');
 const { generatePaymentReceiptPdf } = require('../services/paymentReceiptPdfService');
 
+// Una carrera entre dos reportes iguales choca con los índices únicos: se responde 409, no 500
+const statusOf = (error, fallback) =>
+  error.name === 'SequelizeUniqueConstraintError' ? 409 : (error.statusCode || fallback);
+
 class PaymentController {
   /**
    * GET /api/payments/banks
@@ -37,8 +41,8 @@ class PaymentController {
       });
     } catch (error) {
       console.error('[PaymentController] getSettings error:', error);
-      const status = error.statusCode || 500;
-      res.status(status).json({ success: false, message: error.message });
+      const status = statusOf(error, 500);
+      res.status(status).json({ success: false, message: status === 409 && error.name === 'SequelizeUniqueConstraintError' ? 'Ese pago ya fue reportado o la referencia ya está registrada' : error.message });
     }
   }
 
@@ -56,8 +60,8 @@ class PaymentController {
       });
     } catch (error) {
       console.error('[PaymentController] updateSettings error:', error);
-      const status = error.statusCode || 400;
-      res.status(status).json({ success: false, message: error.message });
+      const status = statusOf(error, 400);
+      res.status(status).json({ success: false, message: status === 409 && error.name === 'SequelizeUniqueConstraintError' ? 'Ese pago ya fue reportado o la referencia ya está registrada' : error.message });
     }
   }
 
@@ -74,8 +78,8 @@ class PaymentController {
       });
     } catch (error) {
       console.error('[PaymentController] getAppointmentSummary error:', error);
-      const status = error.statusCode || 500;
-      res.status(status).json({ success: false, message: error.message });
+      const status = statusOf(error, 500);
+      res.status(status).json({ success: false, message: status === 409 && error.name === 'SequelizeUniqueConstraintError' ? 'Ese pago ya fue reportado o la referencia ya está registrada' : error.message });
     }
   }
 
@@ -97,8 +101,8 @@ class PaymentController {
       });
     } catch (error) {
       console.error('[PaymentController] reportPayment error:', error);
-      const status = error.statusCode || 400;
-      res.status(status).json({ success: false, message: error.message });
+      const status = statusOf(error, 400);
+      res.status(status).json({ success: false, message: status === 409 && error.name === 'SequelizeUniqueConstraintError' ? 'Ese pago ya fue reportado o la referencia ya está registrada' : error.message });
     }
   }
 
@@ -120,8 +124,8 @@ class PaymentController {
       });
     } catch (error) {
       console.error('[PaymentController] recordPayment error:', error);
-      const status = error.statusCode || 400;
-      res.status(status).json({ success: false, message: error.message });
+      const status = statusOf(error, 400);
+      res.status(status).json({ success: false, message: status === 409 && error.name === 'SequelizeUniqueConstraintError' ? 'Ese pago ya fue reportado o la referencia ya está registrada' : error.message });
     }
   }
 
@@ -139,8 +143,8 @@ class PaymentController {
       });
     } catch (error) {
       console.error('[PaymentController] approve error:', error);
-      const status = error.statusCode || 400;
-      res.status(status).json({ success: false, message: error.message });
+      const status = statusOf(error, 400);
+      res.status(status).json({ success: false, message: status === 409 && error.name === 'SequelizeUniqueConstraintError' ? 'Ese pago ya fue reportado o la referencia ya está registrada' : error.message });
     }
   }
 
@@ -159,8 +163,8 @@ class PaymentController {
       });
     } catch (error) {
       console.error('[PaymentController] reject error:', error);
-      const status = error.statusCode || 400;
-      res.status(status).json({ success: false, message: error.message });
+      const status = statusOf(error, 400);
+      res.status(status).json({ success: false, message: status === 409 && error.name === 'SequelizeUniqueConstraintError' ? 'Ese pago ya fue reportado o la referencia ya está registrada' : error.message });
     }
   }
 
@@ -179,8 +183,8 @@ class PaymentController {
       });
     } catch (error) {
       console.error('[PaymentController] voidPayment error:', error);
-      const status = error.statusCode || 400;
-      res.status(status).json({ success: false, message: error.message });
+      const status = statusOf(error, 400);
+      res.status(status).json({ success: false, message: status === 409 && error.name === 'SequelizeUniqueConstraintError' ? 'Ese pago ya fue reportado o la referencia ya está registrada' : error.message });
     }
   }
 
@@ -197,8 +201,8 @@ class PaymentController {
       });
     } catch (error) {
       console.error('[PaymentController] listPending error:', error);
-      const status = error.statusCode || 500;
-      res.status(status).json({ success: false, message: error.message });
+      const status = statusOf(error, 500);
+      res.status(status).json({ success: false, message: status === 409 && error.name === 'SequelizeUniqueConstraintError' ? 'Ese pago ya fue reportado o la referencia ya está registrada' : error.message });
     }
   }
 
@@ -215,8 +219,8 @@ class PaymentController {
       });
     } catch (error) {
       console.error('[PaymentController] listReceivable error:', error);
-      const status = error.statusCode || 500;
-      res.status(status).json({ success: false, message: error.message });
+      const status = statusOf(error, 500);
+      res.status(status).json({ success: false, message: status === 409 && error.name === 'SequelizeUniqueConstraintError' ? 'Ese pago ya fue reportado o la referencia ya está registrada' : error.message });
     }
   }
 
@@ -233,8 +237,8 @@ class PaymentController {
       });
     } catch (error) {
       console.error('[PaymentController] listHistory error:', error);
-      const status = error.statusCode || 500;
-      res.status(status).json({ success: false, message: error.message });
+      const status = statusOf(error, 500);
+      res.status(status).json({ success: false, message: status === 409 && error.name === 'SequelizeUniqueConstraintError' ? 'Ese pago ya fue reportado o la referencia ya está registrada' : error.message });
     }
   }
 
@@ -251,8 +255,8 @@ class PaymentController {
       });
     } catch (error) {
       console.error('[PaymentController] listMine error:', error);
-      const status = error.statusCode || 500;
-      res.status(status).json({ success: false, message: error.message });
+      const status = statusOf(error, 500);
+      res.status(status).json({ success: false, message: status === 409 && error.name === 'SequelizeUniqueConstraintError' ? 'Ese pago ya fue reportado o la referencia ya está registrada' : error.message });
     }
   }
 
@@ -280,8 +284,8 @@ class PaymentController {
       return res.send(pdfBuffer);
     } catch (error) {
       console.error('[PaymentController] downloadReceipt error:', error);
-      const status = error.statusCode || 500;
-      res.status(status).json({ success: false, message: error.message });
+      const status = statusOf(error, 500);
+      res.status(status).json({ success: false, message: status === 409 && error.name === 'SequelizeUniqueConstraintError' ? 'Ese pago ya fue reportado o la referencia ya está registrada' : error.message });
     }
   }
 }

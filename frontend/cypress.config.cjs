@@ -10,6 +10,8 @@ module.exports = defineConfig({
       on('task', {
         async createTestPaymentJourney() {
           require('../backend/node_modules/dotenv').config({ path: '../backend/.env' });
+          // Estas tareas escriben en la base: solo se permiten contra Pruebas
+          if (!String(process.env.DB_USER || '').endsWith('bvdjfxihcohexgvtyhto')) throw new Error('Las pruebas de cobros solo corren contra la base de Pruebas');
           const db = require('../backend/src/models');
           const uid = Date.now().toString().slice(-6);
 
@@ -112,6 +114,8 @@ module.exports = defineConfig({
 
         async cleanupTestPaymentJourney({ userIds, appointmentIds }) {
           require('../backend/node_modules/dotenv').config({ path: '../backend/.env' });
+          // Estas tareas escriben en la base: solo se permiten contra Pruebas
+          if (!String(process.env.DB_USER || '').endsWith('bvdjfxihcohexgvtyhto')) throw new Error('Las pruebas de cobros solo corren contra la base de Pruebas');
           const db = require('../backend/src/models');
           if (appointmentIds && appointmentIds.length) {
             await db.Payment.destroy({ where: { appointmentId: appointmentIds } });

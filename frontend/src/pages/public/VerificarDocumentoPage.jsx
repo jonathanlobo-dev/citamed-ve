@@ -104,6 +104,8 @@ export default function VerificarDocumentoPage() {
         return { label: 'Reposo Médico', icon: Calendar, color: 'amber' };
       case 'certificate':
         return { label: 'Constancia Médica', icon: FileBadge, color: 'orange' };
+      case 'payment_receipt':
+        return { label: 'Recibo de Pago', icon: FileCheck, color: 'emerald' };
       case 'medical_report':
         return { label: 'Informe Médico', icon: FileText, color: 'indigo' };
       default:
@@ -310,6 +312,27 @@ export default function VerificarDocumentoPage() {
                       Detalle de medicamentos disponible en el documento físico.
                     </p>
                   )}
+                </div>
+              )}
+
+              {/* Recibo de pago */}
+              {data.type === 'payment_receipt' && data.summary && (
+                <div className="verificar-doc-section">
+                  <div className="flex items-center gap-2 mb-3 border-b pb-2">
+                    <FileCheck className="w-5 h-5 text-emerald-600" />
+                    <h3 className="text-base font-bold text-slate-800">Monto del recibo</h3>
+                  </div>
+                  <p className="text-sm text-slate-700">
+                    <strong>USD {Number(data.summary.amountUsd).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                    {data.summary.amountVes != null && (
+                      <>
+                        {' '}= Bs {Number(data.summary.amountVes).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} a la tasa BCV de Bs {Number(data.summary.exchangeRate).toLocaleString('es-VE', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} por dólar
+                      </>
+                    )}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-2">
+                    CitaMed no procesa pagos. Este recibo confirma que el médico recibió el pago indicado.
+                  </p>
                 </div>
               )}
 

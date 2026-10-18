@@ -10,7 +10,6 @@ const VENEZUELAN_BANKS = [
   { code: '0108', name: 'BBVA Provincial' },
   { code: '0114', name: 'Bancaribe' },
   { code: '0115', name: 'Banco Exterior' },
-  { code: '0116', name: 'BOD (Banco Occidental de Descuento)' },
   { code: '0128', name: 'Banco Caroní' },
   { code: '0134', name: 'Banesco' },
   { code: '0137', name: 'Banco Sofitasa' },
