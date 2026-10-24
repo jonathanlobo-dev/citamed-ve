@@ -49,7 +49,7 @@ module.exports = (sequelize) => {
     },
     // Rol y permisos
     role: {
-      type: DataTypes.ENUM('patient', 'doctor', 'admin', 'provider', 'clinic', 'insurer'),
+      type: DataTypes.ENUM('patient', 'doctor', 'admin', 'provider', 'clinic', 'insurer', 'assistant'),
       allowNull: false,
       defaultValue: 'patient'
     },

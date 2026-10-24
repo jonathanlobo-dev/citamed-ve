@@ -198,6 +198,11 @@ try {
   db.Payment = PaymentModel(sequelize);
   console.log('  ✅ Payment cargado');
 
+  // M03 / Semana 9 - Asistentes del médico
+  const DoctorAssistantModel = require('./DoctorAssistant');
+  db.DoctorAssistant = DoctorAssistantModel(sequelize);
+  console.log('  ✅ DoctorAssistant cargado');
+
   console.log('✅ Todos los modelos cargados exitosamente\n');
 } catch (error) {
   console.error('❌ Error cargando modelos:', error.message);
@@ -935,6 +940,27 @@ try {
     as: 'reviewer'
   });
   console.log('  ✅ Payment <-> User (Reporter/Reviewer)');
+
+  // ═══════════════════════════════════════════════════════════════
+  // M03 / Semana 9 - Asistentes del Médico (DoctorAssistant)
+  // ═══════════════════════════════════════════════════════════════
+  db.DoctorAssistant.belongsTo(db.User, {
+    foreignKey: 'doctorId',
+    as: 'doctor'
+  });
+  db.DoctorAssistant.belongsTo(db.User, {
+    foreignKey: 'assistantId',
+    as: 'assistant'
+  });
+  db.User.hasMany(db.DoctorAssistant, {
+    foreignKey: 'doctorId',
+    as: 'assistantLinks'
+  });
+  db.User.hasMany(db.DoctorAssistant, {
+    foreignKey: 'assistantId',
+    as: 'doctorLinks'
+  });
+  console.log('  ✅ DoctorAssistant <-> User (Doctor & Assistant)');
 
   console.log('✅ Asociaciones establecidas correctamente\n');
 } catch (error) {
