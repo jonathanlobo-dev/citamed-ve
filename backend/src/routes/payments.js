@@ -8,6 +8,7 @@ const router = express.Router();
 const paymentController = require('../controllers/paymentController');
 const { authenticateToken } = require('../middleware/auth');
 const { requireRoles } = require('../middleware/rbacMiddleware');
+const { allowAssistant } = require('../middleware/assistantAccess');
 const { creationLimiter, generalLimiter } = require('../middleware/rateLimiter');
 
 // ==========================================
@@ -15,12 +16,13 @@ const { creationLimiter, generalLimiter } = require('../middleware/rateLimiter')
 // ==========================================
 
 // Lista oficial de bancos venezolanos (autenticado)
-router.get('/banks', authenticateToken, paymentController.getBanks.bind(paymentController));
+router.get('/banks', authenticateToken, allowAssistant('payments'), paymentController.getBanks.bind(paymentController));
 
 // Métodos de cobro del médico autenticado
 router.get(
   '/settings',
   authenticateToken,
+  allowAssistant('payments'),
   requireRoles(['doctor', 'admin']),
   paymentController.getSettings.bind(paymentController)
 );
@@ -40,6 +42,7 @@ router.put(
 router.get(
   '/appointment/:appointmentId',
   authenticateToken,
+  allowAssistant('payments'),
   paymentController.getAppointmentSummary.bind(paymentController)
 );
 
@@ -47,6 +50,7 @@ router.get(
 router.get(
   '/pending',
   authenticateToken,
+  allowAssistant('payments'),
   requireRoles(['doctor', 'admin']),
   paymentController.listPending.bind(paymentController)
 );
@@ -55,6 +59,7 @@ router.get(
 router.get(
   '/receivable',
   authenticateToken,
+  allowAssistant('payments'),
   requireRoles(['doctor', 'admin']),
   paymentController.listReceivable.bind(paymentController)
 );
@@ -63,6 +68,7 @@ router.get(
 router.get(
   '/history',
   authenticateToken,
+  allowAssistant('payments'),
   requireRoles(['doctor', 'admin']),
   paymentController.listHistory.bind(paymentController)
 );
@@ -99,6 +105,7 @@ router.post(
 router.post(
   '/record',
   authenticateToken,
+  allowAssistant('payments'),
   requireRoles(['doctor', 'admin']),
   creationLimiter,
   paymentController.recordPayment.bind(paymentController)
@@ -106,6 +113,7 @@ router.post(
 router.post(
   '/appointments/:appointmentId/record',
   authenticateToken,
+  allowAssistant('payments'),
   requireRoles(['doctor', 'admin']),
   creationLimiter,
   paymentController.recordPayment.bind(paymentController)
@@ -113,19 +121,19 @@ router.post(
 
 // Validación: Aprobar pago reportado (PUT o POST)
 router.route('/:id/approve')
-  .all(authenticateToken, requireRoles(['doctor', 'admin']))
+  .all(authenticateToken, allowAssistant('payments'), requireRoles(['doctor', 'admin']))
   .put(paymentController.approve.bind(paymentController))
   .post(paymentController.approve.bind(paymentController));
 
 // Validación: Rechazar pago reportado (PUT o POST)
 router.route('/:id/reject')
-  .all(authenticateToken, requireRoles(['doctor', 'admin']))
+  .all(authenticateToken, allowAssistant('payments'), requireRoles(['doctor', 'admin']))
   .put(paymentController.reject.bind(paymentController))
   .post(paymentController.reject.bind(paymentController));
 
-// Anulación de cobro aprobado (PUT o POST)
+// Anulación de cobro aprobado (PUT o POST) - REQUIERE PERMISO voidReceipts
 router.route('/:id/void')
-  .all(authenticateToken, requireRoles(['doctor', 'admin']))
+  .all(authenticateToken, allowAssistant('voidReceipts'), requireRoles(['doctor', 'admin']))
   .put(paymentController.voidPayment.bind(paymentController))
   .post(paymentController.voidPayment.bind(paymentController));
 
@@ -137,6 +145,7 @@ router.route('/:id/void')
 router.get(
   '/:id/receipt',
   authenticateToken,
+  allowAssistant('payments'),
   paymentController.downloadReceipt.bind(paymentController)
 );
 

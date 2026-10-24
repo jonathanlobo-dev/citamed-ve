@@ -180,6 +180,11 @@ const initializeSocket = (httpServer) => {
       socket.join(`doctor:${socket.userId}`);
     }
 
+    // A3: Si es asistente con actingDoctorId autorizado, unirse a doctor:{actingDoctorId}
+    if (socket.userRole === 'assistant' && socket.actingDoctorId) {
+      socket.join(`doctor:${socket.actingDoctorId}`);
+    }
+
     socket.emit(EVENTS.AUTHENTICATED, {
       userId: socket.userId,
       role: socket.userRole,
@@ -229,8 +234,15 @@ const isValidRoom = (roomName, socket) => {
 
   // A5 & D3: Médicos solo pueden unirse a su propia room doctor:{su propio id}
   // Los pacientes NO pueden unirse a salas doctor:*
+  // A3: Asistente con permiso agenda puede unirse a doctor:{actingDoctorId}
   if (type === 'doctor') {
-    return socket.userRole === 'doctor' && parseInt(id, 10) === socket.userId;
+    if (socket.userRole === 'doctor' && parseInt(id, 10) === socket.userId) {
+      return true;
+    }
+    if (socket.userRole === 'assistant' && socket.actingDoctorId && parseInt(id, 10) === socket.actingDoctorId) {
+      return true;
+    }
+    return false;
   }
 
   // Pacientes pueden unirse a queue-public:{doctorId}

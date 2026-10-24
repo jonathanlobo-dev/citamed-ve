@@ -8,6 +8,7 @@ const router = express.Router();
 const appointmentController = require('../controllers/appointmentController');
 const { authenticateToken } = require('../middleware/auth');
 const { requirePermission, requireRoles } = require('../middleware/rbacMiddleware');
+const { allowAssistant } = require('../middleware/assistantAccess');
 const { walkInValidator } = require('../validators/walkInValidator');
 const { validationErrorHandler } = require('../middleware/validationErrorHandler');
 
@@ -56,7 +57,14 @@ router.get(
 router.post(
   '/',
   authenticateToken,
-  requirePermission('appointments.create'),
+  allowAssistant('agenda'),
+  (req, res, next) => {
+    // Si viene en nombre del médico (asistente) o es médico/admin, puede crear cita para paciente
+    if (req.user.actingAssistantId || req.user.role === 'doctor' || req.user.role === 'admin') {
+      return next();
+    }
+    return requirePermission('appointments.create')(req, res, next);
+  },
   appointmentController.create.bind(appointmentController)
 );
 
@@ -90,6 +98,7 @@ router.post(
 router.get(
   '/my',
   authenticateToken,
+  allowAssistant('agenda'),
   appointmentController.getMyAppointments.bind(appointmentController)
 );
 
@@ -154,6 +163,7 @@ router.put(
 router.get(
   '/:id',
   authenticateToken,
+  allowAssistant('agenda'),
   appointmentController.getById.bind(appointmentController)
 );
 
@@ -167,6 +177,7 @@ router.get(
 router.put(
   '/:id/cancel',
   authenticateToken,
+  allowAssistant('agenda'),
   appointmentController.cancel.bind(appointmentController)
 );
 
@@ -180,6 +191,7 @@ router.put(
 router.put(
   '/:id/reschedule',
   authenticateToken,
+  allowAssistant('agenda'),
   appointmentController.reschedule.bind(appointmentController)
 );
 
@@ -197,6 +209,7 @@ router.put(
 router.put(
   '/:id/confirm',
   authenticateToken,
+  allowAssistant('agenda'),
   requirePermission('appointments.update'),
   appointmentController.confirm.bind(appointmentController)
 );
@@ -212,6 +225,7 @@ router.put(
 router.put(
   '/:id/no-show',
   authenticateToken,
+  allowAssistant('agenda'),
   requireRoles(['doctor', 'admin']),
   appointmentController.noShow.bind(appointmentController)
 );
@@ -240,6 +254,7 @@ router.put(
 router.get(
   '/doctor/today',
   authenticateToken,
+  allowAssistant('agenda'),
   requirePermission('appointments.read'),
   appointmentController.getDoctorToday.bind(appointmentController)
 );

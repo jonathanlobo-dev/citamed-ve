@@ -10,6 +10,7 @@ const router = express.Router();
 const waitingRoomController = require('../controllers/waitingRoomController');
 const { authenticateToken } = require('../middleware/auth');
 const { requireRoles } = require('../middleware/rbacMiddleware');
+const { allowAssistant } = require('../middleware/assistantAccess');
 
 // ==========================================
 // RUTAS DE PACIENTE
@@ -96,6 +97,7 @@ router.get(
 router.get(
   '/queue',
   authenticateToken,
+  allowAssistant('agenda'),
   requireRoles(['doctor', 'admin']),
   waitingRoomController.getDoctorQueue.bind(waitingRoomController)
 );
@@ -110,6 +112,7 @@ router.get(
 router.post(
   '/call-next',
   authenticateToken,
+  allowAssistant('agenda'),
   requireRoles(['doctor', 'admin']),
   waitingRoomController.callNext.bind(waitingRoomController)
 );
@@ -124,6 +127,7 @@ router.post(
 router.post(
   '/call/:queueEntryId',
   authenticateToken,
+  allowAssistant('agenda'),
   requireRoles(['doctor', 'admin']),
   waitingRoomController.callPatient.bind(waitingRoomController)
 );
@@ -138,6 +142,7 @@ router.post(
 router.put(
   '/physical-check-in/:queueEntryId',
   authenticateToken,
+  allowAssistant('agenda'),
   requireRoles(['doctor', 'admin']),
   waitingRoomController.physicalCheckIn.bind(waitingRoomController)
 );
@@ -210,6 +215,7 @@ router.post(
 router.put(
   '/no-show/:queueEntryId',
   authenticateToken,
+  allowAssistant('agenda'),
   requireRoles(['doctor', 'admin']),
   waitingRoomController.markNoShow.bind(waitingRoomController)
 );
@@ -224,6 +230,7 @@ router.put(
 router.get(
   '/stats',
   authenticateToken,
+  allowAssistant('agenda'),
   requireRoles(['doctor', 'admin']),
   waitingRoomController.getDayStats.bind(waitingRoomController)
 );

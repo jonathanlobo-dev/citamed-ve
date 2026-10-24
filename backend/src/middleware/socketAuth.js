@@ -19,7 +19,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
  * @param {Socket} socket - Socket del cliente
  * @param {Function} next - Callback para continuar o rechazar
  */
-const socketAuthMiddleware = (socket, next) => {
+const socketAuthMiddleware = async (socket, next) => {
   try {
     // Obtener token de diferentes fuentes
     const token = extractToken(socket);
@@ -42,6 +42,37 @@ const socketAuthMiddleware = (socket, next) => {
     socket.userId = decoded.id;
     socket.userRole = decoded.role;
     socket.userEmail = decoded.email || null;
+
+    // A3: Si es asistente, verificar actingDoctorId y permiso agenda
+    if (decoded.role === 'assistant') {
+      const actingDoctorId = socket.handshake.auth?.actingDoctorId ||
+                             socket.handshake.query?.actingDoctorId ||
+                             socket.handshake.headers?.['x-acting-doctor'];
+      if (actingDoctorId) {
+        try {
+          const { DoctorAssistant } = require('../models');
+          const parsedDoctorId = parseInt(actingDoctorId, 10);
+          if (!isNaN(parsedDoctorId)) {
+            const link = await DoctorAssistant.findOne({
+              where: {
+                doctorId: parsedDoctorId,
+                assistantId: decoded.id,
+                status: 'active',
+                canAgenda: true
+              }
+            });
+            if (link) {
+              socket.actingDoctorId = parsedDoctorId;
+              console.log(`[Socket Auth] Assistant ${decoded.id} authorized for doctor ${parsedDoctorId}`);
+            } else {
+              console.log(`[Socket Auth] Assistant ${decoded.id} denied acting doctor ${parsedDoctorId}: No active link or canAgenda is false`);
+            }
+          }
+        } catch (err) {
+          console.error('[Socket Auth] Error checking assistant link:', err.message);
+        }
+      }
+    }
 
     console.log(`[Socket Auth] Authenticated: user ${decoded.id} (${decoded.role})`);
 

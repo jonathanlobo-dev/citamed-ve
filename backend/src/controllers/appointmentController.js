@@ -48,7 +48,6 @@ class AppointmentController {
    */
   async create(req, res) {
     try {
-      const patientId = req.user.id;
       const {
         doctorId,
         doctorProfileId,
@@ -65,15 +64,25 @@ class AppointmentController {
         locationAddress
       } = req.body;
 
+      const isDoctorOrAdmin = req.user.role === 'doctor' || req.user.role === 'admin';
+      const patientId = (isDoctorOrAdmin && req.body.patientId) ? req.body.patientId : req.user.id;
+      const targetDoctorId = req.user.role === 'doctor' ? req.user.id : (doctorId || req.body.doctorId);
+
+      let targetDoctorProfileId = doctorProfileId || req.body.doctorProfileId;
+      if (!targetDoctorProfileId && targetDoctorId) {
+        const docProf = await DoctorProfile.findOne({ where: { userId: targetDoctorId } });
+        targetDoctorProfileId = docProf?.id;
+      }
+
       // Obtener fee del doctor
-      const doctorProfile = await DoctorProfile.findByPk(doctorProfileId);
+      const doctorProfile = targetDoctorProfileId ? await DoctorProfile.findByPk(targetDoctorProfileId) : null;
       const consultationFee = doctorProfile?.consultationFee || 0;
 
       const appointment = await appointmentService.createAppointment({
         patientId,
-        doctorId,
-        doctorProfileId,
-        specialtyId,
+        doctorId: targetDoctorId,
+        doctorProfileId: targetDoctorProfileId,
+        specialtyId: specialtyId || doctorProfile?.specialtyId,
         clinicId,
         locationId,
         appointmentDate,
