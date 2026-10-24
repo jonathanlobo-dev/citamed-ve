@@ -17,13 +17,30 @@ const api = axios.create({
   timeout: 10000, // 10 segundos
 });
 
-// Interceptor para agregar token JWT en cada request
+// Interceptor para agregar token JWT y X-Acting-Doctor en cada request
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('citamed_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Cabecera X-Acting-Doctor solo si el usuario es assistant y hay un médico activo guardado
+    const savedUser = localStorage.getItem('citamed_user');
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        if (user?.role === 'assistant') {
+          const actingDoctorId = localStorage.getItem('citamed_acting_doctor_id');
+          if (actingDoctorId) {
+            config.headers['X-Acting-Doctor'] = actingDoctorId;
+          }
+        }
+      } catch {
+        // Ignorar error al parsear usuario guardado
+      }
+    }
+
     return config;
   },
   (error) => {
@@ -39,6 +56,8 @@ api.interceptors.response.use(
       // Token expirado o inválido
       localStorage.removeItem('citamed_token');
       localStorage.removeItem('citamed_user');
+      localStorage.removeItem('citamed_acting_doctor_id');
+      localStorage.removeItem('citamed_acting_doctor_permissions');
       window.location.href = '/login';
     } else if (
       error.response?.status === 403 &&
@@ -47,6 +66,8 @@ api.interceptors.response.use(
       // Cuenta suspendida
       localStorage.removeItem('citamed_token');
       localStorage.removeItem('citamed_user');
+      localStorage.removeItem('citamed_acting_doctor_id');
+      localStorage.removeItem('citamed_acting_doctor_permissions');
       sessionStorage.setItem(
         'citamed_suspended_message',
         'Tu cuenta está suspendida. Escríbenos a soporte si crees que es un error.'
@@ -75,6 +96,8 @@ export const authAPI = {
   logout: () => {
     localStorage.removeItem('citamed_token');
     localStorage.removeItem('citamed_user');
+    localStorage.removeItem('citamed_acting_doctor_id');
+    localStorage.removeItem('citamed_acting_doctor_permissions');
     return Promise.resolve();
   },
 };

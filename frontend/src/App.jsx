@@ -11,6 +11,8 @@ const EspacioClinicoPage = lazy(() => import('./pages/doctor/EspacioClinicoPage'
 const CobrosPage = lazy(() => import('./pages/doctor/CobrosPage'));
 const VerificarDocumentoPage = lazy(() => import('./pages/public/VerificarDocumentoPage'));
 const AdminPanelPage = lazy(() => import('./pages/admin/AdminPanelPage'));
+const DoctorAssistantsPage = lazy(() => import('./pages/doctor/DoctorAssistantsPage'));
+const AssistantPortalPage = lazy(() => import('./pages/assistant/AssistantPortalPage'));
 import { FEATURES } from './config/features';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
@@ -127,7 +129,7 @@ function AppRoutes() {
       <Route
         path="/medico/sala-espera"
         element={
-          <ProtectedRoute allowedRoles={['doctor']}>
+          <ProtectedRoute allowedRoles={['doctor', 'assistant']}>
             <DoctorWaitingRoomPage />
           </ProtectedRoute>
         }
@@ -155,7 +157,7 @@ function AppRoutes() {
       <Route
         path="/medico/agenda"
         element={
-          <ProtectedRoute allowedRoles={['doctor']}>
+          <ProtectedRoute allowedRoles={['doctor', 'assistant']}>
             <DoctorAgendaPage />
           </ProtectedRoute>
         }
@@ -203,9 +205,37 @@ function AppRoutes() {
       <Route
         path="/medico/cobros"
         element={
-          <ProtectedRoute allowedRoles={['doctor']}>
+          <ProtectedRoute allowedRoles={['doctor', 'assistant']}>
             <CobrosPage />
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/medico/asistentes"
+        element={
+          FEATURES.assistant ? (
+            <ProtectedRoute allowedRoles={['doctor']}>
+              <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
+                <DoctorAssistantsPage />
+              </Suspense>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to="/medico/dashboard" replace />
+          )
+        }
+      />
+      <Route
+        path="/asistente"
+        element={
+          FEATURES.assistant ? (
+            <ProtectedRoute allowedRoles={['assistant']}>
+              <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
+                <AssistantPortalPage />
+              </Suspense>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to="/" replace />
+          )
         }
       />
       <Route

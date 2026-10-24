@@ -12,7 +12,8 @@
 const RELEASED_IN_PRODUCTION = {
   AI: true, // IA en el Espacio Clínico (liberada)
   SUPERADMIN: true, // Panel de superadministración (liberado)
-  PWA: false // App instalable (en construcción)
+  PWA: false, // App instalable (en construcción)
+  ASSISTANT: false // Asistente del médico (en construcción)
 };
 
 const branch = typeof __BUILD_BRANCH__ !== 'undefined' ? __BUILD_BRANCH__ : 'local';
@@ -28,5 +29,6 @@ function flag(name) {
 export const FEATURES = {
   ai: flag('AI'),
   superadmin: flag('SUPERADMIN'),
-  pwa: flag('PWA')
+  pwa: flag('PWA'),
+  assistant: flag('ASSISTANT')
 };

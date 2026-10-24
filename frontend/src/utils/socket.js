@@ -107,10 +107,26 @@ export const getSocket = (namespace = '/') => {
   // Crear nuevo socket
   const url = namespace === '/' ? SOCKET_URL : `${SOCKET_URL}${namespace}`;
 
+  const authPayload = { token };
+  const savedUser = localStorage.getItem('citamed_user');
+  if (savedUser) {
+    try {
+      const u = JSON.parse(savedUser);
+      if (u?.role === 'assistant') {
+        const actingDoctorId = localStorage.getItem('citamed_acting_doctor_id');
+        if (actingDoctorId) {
+          authPayload.actingDoctorId = actingDoctorId;
+        }
+      }
+    } catch {
+      // Ignorar error al parsear usuario
+    }
+  }
+
   const socket = io(url, {
     ...defaultOptions,
-    auth: { token },
-    query: { token }
+    auth: authPayload,
+    query: authPayload
   });
 
   // Logging en desarrollo

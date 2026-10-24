@@ -28,6 +28,8 @@ import {
   Ban
 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar/Navbar';
+import AssistantDoctorBanner from '../../components/assistant/AssistantDoctorBanner';
+import { useAuth } from '../../context/AuthContext';
 import paymentService from '../../services/paymentService';
 import exchangeRateService from '../../services/exchangeRateService';
 import PaymentSettingsDrawer from '../../components/payments/PaymentSettingsDrawer';
@@ -42,8 +44,19 @@ const METHOD_LABELS = {
 };
 
 export default function CobrosPage() {
+  const { user } = useAuth();
   // Pestaña activa: 'pending' (Por validar), 'receivable' (Por cobrar), 'history' (Historial)
   const [activeTab, setActiveTab] = useState('pending');
+
+  const [canVoidReceipts] = useState(() => {
+    if (user?.role !== 'assistant') return true;
+    try {
+      const perms = JSON.parse(localStorage.getItem('citamed_acting_doctor_permissions') || '{}');
+      return perms.canVoidReceipts === true;
+    } catch {
+      return false;
+    }
+  });
 
   // Estados de datos
   const [pendingList, setPendingList] = useState([]);
@@ -296,6 +309,7 @@ export default function CobrosPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-16">
       <Navbar />
+      <AssistantDoctorBanner />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
         {/* ENCABEZADO */}
@@ -331,15 +345,17 @@ export default function CobrosPage() {
               </div>
             )}
 
-            {/* Botón Mis Métodos de Cobro */}
-            <button
-              type="button"
-              onClick={() => setSettingsDrawerOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 font-semibold text-xs sm:text-sm rounded-xl transition shadow-xs"
-            >
-              <Settings className="w-4 h-4 text-slate-600" />
-              <span>Mis métodos de cobro</span>
-            </button>
+            {/* Botón Mis Métodos de Cobro (solo médico) */}
+            {user?.role !== 'assistant' && (
+              <button
+                type="button"
+                onClick={() => setSettingsDrawerOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 font-semibold text-xs sm:text-sm rounded-xl transition shadow-xs"
+              >
+                <Settings className="w-4 h-4 text-slate-600" />
+                <span>Mis métodos de cobro</span>
+              </button>
+            )}
           </div>
         </header>
 
@@ -907,7 +923,7 @@ export default function CobrosPage() {
                             /* Acciones de la fila */
                             (isApproved || isVoided) && (
                               <div className="flex items-center justify-end gap-3 pt-2">
-                                {isApproved && (
+                                {isApproved && canVoidReceipts && (
                                   <button
                                     type="button"
                                     onClick={() => {

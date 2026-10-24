@@ -8,13 +8,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import DoctorQueueDashboard from '../../components/waitingRoom/DoctorQueueDashboard';
+import AssistantDoctorBanner from '../../components/assistant/AssistantDoctorBanner';
 import useWaitingRoom from '../../hooks/useWaitingRoom';
 import { useAuth } from '../../context/AuthContext';
 import appointmentService from '../../services/appointmentService';
 import prescriptionAPI from '../../services/prescriptionService';
+import api from '../../services/api';
 import './DoctorWaitingRoomPage.css';
-
-const API_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
 
 const DoctorWaitingRoomPage = () => {
   const navigate = useNavigate();
@@ -48,8 +48,12 @@ const DoctorWaitingRoomPage = () => {
   const [currentPatientHistory, setCurrentPatientHistory] = useState(null);
   const [loadingCurrentHistory, setLoadingCurrentHistory] = useState(false);
 
-  // Sincronizar historial del paciente actualmente en consulta
+  // Sincronizar historial del paciente actualmente en consulta (solo para médico)
   useEffect(() => {
+    if (user?.role === 'assistant') {
+      setCurrentPatientHistory(null);
+      return;
+    }
     const inConsultation = localQueue.find((p) => p.status === 'in_consultation');
     const pId = inConsultation?.patientId || inConsultation?.patient?.id;
     if (pId) {
@@ -65,23 +69,16 @@ const DoctorWaitingRoomPage = () => {
     } else {
       setCurrentPatientHistory(null);
     }
-  }, [localQueue]);
+  }, [localQueue, user?.role]);
 
   // Cargar cola inicial via API
   useEffect(() => {
     const fetchQueue = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/waiting-room/queue`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setLocalQueue(data.data?.queue || []);
-          setLocalStats(data.data?.stats || {});
-        } else {
-          console.warn('[DoctorWaitingRoom] API responded with:', response.status);
-        }
+        const response = await api.get('/waiting-room/queue');
+        const data = response.data;
+        setLocalQueue(data.data?.queue || []);
+        setLocalStats(data.data?.stats || {});
       } catch (err) {
         console.error('Error fetching queue:', err);
       } finally {
@@ -129,15 +126,9 @@ const DoctorWaitingRoomPage = () => {
   const handleCallNext = async () => {
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/waiting-room/call-next`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (response.ok) {
-        callNextPatient();
-        await refreshQueue();
-      }
+      await api.post('/waiting-room/call-next');
+      callNextPatient();
+      await refreshQueue();
     } catch (err) {
       console.error('Error calling next:', err);
     } finally {
@@ -148,15 +139,9 @@ const DoctorWaitingRoomPage = () => {
   const handleCallPatient = async (queueEntryId) => {
     setActionLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/waiting-room/call/${queueEntryId}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (response.ok) {
-        callSpecificPatient(queueEntryId);
-        await refreshQueue();
-      }
+      await api.post(`/waiting-room/call/${queueEntryId}`);
+      callSpecificPatient(queueEntryId);
+      await refreshQueue();
     } catch (err) {
       console.error('Error calling patient:', err);
     } finally {
@@ -164,23 +149,28 @@ const DoctorWaitingRoomPage = () => {
     }
   };
 
-  const handleStartConsultation = async (queueEntryId, appointmentId) => {
+  const handlePhysicalCheckIn = async (queueEntryId) => {
     setActionLoading(true);
     try {
-      const response = await fetch(
-        `${API_URL}/api/waiting-room/start-consultation/${queueEntryId}`,
-        {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+      await api.put(`/waiting-room/physical-check-in/${queueEntryId}`);
+      await refreshQueue();
+    } catch (err) {
+      console.error('Error recording physical check-in:', err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
+  const handleStartConsultation = async (queueEntryId, appointmentId) => {
+    if (user?.role === 'assistant') return;
+    setActionLoading(true);
+    try {
+      const response = await api.post(`/waiting-room/start-consultation/${queueEntryId}`);
       const entry = localQueue.find((q) => q.id === queueEntryId);
       let aptId = appointmentId || entry?.appointmentId || entry?.appointment?.id;
 
-      if (response.ok) {
-        const data = await response.json();
-        aptId = data.data?.appointmentId || aptId;
+      if (response.data?.data?.appointmentId) {
+        aptId = response.data.data.appointmentId;
       }
       if (aptId) {
         navigate(`/medico/consulta/${aptId}`);
@@ -195,6 +185,7 @@ const DoctorWaitingRoomPage = () => {
   };
 
   const handleEndConsultation = (queueEntryId, appointmentId) => {
+    if (user?.role === 'assistant') return;
     const entry = localQueue.find((q) => q.id === queueEntryId);
     const aptId = appointmentId || entry?.appointmentId || entry?.appointment?.id || queueEntryId;
     if (aptId) {
@@ -225,17 +216,8 @@ const DoctorWaitingRoomPage = () => {
 
     setActionLoading(true);
     try {
-      const response = await fetch(
-        `${API_URL}/api/waiting-room/no-show/${queueEntryId}`,
-        {
-          method: 'PUT',
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-
-      if (response.ok) {
-        await refreshQueue();
-      }
+      await api.put(`/waiting-room/no-show/${queueEntryId}`);
+      await refreshQueue();
     } catch (err) {
       console.error('Error marking no-show:', err);
     } finally {
@@ -245,15 +227,10 @@ const DoctorWaitingRoomPage = () => {
 
   const refreshQueue = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/waiting-room/queue`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setLocalQueue(data.data.queue || []);
-        setLocalStats(data.data.stats || {});
-      }
+      const response = await api.get('/waiting-room/queue');
+      const data = response.data;
+      setLocalQueue(data.data?.queue || []);
+      setLocalStats(data.data?.stats || {});
     } catch (err) {
       console.error('Error refreshing queue:', err);
     }
@@ -286,17 +263,24 @@ const DoctorWaitingRoomPage = () => {
 
   return (
     <div className="doctor-waiting-room">
+      <AssistantDoctorBanner />
       {/* Header de navegación */}
       <header className="doctor-wr-header">
         <div className="header-left">
-          <Link to="/medico/dashboard" className="btn-back" title="Volver al Dashboard">
+          <Link
+            to={user?.role === 'assistant' ? '/asistente' : '/medico/dashboard'}
+            className="btn-back"
+            title={user?.role === 'assistant' ? 'Volver al Portal' : 'Volver al Dashboard'}
+          >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="24" height="24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </Link>
           <div className="header-brand">
             <h1>Sala de Espera Virtual</h1>
-            <span className="header-subtitle">Panel del Doctor</span>
+            <span className="header-subtitle">
+              {user?.role === 'assistant' ? 'Portal de Asistente' : 'Panel del Doctor'}
+            </span>
           </div>
         </div>
 
@@ -308,23 +292,25 @@ const DoctorWaitingRoomPage = () => {
         </div>
 
         <div className="header-right">
-          <Link
-            to="/medico/consulta/nueva"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs sm:text-sm font-semibold rounded-lg hover:bg-primary/90 transition shadow-sm mr-2"
-            style={{ backgroundColor: 'var(--primary, #0284c7)', color: '#fff', padding: '6px 12px', borderRadius: '8px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: '600', fontSize: '13px' }}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Nueva consulta
-          </Link>
+          {user?.role !== 'assistant' && (
+            <Link
+              to="/medico/consulta/nueva"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs sm:text-sm font-semibold rounded-lg hover:bg-primary/90 transition shadow-sm mr-2"
+              style={{ backgroundColor: 'var(--primary, #0284c7)', color: '#fff', padding: '6px 12px', borderRadius: '8px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: '600', fontSize: '13px' }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Nueva consulta
+            </Link>
+          )}
           <nav className="header-nav">
-            <Link to="/medico/dashboard" className="nav-link">
+            <Link to={user?.role === 'assistant' ? '/asistente' : '/medico/dashboard'} className="nav-link">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
               </svg>
-              Dashboard
+              {user?.role === 'assistant' ? 'Portal' : 'Dashboard'}
             </Link>
             <Link to="/medico/agenda" className="nav-link">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20">
@@ -336,7 +322,11 @@ const DoctorWaitingRoomPage = () => {
           </nav>
 
           <div className="user-menu">
-            <span className="user-name">Dr. {user?.firstName || ''}</span>
+            <span className="user-name">
+              {user?.role === 'assistant'
+                ? `${user?.firstName || 'Asistente'} (Asistente)`
+                : `Dr. ${user?.firstName || ''}`}
+            </span>
             <button onClick={handleLogout} className="btn-logout" title="Cerrar sesión">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -383,10 +373,12 @@ const DoctorWaitingRoomPage = () => {
           stats={localStats}
           isOnline={isOnline}
           actionLoading={actionLoading}
+          userRole={user?.role}
           onGoOnline={handleGoOnline}
           onGoOffline={handleGoOffline}
           onCallNext={handleCallNext}
           onCallPatient={handleCallPatient}
+          onPhysicalCheckIn={handlePhysicalCheckIn}
           onStartConsultation={handleStartConsultation}
           onEndConsultation={handleEndConsultation}
           onMarkNoShow={handleMarkNoShow}

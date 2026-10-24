@@ -271,6 +271,8 @@ function Navbar() {
                         ? 'Paciente'
                         : user.role === 'admin'
                         ? 'Administrador'
+                        : user.role === 'assistant'
+                        ? 'Asistente'
                         : 'Proveedor'}
                     </span>
                   </div>
@@ -289,7 +291,7 @@ function Navbar() {
                     variant="outline"
                     size="sm"
                     icon={<Calendar className="w-4 h-4" />}
-                    onClick={() => navigate('/dashboard')}
+                    onClick={() => navigate(user.role === 'assistant' ? '/asistente' : user.role === 'doctor' ? '/medico/dashboard' : '/dashboard')}
                   >
                     <span className="hidden xl:inline">Dashboard</span>
                   </Button>
@@ -395,6 +397,8 @@ function Navbar() {
                         ? 'Paciente'
                         : user.role === 'admin'
                         ? 'Administrador'
+                        : user.role === 'assistant'
+                        ? 'Asistente'
                         : 'Proveedor'}
                     </span>
                   </div>
@@ -417,7 +421,7 @@ function Navbar() {
                       size="md"
                       icon={<Calendar className="w-4 h-4" />}
                       onClick={() => {
-                        navigate('/dashboard');
+                        navigate(user.role === 'assistant' ? '/asistente' : user.role === 'doctor' ? '/medico/dashboard' : '/dashboard');
                         setMobileMenuOpen(false);
                       }}
                       className="w-full"

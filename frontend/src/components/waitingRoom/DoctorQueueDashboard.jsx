@@ -16,6 +16,8 @@ const DoctorQueueDashboard = ({
   onStartConsultation,
   onEndConsultation,
   onMarkNoShow,
+  onPhysicalCheckIn,
+  userRole = 'doctor',
   isOnline = false,
   onGoOnline,
   onGoOffline,
@@ -164,7 +166,7 @@ const DoctorQueueDashboard = ({
               </div>
 
               {/* Alergias registradas del paciente */}
-              {currentPatientHistory?.allergies?.length > 0 && (
+              {userRole !== 'assistant' && currentPatientHistory?.allergies?.length > 0 && (
                 <div className="current-patient-allergies-box">
                   <strong>⚠️ Alergias del paciente:</strong>{' '}
                   {currentPatientHistory.allergies.map(a => `${a.allergen}${a.severity ? ` (${a.severity}${a.reaction ? `: ${a.reaction}` : ''})` : ''}`).join(', ')}
@@ -172,6 +174,7 @@ const DoctorQueueDashboard = ({
               )}
 
               {/* Consultas anteriores (Expediente mínimo) */}
+              {userRole !== 'assistant' && (
               <div className="current-patient-history-drawer">
                 <button
                   type="button"
@@ -232,15 +235,18 @@ const DoctorQueueDashboard = ({
                   </div>
                 )}
               </div>
+              )}
 
-              <button
-                type="button"
-                className="btn btn-success btn-end-consultation"
-                onClick={() => onEndConsultation(currentPatient.id, currentPatient.appointmentId || currentPatient.appointment?.id)}
-                disabled={actionLoading}
-              >
-                Finalizar Consulta
-              </button>
+              {userRole !== 'assistant' && (
+                <button
+                  type="button"
+                  className="btn btn-success btn-end-consultation"
+                  onClick={() => onEndConsultation(currentPatient.id, currentPatient.appointmentId || currentPatient.appointment?.id)}
+                  disabled={actionLoading}
+                >
+                  Finalizar Consulta
+                </button>
+              )}
             </div>
           ) : calledPatient ? (
             <div className="called-patient-card">
@@ -334,6 +340,17 @@ const DoctorQueueDashboard = ({
                       {/* Estado: Agendado, En cola, Llegó */}
                       {['scheduled', 'waiting', 'en_route', 'checked_in'].includes(patient.status) && (
                         <>
+                          {onPhysicalCheckIn && ['scheduled', 'waiting', 'en_route'].includes(patient.status) && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-success"
+                              onClick={() => onPhysicalCheckIn(patient.id)}
+                              disabled={actionLoading}
+                              title="Marcar llegada física del paciente"
+                            >
+                              Llegó
+                            </button>
+                          )}
                           <button
                             type="button"
                             className="btn btn-sm btn-outline"
@@ -358,14 +375,16 @@ const DoctorQueueDashboard = ({
                       {/* Estado: Llamado */}
                       {isCalled && (
                         <>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-primary"
-                            onClick={() => onStartConsultation(patient.id, patient.appointmentId || patient.appointment?.id)}
-                            disabled={actionLoading}
-                          >
-                            Iniciar consulta
-                          </button>
+                          {userRole !== 'assistant' && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-primary"
+                              onClick={() => onStartConsultation(patient.id, patient.appointmentId || patient.appointment?.id)}
+                              disabled={actionLoading}
+                            >
+                              Iniciar consulta
+                            </button>
+                          )}
                           <button
                             type="button"
                             className="btn btn-sm btn-outline-danger"
@@ -378,7 +397,7 @@ const DoctorQueueDashboard = ({
                       )}
 
                       {/* Estado: En consulta */}
-                      {isCurrent && (
+                      {isCurrent && userRole !== 'assistant' && (
                         <button
                           type="button"
                           className="btn btn-sm btn-success"

@@ -16,6 +16,7 @@ import {
   CalendarRange, CalendarDays, FileText, Download, Share2
 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar/Navbar';
+import AssistantDoctorBanner from '../../components/assistant/AssistantDoctorBanner';
 import doctorService from '../../services/doctorService';
 import appointmentService from '../../services/appointmentService';
 import prescriptionAPI from '../../services/prescriptionService';
@@ -610,6 +611,7 @@ function DoctorAgendaPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
+      <AssistantDoctorBanner />
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
@@ -623,6 +625,7 @@ function DoctorAgendaPage() {
             Gestiona tus citas programadas y configura los horarios de atención para tus pacientes.
           </p>
         </div>
+        {user?.role !== 'assistant' && (
           <Link
             to="/medico/consulta/nueva"
             className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white font-semibold text-sm rounded-xl shadow-sm hover:bg-primary-dark transition-all duration-200 hover:shadow-md flex-shrink-0"
@@ -630,6 +633,7 @@ function DoctorAgendaPage() {
             <Plus className="w-5 h-5" />
             Nueva consulta
           </Link>
+        )}
         </motion.div>
 
         {/* Pestañas de Navegación */}
@@ -651,18 +655,20 @@ function DoctorAgendaPage() {
               </span>
             )}
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('availability')}
-            className={`pb-3 px-4 font-semibold text-sm sm:text-base flex items-center gap-2 border-b-2 transition-all ${
-              activeTab === 'availability'
-                ? 'border-primary text-primary font-bold'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <Calendar className="w-5 h-5" />
-            Configurar Disponibilidad
-          </button>
+          {user?.role !== 'assistant' && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('availability')}
+              className={`pb-3 px-4 font-semibold text-sm sm:text-base flex items-center gap-2 border-b-2 transition-all ${
+                activeTab === 'availability'
+                  ? 'border-primary text-primary font-bold'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Calendar className="w-5 h-5" />
+              Configurar Disponibilidad
+            </button>
+          )}
         </div>
 
         {/* CONTENIDO PESTAÑA 1: CITAS PROGRAMADAS */}
@@ -905,7 +911,7 @@ function DoctorAgendaPage() {
                                 </div>
 
                                 {/* Detalle de notas médicas, diagnóstico y récipes si la cita está completada */}
-                                {isCompleted && (
+                                {isCompleted && user?.role !== 'assistant' && (
                                   <div className="mt-2.5 p-3 bg-teal-50/60 rounded-lg border border-teal-100 text-xs text-gray-700 space-y-2">
                                     {apt.diagnosis && (
                                       <div>
@@ -991,84 +997,86 @@ function DoctorAgendaPage() {
                                 )}
 
                                 {/* Sección Expediente / Consultas anteriores con este paciente */}
-                                <div className="mt-2.5 pt-2 border-t border-gray-100">
-                                  <button
-                                    type="button"
-                                    onClick={() => togglePatientHistoryForApt(apt)}
-                                    className="text-xs text-primary hover:text-primary/80 font-semibold flex items-center gap-1.5"
-                                  >
-                                    <FileText className="w-3.5 h-3.5" />
-                                    <span>Consultas anteriores con este paciente</span>
-                                    <span className="text-[10px] text-gray-500">
-                                      {expandedHistoryAptId === apt.id ? '▲ Ocultar' : '▼ Ver'}
-                                    </span>
-                                  </button>
+                                {user?.role !== 'assistant' && (
+                                  <div className="mt-2.5 pt-2 border-t border-gray-100">
+                                    <button
+                                      type="button"
+                                      onClick={() => togglePatientHistoryForApt(apt)}
+                                      className="text-xs text-primary hover:text-primary/80 font-semibold flex items-center gap-1.5"
+                                    >
+                                      <FileText className="w-3.5 h-3.5" />
+                                      <span>Consultas anteriores con este paciente</span>
+                                      <span className="text-[10px] text-gray-500">
+                                        {expandedHistoryAptId === apt.id ? '▲ Ocultar' : '▼ Ver'}
+                                      </span>
+                                    </button>
 
-                                  {expandedHistoryAptId === apt.id && (
-                                    <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200 text-xs space-y-2">
-                                      {loadingAptHistory[apt.id] ? (
-                                        <p className="text-gray-500 text-center py-1">Cargando consultas anteriores...</p>
-                                      ) : (() => {
-                                        const hist = patientHistories[apt.patientId || apt.patient?.id];
-                                        if (!hist) return <p className="text-gray-400 italic">No se pudo cargar el historial.</p>;
+                                    {expandedHistoryAptId === apt.id && (
+                                      <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200 text-xs space-y-2">
+                                        {loadingAptHistory[apt.id] ? (
+                                          <p className="text-gray-500 text-center py-1">Cargando consultas anteriores...</p>
+                                        ) : (() => {
+                                          const hist = patientHistories[apt.patientId || apt.patient?.id];
+                                          if (!hist) return <p className="text-gray-400 italic">No se pudo cargar el historial.</p>;
 
-                                        return (
-                                          <>
-                                            {hist.allergies?.length > 0 && (
-                                              <div className="p-2 bg-red-50 border border-red-200 rounded text-red-800">
-                                                <strong>⚠️ Alergias del paciente:</strong>{' '}
-                                                {hist.allergies.map((a) => `${a.allergen}${a.severity ? ` (${a.severity})` : ''}`).join(', ')}
-                                              </div>
-                                            )}
-                                            {hist.history?.length === 0 ? (
-                                              <p className="text-gray-500 italic">Primera consulta con este paciente</p>
-                                            ) : (
-                                              <div className="space-y-2">
-                                                {hist.history.map((past) => (
-                                                  <div key={past.id} className="p-2 bg-white rounded border border-gray-200 space-y-1">
-                                                    <div className="flex items-center justify-between font-bold text-gray-800">
-                                                      <span>{past.appointmentDate} · {past.appointmentTime}</span>
-                                                      <span className="text-gray-500 font-normal italic">{past.reasonForVisit || 'Consulta general'}</span>
-                                                    </div>
-                                                    {past.diagnosis && (
-                                                      <div className="text-gray-700">
-                                                        <span className="font-semibold text-teal-800">Diagnóstico:</span> {past.diagnosis}
+                                          return (
+                                            <>
+                                              {hist.allergies?.length > 0 && (
+                                                <div className="p-2 bg-red-50 border border-red-200 rounded text-red-800">
+                                                  <strong>⚠️ Alergias del paciente:</strong>{' '}
+                                                  {hist.allergies.map((a) => `${a.allergen}${a.severity ? ` (${a.severity})` : ''}`).join(', ')}
+                                                </div>
+                                              )}
+                                              {hist.history?.length === 0 ? (
+                                                <p className="text-gray-500 italic">Primera consulta con este paciente</p>
+                                              ) : (
+                                                <div className="space-y-2">
+                                                  {hist.history.map((past) => (
+                                                    <div key={past.id} className="p-2 bg-white rounded border border-gray-200 space-y-1">
+                                                      <div className="flex items-center justify-between font-bold text-gray-800">
+                                                        <span>{past.appointmentDate} · {past.appointmentTime}</span>
+                                                        <span className="text-gray-500 font-normal italic">{past.reasonForVisit || 'Consulta general'}</span>
                                                       </div>
-                                                    )}
-                                                    {past.doctorNotes && (
-                                                      <div className="text-gray-700">
-                                                        <span className="font-semibold text-teal-800">Notas:</span> {past.doctorNotes}
-                                                      </div>
-                                                    )}
-                                                    {past.prescriptions?.length > 0 && (
-                                                      <div className="pt-1 border-t border-gray-100 flex items-center justify-between gap-1 flex-wrap">
-                                                        <span className="font-semibold text-teal-800">Récipes:</span>
-                                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                                          {past.prescriptions.map((p) => (
-                                                            <div key={p.id} className="flex items-center gap-1 bg-teal-50 px-2 py-0.5 rounded text-[11px]">
-                                                              <span className="font-mono text-teal-700">{p.verificationCode}</span>
-                                                              <button
-                                                                type="button"
-                                                                onClick={() => handleDownloadPrescription(p.id)}
-                                                                className="text-teal-700 hover:underline font-bold"
-                                                              >
-                                                                PDF
-                                                              </button>
-                                                            </div>
-                                                          ))}
+                                                      {past.diagnosis && (
+                                                        <div className="text-gray-700">
+                                                          <span className="font-semibold text-teal-800">Diagnóstico:</span> {past.diagnosis}
                                                         </div>
-                                                      </div>
-                                                    )}
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            )}
-                                          </>
-                                        );
-                                      })()}
-                                    </div>
-                                  )}
-                                </div>
+                                                      )}
+                                                      {past.doctorNotes && (
+                                                        <div className="text-gray-700">
+                                                          <span className="font-semibold text-teal-800">Notas:</span> {past.doctorNotes}
+                                                        </div>
+                                                      )}
+                                                      {past.prescriptions?.length > 0 && (
+                                                        <div className="pt-1 border-t border-gray-100 flex items-center justify-between gap-1 flex-wrap">
+                                                          <span className="font-semibold text-teal-800">Récipes:</span>
+                                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                                            {past.prescriptions.map((p) => (
+                                                              <div key={p.id} className="flex items-center gap-1 bg-teal-50 px-2 py-0.5 rounded text-[11px]">
+                                                                <span className="font-mono text-teal-700">{p.verificationCode}</span>
+                                                                <button
+                                                                  type="button"
+                                                                  onClick={() => handleDownloadPrescription(p.id)}
+                                                                  className="text-teal-700 hover:underline font-bold"
+                                                                >
+                                                                  PDF
+                                                                </button>
+                                                              </div>
+                                                            ))}
+                                                          </div>
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              )}
+                                            </>
+                                          );
+                                        })()}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
 
@@ -1096,26 +1104,30 @@ function DoctorAgendaPage() {
                               )}
                               {(isConfirmed || isInProgress) && (
                                 <>
-                                  {isAptToday && (
-                                    <button
-                                      type="button"
-                                      onClick={() => navigate(`/medico/consulta/${apt.id}`)}
-                                      className="px-3.5 py-2 bg-primary text-white hover:bg-primary/90 text-sm font-semibold rounded-lg shadow transition flex items-center gap-1.5"
-                                      title="Atender en el Espacio Clínico"
-                                    >
-                                      <Users className="w-4 h-4" />
-                                      Atender
-                                    </button>
+                                  {user?.role !== 'assistant' && (
+                                    <>
+                                      {isAptToday && (
+                                        <button
+                                          type="button"
+                                          onClick={() => navigate(`/medico/consulta/${apt.id}`)}
+                                          className="px-3.5 py-2 bg-primary text-white hover:bg-primary/90 text-sm font-semibold rounded-lg shadow transition flex items-center gap-1.5"
+                                          title="Atender en el Espacio Clínico"
+                                        >
+                                          <Users className="w-4 h-4" />
+                                          Atender
+                                        </button>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => navigate(`/medico/consulta/${apt.id}`)}
+                                        className="px-3 py-2 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 text-sm font-semibold rounded-lg transition flex items-center gap-1.5"
+                                        title="Completar consulta en el Espacio Clínico"
+                                      >
+                                        <CheckCircle className="w-4 h-4" />
+                                        Completar
+                                      </button>
+                                    </>
                                   )}
-                                  <button
-                                    type="button"
-                                    onClick={() => navigate(`/medico/consulta/${apt.id}`)}
-                                    className="px-3 py-2 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 text-sm font-semibold rounded-lg transition flex items-center gap-1.5"
-                                    title="Completar consulta en el Espacio Clínico"
-                                  >
-                                    <CheckCircle className="w-4 h-4" />
-                                    Completar
-                                  </button>
                                   {isConfirmed && <button
                                     type="button"
                                     onClick={() => handleMarkNoShow(apt.id)}
@@ -1471,15 +1483,17 @@ function DoctorAgendaPage() {
               </div>
 
               {/* Enlace ver historia del paciente */}
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <Link
-                  to={`/medico/pacientes/${drawerAppointment.patientId || drawerAppointment.patient?.id}`}
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-900 hover:underline"
-                >
-                  <FileText className="w-4 h-4" />
-                  Ver historia del paciente →
-                </Link>
-              </div>
+              {user?.role !== 'assistant' && (
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <Link
+                    to={`/medico/pacientes/${drawerAppointment.patientId || drawerAppointment.patient?.id}`}
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-900 hover:underline"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Ver historia del paciente →
+                  </Link>
+                </div>
+              )}
             </div>
 
             {/* Datos de la Cita */}
@@ -1519,7 +1533,7 @@ function DoctorAgendaPage() {
             </div>
 
             {/* Si está completada: diagnóstico y notas clínicas */}
-            {drawerAppointment.status === 'completed' && (
+            {drawerAppointment.status === 'completed' && user?.role !== 'assistant' && (
               <div className="space-y-3 p-4 bg-teal-50/50 rounded-xl border border-teal-100 text-xs">
                 <h5 className="font-semibold text-teal-900 text-sm border-b border-teal-200 pb-1">Resumen Clínico</h5>
                 {drawerAppointment.diagnosis && (
@@ -1539,7 +1553,7 @@ function DoctorAgendaPage() {
 
             {/* Acciones principales en el drawer */}
             <div className="pt-4 border-t flex flex-col gap-2">
-              {(drawerAppointment.status === 'confirmed' || drawerAppointment.status === 'in_progress') && (
+              {user?.role !== 'assistant' && (drawerAppointment.status === 'confirmed' || drawerAppointment.status === 'in_progress') && (
                 <button
                   type="button"
                   onClick={() => {
@@ -1553,7 +1567,7 @@ function DoctorAgendaPage() {
                   Atender en Espacio Clínico
                 </button>
               )}
-              {drawerAppointment.status === 'completed' && (
+              {user?.role !== 'assistant' && drawerAppointment.status === 'completed' && (
                 <button
                   type="button"
                   onClick={() => {

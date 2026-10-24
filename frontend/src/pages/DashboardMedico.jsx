@@ -20,10 +20,12 @@ import {
   CheckCircle,
   AlertCircle,
   Star,
-  Plus
+  Plus,
+  UserCheck
 } from 'lucide-react';
 import Navbar from '../components/common/Navbar/Navbar';
 import useDoctorProfile from '../hooks/useDoctorProfile';
+import { FEATURES } from '../config/features';
 
 function DashboardMedico() {
   const navigate = useNavigate();
@@ -139,7 +141,15 @@ function DashboardMedico() {
       description: 'Ajustes de consultorio y preferencias',
       path: '/medico/configuracion',
       color: 'from-gray-500 to-gray-600'
-    }
+    },
+    ...(FEATURES.assistant ? [{
+      title: 'Mi Asistente',
+      icon: UserCheck,
+      description: 'Invita a tu secretaria o asistente y define sus permisos',
+      path: '/medico/asistentes',
+      color: 'from-sky-500 to-indigo-600',
+      badge: 'Nuevo'
+    }] : [])
   ];
 
   const firstName = user?.profile?.firstName || user?.firstName || 'Doctor';

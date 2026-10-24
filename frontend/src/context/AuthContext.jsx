@@ -128,6 +128,8 @@ export function AuthProvider({ children }) {
     setUser(null);
     localStorage.removeItem('citamed_user');
     localStorage.removeItem('citamed_token');
+    localStorage.removeItem('citamed_acting_doctor_id');
+    localStorage.removeItem('citamed_acting_doctor_permissions');
     toast.success('Sesión cerrada');
   };
 
@@ -167,6 +169,8 @@ export function AuthProvider({ children }) {
         return '/dashboard';
       case 'doctor':
         return '/medico/dashboard';
+      case 'assistant':
+        return '/asistente';
       case 'provider':
         return '/proveedor/dashboard';
       case 'admin':
