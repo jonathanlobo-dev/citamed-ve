@@ -371,9 +371,11 @@ const passwordRecoveryService = {
       const salt = await bcrypt.genSalt(CONFIG.bcryptRounds);
       const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-      // Actualizar contraseña
+      // Actualizar contraseña. Una asistente invitada activa su cuenta al definir su clave,
+      // porque ya demostró ser dueña del correo con el código de verificación.
       await user.update({
-        password: hashedPassword
+        password: hashedPassword,
+        ...(user.role === 'assistant' && user.accountClaimed === false ? { accountClaimed: true } : {})
       });
 
       // Marcar token como usado

@@ -271,6 +271,13 @@ async function getDocumentsByPatient(patientId, user) {
     });
   }
 
+  // Cualquier otro rol (por ejemplo asistente) no tiene acceso
+  if (user.role !== 'admin') {
+    const err = new Error('No tienes acceso a los documentos de este paciente');
+    err.statusCode = 403;
+    throw err;
+  }
+
   // Admin
   return await MedicalDocument.findAll({
     where: {

@@ -5,6 +5,25 @@
 
 const { DoctorAssistant, User } = require('../models');
 
+// Campos clínicos que la asistente nunca debe recibir, en ninguna respuesta
+const CLINICAL_KEYS = new Set([
+  'soapNote', 'vitalSigns', 'physicalExam', 'clinicalNoteSavedAt', 'diagnosis', 'treatment',
+  'doctorNotes', 'followUpNotes', 'symptoms', 'patientNotes', 'prescriptionUrl', 'aiConsentAt',
+  'medicalHistory', 'allergies', 'chronicConditions', 'currentMedications', 'medicalNotes'
+]);
+
+function stripClinical(value) {
+  if (Array.isArray(value)) return value.map(stripClinical);
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) {
+      if (!CLINICAL_KEYS.has(k)) out[k] = stripClinical(v);
+    }
+    return out;
+  }
+  return value;
+}
+
 /**
  * Middleware de control de acceso para asistentes
  * @param {'agenda' | 'payments' | 'voidReceipts'} requiredPermission - Permiso requerido
@@ -95,6 +114,10 @@ function allowAssistant(requiredPermission) {
         actingAssistantId: assistantId,
         actingAssistantEmail: req.user.email
       };
+
+      // Toda respuesta a la asistente sale sin campos clínicos
+      const originalJson = res.json.bind(res);
+      res.json = (body) => originalJson(stripClinical(JSON.parse(JSON.stringify(body))));
 
       next();
     } catch (error) {

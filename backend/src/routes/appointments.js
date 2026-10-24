@@ -59,8 +59,8 @@ router.post(
   authenticateToken,
   allowAssistant('agenda'),
   (req, res, next) => {
-    // Si viene en nombre del médico (asistente) o es médico/admin, puede crear cita para paciente
-    if (req.user.actingAssistantId || req.user.role === 'doctor' || req.user.role === 'admin') {
+    // Solo la asistente que actúa por un médico se salta este permiso; los demás roles siguen igual que antes
+    if (req.user.actingAssistantId) {
       return next();
     }
     return requirePermission('appointments.create')(req, res, next);

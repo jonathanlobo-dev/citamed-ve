@@ -584,7 +584,14 @@ async function run() {
       { method: 'post', path: '/api/medical-documents', body: { patientId: patient.id } },
       { method: 'post', path: '/api/ai/soap', body: { transcript: 'Paciente con fiebre' } },
       { method: 'post', path: '/api/ai/rx', body: { diagnosis: 'Infección respiratoria' } },
-      { method: 'put', path: '/api/payments/settings', body: { settings: {} } }
+      { method: 'put', path: '/api/payments/settings', body: { settings: {} } },
+      { method: 'get', path: `/api/medical-documents/patient/${patient.id}` },
+      { method: 'get', path: `/api/medical-documents/1/pdf` },
+      { method: 'get', path: `/api/prescriptions/appointment/${aptForPayment.id}` },
+      { method: 'get', path: `/api/prescriptions/1/pdf` },
+      { method: 'get', path: '/api/patients/me/record' },
+      { method: 'get', path: '/api/profiles/me' },
+      { method: 'get', path: '/api/admin/overview' }
     ];
 
     let allClinicalDenied = true;
@@ -609,6 +616,71 @@ async function run() {
 
     if (allClinicalDenied) {
       pass(`Verificadas ${clinicalRoutesToTest.length} rutas clínicas: NINGUNA es accesible por la asistente`);
+    }
+
+    // ----------------------------------------------------
+    // PASO 10B: Las respuestas a la asistente NO traen campos clínicos
+    // ----------------------------------------------------
+    logStep('10B', 'Respuestas a la asistente sin campos clínicos (soapNote, vitalSigns, diagnosis, doctorNotes...)');
+    await db.Appointment.update({
+      soapNote: { subjective: 'DATO CLINICO SECRETO' },
+      vitalSigns: { systolic: 120 },
+      diagnosis: 'DIAGNOSTICO SECRETO',
+      doctorNotes: 'NOTA PRIVADA',
+      symptoms: ['SINTOMA SECRETO']
+    }, { where: { id: aptForPayment.id } });
+
+    const forbiddenWords = ['DATO CLINICO SECRETO', 'DIAGNOSTICO SECRETO', 'NOTA PRIVADA', 'SINTOMA SECRETO', 'soapNote', 'vitalSigns', 'doctorNotes'];
+    for (const path of [`/api/appointments/${aptForPayment.id}`, '/api/appointments/doctor/today', '/api/appointments/my']) {
+      const r = await request(app).get(path)
+        .set('Authorization', `Bearer ${tokenAsstA}`)
+        .set('X-Acting-Doctor', String(doctorA.id));
+      const text = JSON.stringify(r.body);
+      const leaked = forbiddenWords.filter((w) => text.includes(w));
+      if (r.status === 200 && leaked.length === 0) {
+        pass(`GET ${path}: 200 sin campos clínicos`);
+      } else {
+        fail(`GET ${path}: HTTP ${r.status}, fuga: ${leaked.join(', ') || 'ninguna'}`);
+        allPassed = false;
+      }
+    }
+
+    // El médico sí sigue viendo su dato clínico (la protección es solo para la asistente)
+    const resDoc = await request(app).get(`/api/appointments/${aptForPayment.id}`).set('Authorization', `Bearer ${tokenDocA}`);
+    if (resDoc.status === 200 && JSON.stringify(resDoc.body).includes('DIAGNOSTICO SECRETO')) {
+      pass('El médico sigue viendo el diagnóstico en su cita');
+    } else {
+      fail(`El médico no ve su dato clínico: HTTP ${resDoc.status}`);
+      allPassed = false;
+    }
+
+    // ----------------------------------------------------
+    // PASO 10C: Agendar solo para pacientes con historial con ese médico
+    // ----------------------------------------------------
+    logStep('10C', 'Asistente intenta agendar para un paciente sin historial con el médico (espera 403)');
+    const resNoHistory = await request(app).post('/api/appointments')
+      .set('Authorization', `Bearer ${tokenAsstA}`)
+      .set('X-Acting-Doctor', String(doctorA.id))
+      .send({ patientId: doctorA.id, appointmentDate: '2027-01-04', appointmentTime: '09:00', reasonForVisit: 'Prueba' });
+    if (resNoHistory.status === 403) {
+      pass('Bloqueado con 403: paciente sin historial con el médico');
+    } else {
+      fail(`Agendó para un paciente sin historial: HTTP ${resNoHistory.status}`);
+      allPassed = false;
+    }
+
+    // ----------------------------------------------------
+    // PASO 10D: No se puede invitar como asistente a un correo que ya es de un paciente
+    // ----------------------------------------------------
+    logStep('10D', 'Médico intenta invitar como asistente el correo de un paciente existente (espera 400)');
+    const resInvitePatient = await request(app).post('/api/assistants/invite')
+      .set('Authorization', `Bearer ${tokenDocA}`)
+      .send({ email: patient.email, firstName: 'X', lastName: 'Y' });
+    if (resInvitePatient.status === 400) {
+      pass('Bloqueado con 400: el correo ya pertenece a otro rol');
+    } else {
+      fail(`Invitó a un paciente existente como asistente: HTTP ${resInvitePatient.status}`);
+      allPassed = false;
     }
 
     // ----------------------------------------------------

@@ -30,6 +30,21 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
+    // Rol asistente: acceso solo a un listado cerrado de módulos (denegado por defecto).
+    // Dentro de ellos, cada ruta sigue exigiendo allowAssistant(permiso) para actuar por un médico.
+    if (user.role === 'assistant') {
+      const allowed = ['/api/auth', '/api/assistants', '/api/appointments', '/api/waiting-room',
+        '/api/payments', '/api/exchange-rate', '/api/sessions', '/api/2fa'];
+      const url = req.originalUrl || '';
+      if (!allowed.some((p) => url === p || url.startsWith(p + '/') || url.startsWith(p + '?'))) {
+        return res.status(403).json({
+          success: false,
+          code: 'ASSISTANT_FORBIDDEN',
+          message: 'Tu cuenta de asistente no tiene acceso a este módulo'
+        });
+      }
+    }
+
     req.user = {
       id: user.id,
       email: user.email,

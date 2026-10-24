@@ -64,9 +64,25 @@ class AppointmentController {
         locationAddress
       } = req.body;
 
-      const isDoctorOrAdmin = req.user.role === 'doctor' || req.user.role === 'admin';
-      const patientId = (isDoctorOrAdmin && req.body.patientId) ? req.body.patientId : req.user.id;
-      const targetDoctorId = req.user.role === 'doctor' ? req.user.id : (doctorId || req.body.doctorId);
+      // Solo la asistente que actúa por un médico agenda para otro paciente, y únicamente
+      // para pacientes que ya tuvieron una cita con ese médico. Los demás roles siguen como antes.
+      const isAssistant = Boolean(req.user.actingAssistantId);
+      let patientId = req.user.id;
+      let targetDoctorId = doctorId;
+      if (isAssistant) {
+        patientId = Number(req.body.patientId);
+        targetDoctorId = req.user.id;
+        const hasHistory = patientId && await Appointment.findOne({
+          where: { doctorId: targetDoctorId, patientId },
+          attributes: ['id']
+        });
+        if (!hasHistory) {
+          return res.status(403).json({
+            success: false,
+            message: 'Solo puedes agendar para pacientes que ya han tenido citas con el médico'
+          });
+        }
+      }
 
       let targetDoctorProfileId = doctorProfileId || req.body.doctorProfileId;
       if (!targetDoctorProfileId && targetDoctorId) {

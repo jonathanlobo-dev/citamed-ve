@@ -91,16 +91,12 @@ class AssistantController {
 
         // Si ya es un usuario activo y no es assistant
         if (assistantUser.role !== 'assistant') {
-          if (assistantUser.accountClaimed === false) {
-            // Si no está reclamada, actualizamos el rol a assistant
-            assistantUser.role = 'assistant';
-            await assistantUser.save();
-          } else {
-            return res.status(400).json({
-              success: false,
-              message: 'Ese correo ya está registrado con otro rol en la plataforma'
-            });
-          }
+          // Nunca se convierte una cuenta existente (por ejemplo un paciente creado en una consulta
+          // sin cita) en asistente: perdería su historia y su rol.
+          return res.status(400).json({
+            success: false,
+            message: 'Ese correo ya está registrado con otro rol en la plataforma'
+          });
         }
       } else {
         // Crear nueva cuenta de asistente no reclamada
