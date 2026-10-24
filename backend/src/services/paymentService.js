@@ -506,9 +506,9 @@ async function recordPayment(
         payerBank: payerBank ? String(payerBank).trim().slice(0, 60) : null,
         payerNote: payerNote ? String(payerNote).trim().slice(0, 200) : null,
         status: 'approved',
-        reportedBy: user.id,
+        reportedBy: user.actingAssistantId || user.id,
         reportedAt: new Date(),
-        reviewedBy: user.id,
+        reviewedBy: user.actingAssistantId || user.id,
         reviewedAt: new Date(),
         reviewNote: reviewNote ? String(reviewNote).trim().slice(0, 300) : 'Cobro registrado directamente en consulta',
         receiptNumber,
@@ -524,9 +524,10 @@ async function recordPayment(
     appointment.paymentMethod = PAYMENT_METHOD_MAP[method] || 'transfer';
     await appointment.save({ transaction: t });
 
-    // Auditoría
+    // Auditoría (autor real y metadata onBehalfOfDoctorId si es asistente)
+    const actorId = user.actingAssistantId || user.id;
     await auditService.log({
-      userId: user.id,
+      userId: actorId,
       action: 'payment_recorded',
       resource: 'payment',
       resourceId: String(payment.id),
@@ -534,7 +535,8 @@ async function recordPayment(
         appointmentId: appointment.id,
         method,
         amountUsd,
-        receiptNumber
+        receiptNumber,
+        ...(user.actingAssistantId ? { onBehalfOfDoctorId: appointment.doctorId } : {})
       }
     });
 
@@ -585,7 +587,7 @@ async function approve(id, user) {
     const verificationCode = generateVerificationCode();
 
     payment.status = 'approved';
-    payment.reviewedBy = user.id;
+    payment.reviewedBy = user.actingAssistantId || user.id;
     payment.reviewedAt = new Date();
     payment.receiptNumber = receiptNumber;
     payment.verificationCode = verificationCode;
@@ -598,15 +600,17 @@ async function approve(id, user) {
     appointment.paymentMethod = PAYMENT_METHOD_MAP[payment.method] || 'transfer';
     await appointment.save({ transaction: t });
 
-    // Auditoría
+    // Auditoría (autor real y metadata onBehalfOfDoctorId si es asistente)
+    const actorId = user.actingAssistantId || user.id;
     await auditService.log({
-      userId: user.id,
+      userId: actorId,
       action: 'payment_approved',
       resource: 'payment',
       resourceId: String(payment.id),
       metadata: {
         appointmentId: appointment.id,
-        receiptNumber
+        receiptNumber,
+        ...(user.actingAssistantId ? { onBehalfOfDoctorId: payment.doctorId } : {})
       }
     });
 
@@ -651,20 +655,22 @@ async function reject(id, reason, user) {
     }
 
     payment.status = 'rejected';
-    payment.reviewedBy = user.id;
+    payment.reviewedBy = user.actingAssistantId || user.id;
     payment.reviewedAt = new Date();
     payment.reviewNote = cleanReason;
     await payment.save({ transaction: t });
 
-    // Auditoría
+    // Auditoría (autor real y metadata onBehalfOfDoctorId si es asistente)
+    const rejectActorId = user.actingAssistantId || user.id;
     await auditService.log({
-      userId: user.id,
+      userId: rejectActorId,
       action: 'payment_rejected',
       resource: 'payment',
       resourceId: String(payment.id),
       metadata: {
         appointmentId: payment.appointmentId,
-        reason: cleanReason
+        reason: cleanReason,
+        ...(user.actingAssistantId ? { onBehalfOfDoctorId: payment.doctorId } : {})
       }
     });
 
@@ -723,20 +729,22 @@ async function voidPayment(id, reason, user) {
     }
 
     payment.status = 'voided';
-    payment.reviewedBy = user.id;
+    payment.reviewedBy = user.actingAssistantId || user.id;
     payment.reviewedAt = new Date();
     payment.reviewNote = cleanReason;
     await payment.save({ transaction: t });
 
-    // Auditoría
+    // Auditoría (autor real y metadata onBehalfOfDoctorId si es asistente)
+    const voidActorId = user.actingAssistantId || user.id;
     await auditService.log({
-      userId: user.id,
+      userId: voidActorId,
       action: 'payment_voided',
       resource: 'payment',
       resourceId: String(payment.id),
       metadata: {
         appointmentId: payment.appointmentId,
-        reason: cleanReason
+        reason: cleanReason,
+        ...(user.actingAssistantId ? { onBehalfOfDoctorId: payment.doctorId } : {})
       }
     });
 
@@ -873,6 +881,11 @@ async function listHistory(user, { from, to, status, page = 1, limit = 20 } = {}
         model: Appointment,
         as: 'appointment',
         attributes: ['id', 'appointmentNumber', 'appointmentDate']
+      },
+      {
+        model: User,
+        as: 'reviewer',
+        attributes: ['id', 'firstName', 'lastName', 'email', 'role']
       }
     ],
     order: [['createdAt', 'DESC']],
@@ -967,6 +980,11 @@ async function getPaymentForUser(id, user) {
           { model: Clinic, as: 'clinic' },
           { model: ClinicLocation, as: 'clinicLocation' }
         ]
+      },
+      {
+        model: User,
+        as: 'reviewer',
+        attributes: ['id', 'firstName', 'lastName', 'email', 'role']
       }
     ]
   });
