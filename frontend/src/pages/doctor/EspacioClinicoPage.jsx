@@ -3088,7 +3088,7 @@ export default function EspacioClinicoPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-purple-900 flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                      Indicaciones para el paciente (IA) — Página 2 del récipe oficial
+                      Indicaciones para el paciente (IA): página 2 del récipe oficial
                     </span>
                     <button
                       type="button"
