@@ -32,7 +32,13 @@ export const prescriptionAPI = {
   /**
    * Verificación pública sin token
    */
-  verify: (code) => axios.get(`${API_URL}/prescriptions/verify/${encodeURIComponent(code)}`)
+  verify: (code) => axios.get(`${API_URL}/prescriptions/verify/${encodeURIComponent(code)}`),
+
+  /**
+   * Actualiza las indicaciones para el paciente en un récipe existente
+   */
+  updatePatientInstructions: (id, patientInstructions) =>
+    api.patch(`/prescriptions/${id}/patient-instructions`, { patientInstructions })
 };
 
 export default prescriptionAPI;

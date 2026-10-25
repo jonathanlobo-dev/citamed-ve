@@ -27,13 +27,15 @@ import {
   Navigation,
   Download,
   Share2,
-  CreditCard
+  CreditCard,
+  Sparkles
 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar/Navbar';
 import appointmentService from '../../services/appointmentService';
 import prescriptionAPI from '../../services/prescriptionService';
 import paymentService from '../../services/paymentService';
 import PayConsultationDrawer from '../../components/payments/PayConsultationDrawer';
+import SideDrawer from '../../components/common/SideDrawer/SideDrawer';
 import { shareRecipe, prefetchRecipePdf } from '../../utils/shareRecipe';
 import toast from 'react-hot-toast';
 import './MisCitasPage.css';
@@ -49,6 +51,8 @@ const MisCitasPage = () => {
   const [paymentsByAppointment, setPaymentsByAppointment] = useState({});
   const [selectedAppointmentForPay, setSelectedAppointmentForPay] = useState(null);
   const [payDrawerOpen, setPayDrawerOpen] = useState(false);
+  const [instructionsDrawerDoc, setInstructionsDrawerDoc] = useState(null);
+  const [loadingInstructionsAptId, setLoadingInstructionsAptId] = useState(null);
 
   useEffect(() => {
     fetchAppointments();
@@ -338,6 +342,24 @@ const MisCitasPage = () => {
       date: appointment.appointmentDate || 'reciente',
       isPatientSharing: true
     });
+  };
+
+  const handleViewInstructions = async (appointment) => {
+    setLoadingInstructionsAptId(appointment.id);
+    try {
+      const res = await prescriptionAPI.getByAppointment(appointment.id);
+      const list = res.data?.data || [];
+      if (list.length === 0 || !list[0].patientInstructions) {
+        toast('Esta consulta no tiene indicaciones de tratamiento registradas.');
+        return;
+      }
+      setInstructionsDrawerDoc(list[0]);
+    } catch (err) {
+      console.error('Error al cargar indicaciones:', err);
+      toast.error('No se pudieron cargar las indicaciones');
+    } finally {
+      setLoadingInstructionsAptId(null);
+    }
   };
 
   const formatDate = (dateStr) => {
@@ -684,6 +706,15 @@ const MisCitasPage = () => {
                     {appointment.status === 'completed' && (
                       <>
                         <button
+                          onClick={() => handleViewInstructions(appointment)}
+                          disabled={loadingInstructionsAptId === appointment.id}
+                          className="flex items-center gap-2 border border-purple-300 text-purple-700 bg-purple-50/50 px-3.5 py-2 rounded-lg hover:bg-purple-100 transition font-medium text-sm"
+                          title="Ver indicaciones del tratamiento para el paciente"
+                        >
+                          <Sparkles className="w-4 h-4 text-purple-600" />
+                          {loadingInstructionsAptId === appointment.id ? 'Cargando...' : 'Ver Indicaciones'}
+                        </button>
+                        <button
                           onClick={() => handleDownloadPatientRecipe(appointment)}
                           disabled={recipeLoadingId === appointment.id}
                           className="flex items-center gap-2 border border-teal-300 text-teal-700 bg-teal-50/50 px-4 py-2 rounded-lg hover:bg-teal-100 transition font-medium text-sm"
@@ -746,6 +777,36 @@ const MisCitasPage = () => {
           fetchMyPayments();
         }}
       />
+
+      {/* Panel lateral para ver indicaciones del tratamiento (Bloque D) */}
+      <SideDrawer
+        isOpen={Boolean(instructionsDrawerDoc)}
+        onClose={() => setInstructionsDrawerDoc(null)}
+        title="Indicaciones del Tratamiento"
+        subtitle={`Récipe #${instructionsDrawerDoc?.verificationCode || ''}`}
+        size="md"
+      >
+        <div className="space-y-4 text-sm text-slate-700 p-1">
+          <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg flex items-start gap-2.5">
+            <Sparkles className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-purple-900 leading-relaxed">
+              Guía de tratamiento preparada por tu médico tratante para ayudarte a cumplir con tu medicación de forma clara y segura.
+            </p>
+          </div>
+          <div className="p-4 bg-white border border-slate-200 rounded-xl whitespace-pre-line leading-relaxed shadow-sm text-slate-800 text-sm">
+            {instructionsDrawerDoc?.patientInstructions}
+          </div>
+          <div className="pt-2 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setInstructionsDrawerDoc(null)}
+              className="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-lg hover:bg-slate-200 text-xs"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </SideDrawer>
     </div>
   );
 };

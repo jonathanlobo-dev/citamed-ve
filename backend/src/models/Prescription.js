@@ -52,6 +52,12 @@ module.exports = (sequelize) => {
       allowNull: true,
       comment: 'Indicaciones generales del récipe'
     },
+    patientInstructions: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: 'patient_instructions',
+      comment: 'Indicaciones claras y cálidas para el paciente generadas con IA y aprobadas por el médico'
+    },
     verificationCode: {
       type: DataTypes.STRING(32),
       allowNull: false,

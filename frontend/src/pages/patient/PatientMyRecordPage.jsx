@@ -530,6 +530,13 @@ export default function PatientMyRecordPage() {
                         <code className="patient-my-doc-code">{p.verificationCode}</code>
                       </div>
 
+                      {p.patientInstructions && (
+                        <div className="mt-2 p-2 bg-purple-50/60 border border-purple-100 rounded text-xs text-slate-700">
+                          <span className="font-semibold text-purple-900 block mb-0.5">Indicaciones del tratamiento:</span>
+                          <p className="whitespace-pre-line text-slate-600 line-clamp-3 text-[11px] leading-relaxed">{p.patientInstructions}</p>
+                        </div>
+                      )}
+
                       <div className="patient-my-doc-actions">
                         <button
                           type="button"
@@ -1035,17 +1042,24 @@ export default function PatientMyRecordPage() {
                 </span>
                 <div className="space-y-2">
                   {selectedConsultation.prescriptions?.map((p) => (
-                    <div key={p.id} className="flex items-center justify-between p-2 bg-purple-50/50 rounded border border-purple-100">
-                      <span className="text-xs font-bold text-purple-900">
-                        Récipe #{p.verificationCode}
-                      </span>
-                      <button
-                        type="button"
-                        className="text-xs font-semibold text-primary hover:underline"
-                        onClick={() => handleDownloadPdf('prescription', p.id, 'recipe')}
-                      >
-                        Descargar
-                      </button>
+                    <div key={p.id} className="p-2.5 bg-purple-50/50 rounded-lg border border-purple-100 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-purple-900">
+                          Récipe #{p.verificationCode}
+                        </span>
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-primary hover:underline"
+                          onClick={() => handleDownloadPdf('prescription', p.id, 'recipe')}
+                        >
+                          Descargar PDF
+                        </button>
+                      </div>
+                      {p.patientInstructions && (
+                        <p className="text-[11px] text-slate-600 whitespace-pre-line leading-relaxed pt-1 border-t border-purple-100/60">
+                          <strong>Indicaciones:</strong> {p.patientInstructions}
+                        </p>
+                      )}
                     </div>
                   ))}
                   {selectedConsultation.medicalDocuments?.map((d) => (

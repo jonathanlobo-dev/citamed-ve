@@ -49,4 +49,12 @@ router.put(
   prescriptionController.voidPrescription
 );
 
+// Actualizar indicaciones al paciente en récipe existente (médico o admin)
+router.patch(
+  '/:id/patient-instructions',
+  authenticateToken,
+  requireRoles(['doctor', 'admin']),
+  prescriptionController.updatePatientInstructions
+);
+
 module.exports = router;

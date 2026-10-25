@@ -33,7 +33,7 @@ function generateVerificationCode() {
 /**
  * Crea un récipe médico asociado a una cita
  */
-async function createPrescription({ appointmentId, user, items, indications }) {
+async function createPrescription({ appointmentId, user, items, indications, patientInstructions }) {
   if (!items || !Array.isArray(items) || items.length === 0) {
     const error = new Error('El récipe debe contener al menos un medicamento');
     error.status = 400;
@@ -66,6 +66,9 @@ async function createPrescription({ appointmentId, user, items, indications }) {
   const cleanIndications = typeof indications === 'string' && indications.trim()
     ? indications.trim().slice(0, MAX_INDICATIONS_LENGTH)
     : null;
+  const cleanPatientInstructions = typeof patientInstructions === 'string' && patientInstructions.trim()
+    ? patientInstructions.trim().slice(0, 4000)
+    : null;
 
   const appointment = await Appointment.findByPk(appointmentId);
   if (!appointment) {
@@ -96,6 +99,7 @@ async function createPrescription({ appointmentId, user, items, indications }) {
     patientId: appointment.patientId,
     items: cleanItems,
     indications: cleanIndications,
+    patientInstructions: cleanPatientInstructions,
     verificationCode,
     status: 'active'
   });
@@ -290,11 +294,37 @@ async function verifyPrescription(code) {
   };
 }
 
+/**
+ * Actualiza las indicaciones al paciente de un récipe existente
+ */
+async function updatePatientInstructions(id, user, patientInstructions) {
+  const prescription = await Prescription.findByPk(id);
+  if (!prescription) {
+    const error = new Error('Récipe no encontrado');
+    error.status = 404;
+    throw error;
+  }
+
+  if (user.role !== 'admin' && prescription.doctorId !== user.id) {
+    const error = new Error('No autorizado para modificar este récipe');
+    error.status = 403;
+    throw error;
+  }
+
+  const cleanPatientInstructions = typeof patientInstructions === 'string' && patientInstructions.trim()
+    ? patientInstructions.trim().slice(0, 4000)
+    : null;
+
+  await prescription.update({ patientInstructions: cleanPatientInstructions });
+  return await getPrescriptionWithDetails(prescription.id);
+}
+
 module.exports = {
   createPrescription,
   getPrescriptionsByAppointment,
   getPrescriptionForUser,
   getPrescriptionWithDetails,
   voidPrescription,
-  verifyPrescription
+  verifyPrescription,
+  updatePatientInstructions
 };

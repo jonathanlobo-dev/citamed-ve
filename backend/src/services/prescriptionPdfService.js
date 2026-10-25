@@ -110,6 +110,34 @@ async function generatePrescriptionPdf(prescription) {
       verifyDomainText: 'citamed-ve.pages.dev/verificar-recipe'
     });
 
+    // Si contiene indicaciones para el paciente generadas por IA y aprobadas por el médico, agregar página 2
+    if (prescription.patientInstructions && prescription.patientInstructions.trim()) {
+      doc.addPage();
+      if (isVoided) {
+        drawVoidWatermark(doc);
+      }
+      drawHeader(doc, doctorData);
+      drawPatientBox(doc, patientData);
+
+      doc.moveDown(0.6);
+      doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('Indicaciones para el paciente');
+      doc.rect(40, doc.y - 2, 532, 1.5).fill('#0d9488');
+      doc.moveDown(0.5);
+
+      doc.fillColor('#334155').fontSize(10).font('Helvetica').text(prescription.patientInstructions.trim(), {
+        align: 'justify',
+        lineGap: 3
+      });
+
+      drawFooter(doc, {
+        doctorFullName: doctorData.doctorFullName,
+        mpps: doctorData.mpps,
+        verificationCode: prescription.verificationCode,
+        qrBuffer,
+        verifyDomainText: 'citamed-ve.pages.dev/verificar-recipe'
+      });
+    }
+
     doc.end();
   });
 }

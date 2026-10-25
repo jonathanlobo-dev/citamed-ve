@@ -15,7 +15,8 @@ const { correctMedicalText, correctSoapProposal, correctRxProposal, enforceRxFid
 const {
   IMPROVE_SYSTEM_PROMPT,
   SOAP_SYSTEM_PROMPT,
-  RX_SYSTEM_PROMPT
+  RX_SYSTEM_PROMPT,
+  PATIENT_INSTRUCTIONS_SYSTEM_PROMPT
 } = require('./prompts');
 
 const RX_ALLOWED_FIELDS = ['medication', 'presentation', 'dose', 'frequency', 'duration', 'instructions'];
@@ -540,6 +541,73 @@ class AiService {
       indications,
       warnings
     };
+  }
+
+  /**
+   * POST /api/ai/patient-instructions
+   * Genera texto claro y cálido de indicaciones para el paciente a partir del récipe
+   */
+  async patientInstructions(userId, { appointmentId, items, indications }) {
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      const err = new Error('El récipe debe contener al menos un medicamento');
+      err.status = 400;
+      throw err;
+    }
+
+    const appointment = await this.getValidatedAppointment(appointmentId, userId, true);
+    await this.checkLimitsAndQuota(userId);
+
+    const patientData = this.getPatientData(appointment);
+    const rxSummary = items.map((it, idx) => {
+      const parts = [
+        it.medication,
+        it.presentation ? `(${it.presentation})` : '',
+        it.dose ? `Dosis: ${it.dose}` : '',
+        it.frequency ? `Frecuencia: ${it.frequency}` : '',
+        it.duration ? `Duración: ${it.duration}` : '',
+        it.instructions ? `Indicaciones: ${it.instructions}` : ''
+      ].filter(Boolean);
+      return `${idx + 1}. ${parts.join(' - ')}`;
+    }).join('\n');
+
+    const fullRxText = `MEDICAMENTOS PRESCRITOS:\n${rxSummary}\n${indications ? `\nINDICACIONES GENERALES DEL MÉDICO:\n${indications}` : ''}`;
+    const anonymizedText = deidentify(fullRxText, patientData);
+    const inputChars = anonymizedText.length;
+    let result;
+
+    try {
+      result = await aiChain.generate({
+        systemPrompt: PATIENT_INSTRUCTIONS_SYSTEM_PROMPT,
+        userText: anonymizedText,
+        json: false
+      });
+
+      const cleanInstructions = correctMedicalText((result.text || '').trim());
+
+      await this.logUsageAttempts({
+        userId,
+        appointmentId: appointment ? appointment.id : null,
+        mode: 'patient_instructions',
+        inputChars,
+        attempts: result.attempts,
+        fallback: { provider: result.provider, model: result.model, success: true, latencyMs: result.latencyMs }
+      });
+
+      return {
+        instructions: cleanInstructions,
+        provider: result.provider
+      };
+    } catch (err) {
+      await this.logUsageAttempts({
+        userId,
+        appointmentId: appointment ? appointment.id : null,
+        mode: 'patient_instructions',
+        inputChars,
+        attempts: err.attempts,
+        fallback: { success: false, errorCode: err.code || `HTTP_${err.status || 500}` }
+      });
+      throw err;
+    }
   }
 
   /**

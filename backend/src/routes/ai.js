@@ -130,6 +130,24 @@ router.post('/rx', async (req, res) => {
 });
 
 /**
+ * POST /api/ai/patient-instructions
+ * Genera indicaciones claras y comprensibles para el paciente a partir del récipe
+ */
+router.post('/patient-instructions', async (req, res) => {
+  try {
+    const { appointmentId, items, indications } = req.body;
+    const result = await aiService.patientInstructions(req.user.id, { appointmentId, items, indications });
+    return res.json({
+      success: true,
+      instructions: result.instructions,
+      provider: result.provider
+    });
+  } catch (err) {
+    return handleAiError(res, err, 'Error al generar indicaciones para el paciente');
+  }
+});
+
+/**
  * POST /api/ai/transcribe
  * Transcribe un archivo de audio grabado durante la consulta
  */

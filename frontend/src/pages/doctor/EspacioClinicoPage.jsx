@@ -70,6 +70,7 @@ import AiSoapReviewDrawer from '../../components/clinical/AiSoapReviewDrawer';
 import AiImproveReviewDrawer from '../../components/clinical/AiImproveReviewDrawer';
 import AiRxReviewDrawer from '../../components/clinical/AiRxReviewDrawer';
 import AiRxTextDrawer from '../../components/clinical/AiRxTextDrawer';
+import AiPatientInstructionsDrawer from '../../components/clinical/AiPatientInstructionsDrawer';
 import { ADULT_VITAL_RANGES, isVitalAbnormal, calculateBMI } from '../../utils/vitalRanges';
 import { shareDocument, prefetchDocumentPdf } from '../../utils/shareDocument';
 import { getCompanionSuggestions, checkMedicationAllergy } from '../../utils/companionRules';
@@ -172,6 +173,9 @@ export default function EspacioClinicoPage() {
     { medication: '', presentation: '', dose: '', frequency: '', duration: '', instructions: '' }
   ]);
   const [recipeIndications, setRecipeIndications] = useState('');
+  const [patientInstructions, setPatientInstructions] = useState('');
+  const [drawerPatientInstructions, setDrawerPatientInstructions] = useState(false);
+  const [targetPrescriptionForInstructions, setTargetPrescriptionForInstructions] = useState(null);
   const [dismissedCompanionCategories, setDismissedCompanionCategories] = useState([]);
 
   // Documentos médicos emitidos en esta consulta
@@ -1616,45 +1620,115 @@ export default function EspacioClinicoPage() {
     }
   };
 
+  const handleOpenInstructionsForDraft = () => {
+    setTargetPrescriptionForInstructions(null);
+    setDrawerPatientInstructions(true);
+  };
+
+  const handleOpenInstructionsForPrescription = (presc) => {
+    setTargetPrescriptionForInstructions(presc);
+    setDrawerPatientInstructions(true);
+  };
+
+  const handleSavePatientInstructions = async (approvedText) => {
+    if (targetPrescriptionForInstructions) {
+      try {
+        await prescriptionAPI.updatePatientInstructions(
+          targetPrescriptionForInstructions.id,
+          approvedText
+        );
+        setIssuedPrescriptions((prev) =>
+          prev.map((p) =>
+            p.id === targetPrescriptionForInstructions.id
+              ? { ...p, patientInstructions: approvedText }
+              : p
+          )
+        );
+        prefetchDocumentPdf('prescription', targetPrescriptionForInstructions.id, prescriptionAPI.downloadPdf);
+        toast.success('Indicaciones guardadas en el récipe');
+      } catch (err) {
+        console.error('Error al guardar indicaciones:', err);
+        toast.error('Error al guardar las indicaciones en el récipe');
+      }
+    } else {
+      setPatientInstructions(approvedText);
+      toast.success('Indicaciones listas para el récipe');
+    }
+  };
+
   const renderIssuedPrescriptions = () => {
     const active = issuedPrescriptions.filter((p) => p.status === 'active');
     if (active.length === 0) {
       return <p className="text-xs text-slate-400 italic">No se emitió récipe en esta consulta.</p>;
     }
     return (
-      <div className="space-y-2">
+      <div className="space-y-3">
         {active.map((presc) => (
           <div
             key={presc.id}
-            className="p-3 rounded-lg border border-slate-200 bg-white flex flex-wrap justify-between items-center gap-2 text-xs"
+            className="p-3.5 rounded-lg border border-slate-200 bg-white space-y-2.5 text-xs shadow-sm"
           >
-            <div className="min-w-0">
-              <span className="font-bold text-slate-800 block">
-                Récipe con {presc.items?.length || 0} medicamento{presc.items?.length === 1 ? '' : 's'}
-              </span>
-              {presc.items?.length > 0 && (
-                <span className="text-slate-600 block truncate">
-                  {presc.items.map((it) => it.medication).join(', ')}
+            <div className="flex flex-wrap justify-between items-center gap-2">
+              <div className="min-w-0">
+                <span className="font-bold text-slate-800 block">
+                  Récipe con {presc.items?.length || 0} medicamento{presc.items?.length === 1 ? '' : 's'}
                 </span>
-              )}
-              <span className="text-[10px] text-slate-500 font-mono">Código: {presc.verificationCode}</span>
+                {presc.items?.length > 0 && (
+                  <span className="text-slate-600 block truncate">
+                    {presc.items.map((it) => it.medication).join(', ')}
+                  </span>
+                )}
+                <span className="text-[10px] text-slate-500 font-mono">Código: {presc.verificationCode}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {FEATURES.aiPatientInstructions && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenInstructionsForPrescription(presc)}
+                    className="px-2.5 py-1 bg-purple-50 text-purple-700 font-semibold rounded text-xs hover:bg-purple-100 transition flex items-center gap-1 border border-purple-200"
+                  >
+                    <Sparkles className="w-3 h-3 text-purple-600" />
+                    <span>{presc.patientInstructions ? 'Ver indicaciones' : 'Indicaciones (IA)'}</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleDownloadPrescriptionPdf(presc)}
+                  className="px-2.5 py-1 bg-primary/10 text-primary font-semibold rounded text-xs hover:bg-primary/20 transition flex items-center gap-1"
+                >
+                  <Download className="w-3 h-3" /> Descargar PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleShareDocument({ ...presc, type: 'prescription' })}
+                  className="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-semibold rounded text-xs hover:bg-emerald-100 transition flex items-center gap-1"
+                >
+                  <Share2 className="w-3 h-3" /> WhatsApp
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleDownloadPrescriptionPdf(presc)}
-                className="px-2.5 py-1 bg-primary/10 text-primary font-semibold rounded text-xs hover:bg-primary/20 transition flex items-center gap-1"
-              >
-                <Download className="w-3 h-3" /> Descargar PDF
-              </button>
-              <button
-                type="button"
-                onClick={() => handleShareDocument({ ...presc, type: 'prescription' })}
-                className="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-semibold rounded text-xs hover:bg-emerald-100 transition flex items-center gap-1"
-              >
-                <Share2 className="w-3 h-3" /> WhatsApp
-              </button>
-            </div>
+
+            {presc.patientInstructions && (
+              <div className="p-2.5 bg-purple-50/60 border border-purple-100 rounded-lg text-slate-700 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-purple-900 flex items-center gap-1 text-[11px]">
+                    <Sparkles className="w-3 h-3 text-purple-600" /> Indicaciones para el paciente (pág. 2 del récipe):
+                  </span>
+                  {FEATURES.aiPatientInstructions && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenInstructionsForPrescription(presc)}
+                      className="text-[11px] text-purple-700 hover:text-purple-900 font-semibold underline"
+                    >
+                      Editar
+                    </button>
+                  )}
+                </div>
+                <p className="whitespace-pre-line text-slate-600 text-[11px] leading-relaxed line-clamp-3">
+                  {presc.patientInstructions}
+                </p>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -1689,7 +1763,8 @@ export default function EspacioClinicoPage() {
           const prescRes = await prescriptionAPI.create({
             appointmentId: appointment.id,
             items: validItems,
-            indications: recipeIndications.trim() || undefined
+            indications: recipeIndications.trim() || undefined,
+            patientInstructions: patientInstructions.trim() || undefined
           });
           const createdPresc = prescRes.data?.data;
           if (createdPresc?.id) {
@@ -2819,6 +2894,19 @@ export default function EspacioClinicoPage() {
                     <FileText className="w-3.5 h-3.5 text-sky-600" />
                     <span>Desde texto</span>
                   </button>
+
+                  {/* Indicaciones para el paciente con IA (Bloque D) */}
+                  {FEATURES.aiPatientInstructions && (
+                    <button
+                      type="button"
+                      onClick={handleOpenInstructionsForDraft}
+                      title="Generar o revisar indicaciones claras para el paciente con IA"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                      <span>Indicaciones para el paciente (IA)</span>
+                    </button>
+                  )}
                   </>
                   )}
 
@@ -2993,6 +3081,34 @@ export default function EspacioClinicoPage() {
                   readOnly={isReadOnly}
                 />
               </div>
+
+              {/* Indicaciones para el paciente con IA (Bloque D) */}
+              {FEATURES.aiPatientInstructions && (
+                <div className="p-3 bg-purple-50/60 border border-purple-200 rounded-lg space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-purple-900 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                      Indicaciones para el paciente (IA) — Página 2 del récipe oficial
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleOpenInstructionsForDraft}
+                      className="text-xs font-semibold text-purple-700 hover:text-purple-900 underline"
+                    >
+                      {patientInstructions ? 'Editar indicaciones' : 'Generar con IA'}
+                    </button>
+                  </div>
+                  {patientInstructions ? (
+                    <p className="text-xs text-slate-700 whitespace-pre-line leading-relaxed line-clamp-3 bg-white p-2.5 rounded border border-purple-100">
+                      {patientInstructions}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-purple-800 italic">
+                      Genera una guía clara, cálida y comprensible en español neutro (tú) para que el paciente sepa cómo y cuándo tomar su tratamiento, qué evitar y signos de alarma.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
             )}
           </section>
@@ -4235,6 +4351,29 @@ export default function EspacioClinicoPage() {
         onClose={() => setDrawerRecordPayment(false)}
         appointment={appointment}
         onRecorded={handlePaymentRecorded}
+      />
+
+      {/* SideDrawer: Indicaciones para el Paciente con IA (Bloque D) */}
+      <AiPatientInstructionsDrawer
+        open={drawerPatientInstructions}
+        onClose={() => setDrawerPatientInstructions(false)}
+        initialInstructions={
+          targetPrescriptionForInstructions
+            ? targetPrescriptionForInstructions.patientInstructions || ''
+            : patientInstructions
+        }
+        recipeItems={
+          targetPrescriptionForInstructions
+            ? targetPrescriptionForInstructions.items || []
+            : recipeItems
+        }
+        recipeIndications={
+          targetPrescriptionForInstructions
+            ? targetPrescriptionForInstructions.indications || ''
+            : recipeIndications
+        }
+        appointmentId={appointment?.id}
+        onSave={handleSavePatientInstructions}
       />
     </div>
   );

@@ -86,7 +86,15 @@ const aiService = {
    * @returns {Promise<{success: boolean, message: string, data: Object}>}
    */
   setConsent: (appointmentId) =>
-    api.put(`/appointments/${appointmentId}/ai-consent`).then((res) => res.data)
+    api.put(`/appointments/${appointmentId}/ai-consent`).then((res) => res.data),
+
+  /**
+   * Genera texto claro y cálido de indicaciones para el paciente a partir del récipe.
+   */
+  patientInstructions: ({ appointmentId, items, indications }) =>
+    api
+      .post('/ai/patient-instructions', { appointmentId, items, indications }, { timeout: AI_TIMEOUT_MS })
+      .then((res) => res.data)
 };
 
 export default aiService;

@@ -11,7 +11,7 @@ const prescriptionPdfService = require('../services/prescriptionPdfService');
  */
 async function create(req, res) {
   try {
-    const { appointmentId, items, indications } = req.body;
+    const { appointmentId, items, indications, patientInstructions } = req.body;
     if (!appointmentId) {
       return res.status(400).json({
         success: false,
@@ -23,7 +23,8 @@ async function create(req, res) {
       appointmentId: parseInt(appointmentId, 10),
       user: req.user,
       items,
-      indications
+      indications,
+      patientInstructions
     });
 
     return res.status(201).json({
@@ -145,10 +146,39 @@ async function verify(req, res) {
   }
 }
 
+/**
+ * Actualiza las indicaciones al paciente de un récipe
+ */
+async function updatePatientInstructions(req, res) {
+  try {
+    const { id } = req.params;
+    const { patientInstructions } = req.body;
+
+    const prescription = await prescriptionService.updatePatientInstructions(
+      parseInt(id, 10),
+      req.user,
+      patientInstructions
+    );
+
+    return res.json({
+      success: true,
+      message: 'Indicaciones actualizadas exitosamente',
+      data: prescription
+    });
+  } catch (err) {
+    console.error('Error in prescriptionController.updatePatientInstructions:', err);
+    return res.status(err.status || 500).json({
+      success: false,
+      error: err.message || 'Error al actualizar indicaciones'
+    });
+  }
+}
+
 module.exports = {
   create,
   getByAppointment,
   downloadPdf,
   voidPrescription,
-  verify
+  verify,
+  updatePatientInstructions
 };
