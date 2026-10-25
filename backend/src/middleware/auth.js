@@ -35,8 +35,13 @@ const authMiddleware = async (req, res, next) => {
     if (user.role === 'assistant') {
       const allowed = ['/api/auth', '/api/assistants', '/api/appointments', '/api/waiting-room',
         '/api/payments', '/api/exchange-rate', '/api/sessions', '/api/2fa'];
+      // Rutas sueltas que la interfaz necesita: sus propios permisos y el perfil del médico activo
+      // (este último exige además allowAssistant('agenda') en su ruta)
+      const allowedExact = ['/api/rbac/my-permissions', '/api/doctors/me'];
       const url = req.originalUrl || '';
-      if (!allowed.some((p) => url === p || url.startsWith(p + '/') || url.startsWith(p + '?'))) {
+      const path = url.split('?')[0];
+      const exactOk = allowedExact.includes(path) && req.method === 'GET';
+      if (!exactOk && !allowed.some((p) => url === p || url.startsWith(p + '/') || url.startsWith(p + '?'))) {
         return res.status(403).json({
           success: false,
           code: 'ASSISTANT_FORBIDDEN',

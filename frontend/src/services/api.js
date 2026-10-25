@@ -17,9 +17,33 @@ const api = axios.create({
   timeout: 10000, // 10 segundos
 });
 
+// Médico activo de la asistente: si aún no hay uno guardado (primera entrada), se toma el primer
+// vínculo activo antes de enviar la petición, para que ninguna pantalla salga sin médico.
+let actingDoctorPromise = null;
+const resolveActingDoctor = () => {
+  if (!actingDoctorPromise) {
+    actingDoctorPromise = api.get('/assistants/my-doctors')
+      .then((res) => {
+        const first = (res.data?.data || []).find((l) => l.status === 'active');
+        if (first) {
+          localStorage.setItem('citamed_acting_doctor_id', String(first.doctorId));
+          localStorage.setItem('citamed_acting_doctor_permissions', JSON.stringify({
+            canAgenda: first.canAgenda,
+            canPayments: first.canPayments,
+            canVoidReceipts: first.canVoidReceipts
+          }));
+        }
+        return first ? String(first.doctorId) : null;
+      })
+      .catch(() => null)
+      .finally(() => { setTimeout(() => { actingDoctorPromise = null; }, 0); });
+  }
+  return actingDoctorPromise;
+};
+
 // Interceptor para agregar token JWT y X-Acting-Doctor en cada request
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
     const token = localStorage.getItem('citamed_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -31,7 +55,10 @@ api.interceptors.request.use(
       try {
         const user = JSON.parse(savedUser);
         if (user?.role === 'assistant') {
-          const actingDoctorId = localStorage.getItem('citamed_acting_doctor_id');
+          let actingDoctorId = localStorage.getItem('citamed_acting_doctor_id');
+          if (!actingDoctorId && !String(config.url || '').includes('/assistants')) {
+            actingDoctorId = await resolveActingDoctor();
+          }
           if (actingDoctorId) {
             config.headers['X-Acting-Doctor'] = actingDoctorId;
           }

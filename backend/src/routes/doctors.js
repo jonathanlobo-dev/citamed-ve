@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const doctorController = require('../controllers/doctorProfileController');
 const { authenticateToken } = require('../middleware/auth');
+const { allowAssistant } = require('../middleware/assistantAccess');
 const { requirePermission, requireRoles } = require('../middleware/rbacMiddleware');
 const { generalLimiter } = require('../middleware/rateLimiter');
 const { uploadProfilePhoto, handleUploadError } = require('../middleware/uploadMiddleware');
@@ -63,6 +64,7 @@ router.get('/nearby',
  */
 router.get('/me',
   authenticateToken,
+  allowAssistant('agenda'),
   requireRoles(['doctor']),
   doctorController.getMyProfile
 );
