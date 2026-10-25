@@ -124,15 +124,20 @@ async function activate(token, password) {
     link.inviteExpiresAt = null;
     await link.save({ transaction: t });
 
-    await auditService.log({
-      userId: user.id,
-      action: 'assistant_activated',
-      resource: 'doctor_assistant',
-      resourceId: String(link.id),
-      metadata: { doctorId: link.doctorId }
-    });
-
-    return { email: user.email };
+    return { email: user.email, userId: user.id, linkId: link.id, doctorId: link.doctorId };
+  }).then(async (done) => {
+    // La auditoría va después de confirmar la transacción: dentro de ella esperaría el bloqueo
+    // de la fila del usuario (llave foránea) y la petición quedaba colgada
+    try {
+      await auditService.log({
+        userId: done.userId,
+        action: 'assistant_activated',
+        resource: 'doctor_assistant',
+        resourceId: String(done.linkId),
+        metadata: { doctorId: done.doctorId }
+      });
+    } catch (e) { /* la auditoría no debe impedir la activación */ }
+    return { email: done.email };
   });
 }
 
