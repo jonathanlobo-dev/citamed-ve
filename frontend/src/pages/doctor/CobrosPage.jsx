@@ -182,7 +182,9 @@ export default function CobrosPage() {
       }
     } catch (err) {
       console.error('Error al cargar datos de cobros:', err);
-      setError('No pudimos cargar la información de cobros. Intenta de nuevo.');
+      setError(err.response?.data?.code === 'PERMISSION_DENIED'
+        ? 'Este médico no te dio permiso para ver sus cobros. Pídele que lo active en "Mi asistente".'
+        : 'No pudimos cargar la información de cobros. Intenta de nuevo.');
     } finally {
       setLoading(false);
     }
