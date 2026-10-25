@@ -17,6 +17,10 @@ import './SideDrawer.css';
 export default function SideDrawer({ open, onClose, title, subtitle, children, footer }) {
   const panelRef = useRef(null);
   const previouslyFocusedRef = useRef(null);
+  // onClose suele llegar como función nueva en cada render; se guarda en una referencia para que
+  // el efecto de abajo no se reinicie con cada tecla (eso le quitaba el foco al campo que se escribía)
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   // Bloquear scroll de fondo y manejar foco / tecla Escape
   useEffect(() => {
@@ -36,7 +40,7 @@ export default function SideDrawer({ open, onClose, title, subtitle, children, f
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
       }
     };
 
@@ -50,7 +54,7 @@ export default function SideDrawer({ open, onClose, title, subtitle, children, f
         previouslyFocusedRef.current.focus();
       }
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open && typeof document !== 'undefined') {
     return null;
