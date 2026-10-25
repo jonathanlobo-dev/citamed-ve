@@ -817,10 +817,13 @@ async function importPatientsFromExcel(doctorId, rawRows, user) {
             doctorProfileId,
             appointmentDate: todayCaracas(),
             appointmentTime: '08:00:00',
-            status: 'completed',
+            // Vínculo médico-paciente, no es una consulta: cancelada por el sistema para que no cuente
+            // como consulta realizada, no salga en "Por cobrar" y la agenda la oculte por defecto
+            status: 'cancelled_doctor',
+            cancelledBy: 'system',
+            cancellationReason: 'Paciente importado desde Excel (vínculo con el médico, no es una consulta)',
             appointmentType: 'first_consultation',
-            reasonForVisit: 'Importación de paciente desde Excel',
-            doctorNotes: 'Paciente importado desde Excel'
+            reasonForVisit: 'Importación de paciente desde Excel'
           }, { transaction });
           summary.linked++;
         }
@@ -861,10 +864,13 @@ async function importPatientsFromExcel(doctorId, rawRows, user) {
           doctorProfileId,
           appointmentDate: todayCaracas(),
           appointmentTime: '08:00:00',
-          status: 'completed',
+          // Vínculo médico-paciente, no es una consulta: cancelada por el sistema para que no cuente
+          // como consulta realizada, no salga en "Por cobrar" y la agenda la oculte por defecto
+          status: 'cancelled_doctor',
+          cancelledBy: 'system',
+          cancellationReason: 'Paciente importado desde Excel (vínculo con el médico, no es una consulta)',
           appointmentType: 'first_consultation',
-          reasonForVisit: 'Importación de paciente desde Excel',
-          doctorNotes: 'Paciente importado desde Excel'
+          reasonForVisit: 'Importación de paciente desde Excel'
         }, { transaction });
 
         summary.created++;

@@ -661,7 +661,7 @@ class AppointmentController {
         phoneDigits = '58' + phoneDigits;
       }
 
-      const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || 'http://localhost:5175';
+      const clientOrigin = process.env.FRONTEND_URL || req.headers.origin || 'http://localhost:5175';
       const confirmLink = `${clientOrigin}/cita/${appointment.confirmationToken}`;
       const clinicStr = appointment.doctorProfile?.clinicName ? ` en ${appointment.doctorProfile.clinicName}` : '';
       const doctorStr = appointment.doctor ? `Dr(a). ${appointment.doctor.firstName} ${appointment.doctor.lastName}` : 'tu médico';

@@ -226,7 +226,8 @@ async function confirmAppointment(req, res) {
 
     const via = req.body.via ? String(req.body.via).slice(0, 20) : 'whatsapp';
 
-    appointment.status = 'confirmed';
+    // El paciente confirma su ASISTENCIA; el estado de la cita no cambia, porque aprobar una cita
+    // pendiente es decisión del médico (regla del motor de citas).
     appointment.confirmedVia = via;
     appointment.confirmationSent = true;
     await appointment.save();
@@ -240,7 +241,6 @@ async function confirmAppointment(req, res) {
         resourceId: appointment.id,
         metadata: {
           confirmedVia: via,
-          token,
           ipAddress: req.ip
         }
       });
@@ -252,7 +252,7 @@ async function confirmAppointment(req, res) {
       success: true,
       message: '¡Asistencia confirmada con éxito! Te esperamos en tu consulta.',
       data: {
-        status: 'confirmed',
+        status: appointment.status,
         confirmedVia: via
       }
     });

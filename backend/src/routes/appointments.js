@@ -284,7 +284,7 @@ router.post(
   '/:id/confirmation-token',
   authenticateToken,
   allowAssistant('agenda'),
-  requireRoles(['doctor', 'admin', 'assistant']),
+  requireRoles(['doctor', 'admin']),
   appointmentController.getOrCreateConfirmationToken.bind(appointmentController)
 );
 

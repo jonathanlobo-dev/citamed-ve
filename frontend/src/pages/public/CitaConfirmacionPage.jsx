@@ -112,7 +112,6 @@ export default function CitaConfirmacionPage() {
         toast.success('¡Asistencia confirmada exitosamente!');
         setAppointment((prev) => ({
           ...prev,
-          status: 'confirmed',
           confirmedVia: 'whatsapp'
         }));
       } else {
@@ -178,7 +177,8 @@ export default function CitaConfirmacionPage() {
     );
   }
 
-  const isConfirmed = appointment.status === 'confirmed';
+  // El paciente confirma su asistencia; el estado de la cita lo decide el médico
+  const isConfirmed = appointment.confirmedVia === 'whatsapp';
   const isCancelled =
     appointment.status === 'cancelled_patient' || appointment.status === 'cancelled_doctor';
   const isPending = appointment.status === 'pending';
