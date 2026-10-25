@@ -503,6 +503,40 @@ const emailService = {
    * Verifica si SendGrid está configurado
    * @returns {boolean}
    */
+  /**
+   * Envío transaccional genérico. Usa Resend si hay RESEND_API_KEY (RESEND_FROM como remitente),
+   * si no SendGrid. Si no hay ningún proveedor configurado devuelve { success: false } sin lanzar,
+   * para que quien llama ofrezca otra vía (por ejemplo el enlace por WhatsApp).
+   */
+  async sendTransactional({ to, subject, html }) {
+    try {
+      if (process.env.RESEND_API_KEY) {
+        const res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            from: process.env.RESEND_FROM || `${CONFIG.fromName} <${CONFIG.fromEmail}>`,
+            to: [to],
+            subject,
+            html
+          })
+        });
+        if (!res.ok) throw new Error(`Resend HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+        const data = await res.json();
+        return { success: true, messageId: data.id, provider: 'resend' };
+      }
+      if (process.env.SENDGRID_API_KEY) {
+        const response = await sgMail.send({ to, from: { email: CONFIG.fromEmail, name: CONFIG.fromName }, subject, html });
+        return { success: true, messageId: response[0]?.headers?.['x-message-id'], provider: 'sendgrid' };
+      }
+      logger.warn('Correo no configurado (ni RESEND_API_KEY ni SENDGRID_API_KEY): envío omitido', { to, subject });
+      return { success: false, error: 'not_configured' };
+    } catch (error) {
+      logger.error('Error enviando correo transaccional', { to, subject, error: error.message });
+      return { success: false, error: error.message };
+    }
+  },
+
   isConfigured() {
     return !!process.env.SENDGRID_API_KEY;
   },

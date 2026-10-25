@@ -684,6 +684,53 @@ async function run() {
     }
 
     // ----------------------------------------------------
+    // PASO 10E: Invitación a una asistente nueva por enlace de activación
+    // ----------------------------------------------------
+    logStep('10E', 'Invitación por correo: enlace de activación, clave nueva e inicio de sesión');
+    const newEmail = `asist.nueva.${Date.now()}@citamed-test.ve`;
+    const resNewInvite = await request(app).post('/api/assistants/invite')
+      .set('Authorization', `Bearer ${tokenDocA}`)
+      .send({ email: newEmail, firstName: 'Nueva', lastName: 'Asistente' });
+    const newLinkId = resNewInvite.body?.data?.id;
+    if (newLinkId) createdAssistantLinkIds.push(newLinkId);
+    const newUserId = resNewInvite.body?.data?.assistant?.id;
+    if (newUserId) createdUserIds.push(newUserId);
+    const inviteUrl = resNewInvite.body?.invite?.inviteUrl || '';
+    const inviteToken = inviteUrl.split('/activar-asistente/')[1];
+    if (resNewInvite.status === 201 && inviteToken) {
+      pass(`Invitación creada con enlace de activación (correo enviado: ${resNewInvite.body.invite.emailSent})`);
+    } else {
+      fail(`Invitación sin enlace: HTTP ${resNewInvite.status} ${JSON.stringify(resNewInvite.body).slice(0, 200)}`);
+      allPassed = false;
+    }
+
+    if (inviteToken) {
+      const resInfo = await request(app).get(`/api/assistants/invitation/${inviteToken}`);
+      if (resInfo.status === 200 && resInfo.body.data.email === newEmail) pass('Datos del enlace sin sesión: 200');
+      else { fail(`Datos del enlace: HTTP ${resInfo.status}`); allPassed = false; }
+
+      const resWeak = await request(app).post(`/api/assistants/invitation/${inviteToken}/activate`).send({ password: '123' });
+      if (resWeak.status === 400) pass('Clave débil rechazada con 400');
+      else { fail(`Clave débil aceptada: HTTP ${resWeak.status}`); allPassed = false; }
+
+      const resAct = await request(app).post(`/api/assistants/invitation/${inviteToken}/activate`).send({ password: 'Activa12345' });
+      if (resAct.status === 200) pass('Cuenta activada con la clave nueva');
+      else { fail(`Activación: HTTP ${resAct.status} ${JSON.stringify(resAct.body)}`); allPassed = false; }
+
+      const resLogin = await request(app).post('/api/auth/login').send({ email: newEmail, password: 'Activa12345' });
+      if (resLogin.status === 200 && resLogin.body?.data?.token) pass('Inicia sesión con la clave que definió (la clave se cifró una sola vez)');
+      else { fail(`No pudo iniciar sesión tras activar: HTTP ${resLogin.status} ${JSON.stringify(resLogin.body).slice(0, 160)}`); allPassed = false; }
+
+      const linkAfter = await db.DoctorAssistant.findByPk(newLinkId);
+      if (linkAfter && linkAfter.status === 'active' && !linkAfter.inviteTokenHash) pass('Vínculo aceptado y enlace inutilizado');
+      else { fail('El vínculo no quedó activo o el enlace sigue vigente'); allPassed = false; }
+
+      const resReuse = await request(app).post(`/api/assistants/invitation/${inviteToken}/activate`).send({ password: 'Otra123456' });
+      if (resReuse.status === 400) pass('El enlace no se puede usar dos veces (400)');
+      else { fail(`Enlace reutilizado: HTTP ${resReuse.status}`); allPassed = false; }
+    }
+
+    // ----------------------------------------------------
     // PASO 11: Asistente ajena intenta actuar en nombre de Doctor A
     // ----------------------------------------------------
     logStep(11, 'Asistente de otro médico (Doctor B) intenta actuar sobre Doctor A (espera 403)');

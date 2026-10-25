@@ -367,14 +367,12 @@ const passwordRecoveryService = {
         };
       }
 
-      // Hashear nueva contraseña
-      const salt = await bcrypt.genSalt(CONFIG.bcryptRounds);
-      const hashedPassword = await bcrypt.hash(newPassword, salt);
-
-      // Actualizar contraseña. Una asistente invitada activa su cuenta al definir su clave,
-      // porque ya demostró ser dueña del correo con el código de verificación.
+      // Actualizar contraseña. Se pasa en claro: el hook beforeUpdate del modelo User la cifra.
+      // (Antes se cifraba aquí y el hook la volvía a cifrar, y la clave nueva nunca funcionaba.)
+      // Una asistente invitada activa su cuenta al definir su clave, porque ya demostró ser
+      // dueña del correo con el código de verificación.
       await user.update({
-        password: hashedPassword,
+        password: newPassword,
         ...(user.role === 'assistant' && user.accountClaimed === false ? { accountClaimed: true } : {})
       });
 

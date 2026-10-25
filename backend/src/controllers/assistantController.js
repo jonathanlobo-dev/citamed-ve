@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const { Op } = require('sequelize');
 const db = require('../models');
 const auditService = require('../services/auditService');
+const assistantInviteService = require('../services/assistantInviteService');
 
 const { DoctorAssistant, User, DoctorProfile, Specialty } = db;
 
@@ -188,10 +189,17 @@ class AssistantController {
         ]
       });
 
+      // Correo de invitación (con enlace de activación si la cuenta es nueva)
+      const doctorUser = await User.findByPk(doctorId, { attributes: ['id', 'firstName', 'lastName'] });
+      const invite = await assistantInviteService.issueInvite(link, assistantUser, doctorUser);
+
       res.status(201).json({
         success: true,
-        message: 'Invitación a asistente enviada exitosamente',
-        data: fullLink
+        message: invite.emailSent
+          ? 'Invitación enviada por correo'
+          : 'Invitación creada. El correo no está disponible: envíale el enlace por WhatsApp',
+        data: fullLink,
+        invite
       });
     } catch (error) {
       console.error('[AssistantController] inviteAssistant error:', error);
@@ -489,6 +497,58 @@ class AssistantController {
         message: 'Error al rechazar invitación',
         error: error.message
       });
+    }
+  }
+
+  /**
+   * POST /api/assistants/:linkId/resend-invite (médico)
+   */
+  async resendInvite(req, res) {
+    try {
+      const link = await DoctorAssistant.findByPk(req.params.linkId, {
+        include: [{ model: User, as: 'assistant', attributes: ['id', 'firstName', 'lastName', 'email', 'accountClaimed'] }]
+      });
+      if (!link || (req.user.role !== 'admin' && link.doctorId !== req.user.id)) {
+        return res.status(404).json({ success: false, message: 'Invitación no encontrada' });
+      }
+      if (link.status !== 'pending') {
+        return res.status(400).json({ success: false, message: 'Solo se reenvían invitaciones pendientes' });
+      }
+      const doctorUser = await User.findByPk(link.doctorId, { attributes: ['id', 'firstName', 'lastName'] });
+      const invite = await assistantInviteService.issueInvite(link, link.assistant, doctorUser);
+      return res.json({
+        success: true,
+        message: invite.emailSent ? 'Invitación reenviada por correo' : 'El correo no está disponible: envíale el enlace por WhatsApp',
+        invite
+      });
+    } catch (error) {
+      console.error('[AssistantController] resendInvite error:', error);
+      return res.status(500).json({ success: false, message: 'Error al reenviar la invitación' });
+    }
+  }
+
+  /**
+   * GET /api/assistants/invitation/:token (público)
+   */
+  async getInvitation(req, res) {
+    try {
+      const data = await assistantInviteService.getInviteInfo(req.params.token);
+      return res.json({ success: true, data });
+    } catch (error) {
+      return res.status(error.statusCode || 500).json({ success: false, message: error.statusCode ? error.message : 'Error al consultar la invitación' });
+    }
+  }
+
+  /**
+   * POST /api/assistants/invitation/:token/activate (público) { password }
+   */
+  async activateInvitation(req, res) {
+    try {
+      const data = await assistantInviteService.activate(req.params.token, req.body?.password);
+      return res.json({ success: true, message: 'Cuenta activada. Ya puedes iniciar sesión', data });
+    } catch (error) {
+      if (!error.statusCode) console.error('[AssistantController] activateInvitation error:', error);
+      return res.status(error.statusCode || 500).json({ success: false, message: error.statusCode ? error.message : 'Error al activar la cuenta' });
     }
   }
 }

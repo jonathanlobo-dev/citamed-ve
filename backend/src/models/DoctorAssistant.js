@@ -76,6 +76,17 @@ module.exports = (sequelize) => {
       type: DataTypes.DATE,
       allowNull: true,
       field: 'revoked_at'
+    },
+    // Enlace de activación para una asistente nueva (se guarda solo el hash)
+    inviteTokenHash: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+      field: 'invite_token_hash'
+    },
+    inviteExpiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'invite_expires_at'
     }
   }, {
     tableName: 'doctor_assistants',

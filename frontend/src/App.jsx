@@ -55,6 +55,7 @@ const DoctorAssistantsPage = lazy(() => import('./pages/doctor/DoctorAssistantsP
 const AssistantPortalPage = lazy(() => import('./pages/assistant/AssistantPortalPage'));
 const DoctorPublicSlugPage = lazy(() => import('./pages/public/DoctorPublicSlugPage'));
 const CitaConfirmacionPage = lazy(() => import('./pages/public/CitaConfirmacionPage'));
+const ActivarAsistentePage = lazy(() => import('./pages/assistant/ActivarAsistentePage'));
 
 function PageLoader() {
   return (
@@ -105,6 +106,10 @@ function AppRoutes() {
             <Navigate to="/" replace />
           )
         }
+      />
+      <Route
+        path="/activar-asistente/:token"
+        element={FEATURES.assistant ? <ActivarAsistentePage /> : <Navigate to="/" replace />}
       />
       <Route
         path="/cita/:token"

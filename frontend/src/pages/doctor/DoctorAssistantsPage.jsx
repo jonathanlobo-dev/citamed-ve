@@ -16,7 +16,10 @@ import {
   Lock,
   Trash2,
   Loader2,
-  Clock
+  Clock,
+  Copy,
+  Send,
+  MessageCircle
 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar/Navbar';
 import SideDrawer from '../../components/common/SideDrawer/SideDrawer';
@@ -81,6 +84,35 @@ export default function DoctorAssistantsPage() {
     setDrawerOpen(true);
   };
 
+  // Última invitación creada o reenviada: se muestra el enlace por si el correo no llega
+  const [lastInvite, setLastInvite] = useState(null);
+  const [resendingId, setResendingId] = useState(null);
+
+  const handleResend = async (link) => {
+    setResendingId(link.id);
+    try {
+      const res = await assistantService.resendInvite(link.id);
+      setLastInvite({ email: link.assistant?.email, ...(res.invite || {}) });
+      toast.success(res.message || 'Invitación reenviada');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'No se pudo reenviar la invitación');
+    } finally {
+      setResendingId(null);
+    }
+  };
+
+  const copyInviteLink = async () => {
+    try {
+      await navigator.clipboard.writeText(lastInvite.inviteUrl);
+      toast.success('Enlace copiado');
+    } catch {
+      toast.error('No se pudo copiar el enlace');
+    }
+  };
+
+  const whatsappInviteUrl = (invite) =>
+    `https://wa.me/?text=${encodeURIComponent(`Hola, te invité a ser mi asistente en CitaMed. Entra aquí para activar tu cuenta: ${invite.inviteUrl}`)}`;
+
   const handleSubmitInvite = async (e) => {
     e.preventDefault();
     if (!formData.email.trim()) {
@@ -90,7 +122,7 @@ export default function DoctorAssistantsPage() {
 
     setSubmitting(true);
     try {
-      await assistantService.inviteAssistant({
+      const res = await assistantService.inviteAssistant({
         email: formData.email.trim(),
         firstName: formData.firstName.trim() || undefined,
         lastName: formData.lastName.trim() || undefined,
@@ -101,7 +133,8 @@ export default function DoctorAssistantsPage() {
         }
       });
 
-      toast.success('Invitación enviada exitosamente');
+      setLastInvite({ email: formData.email.trim(), ...(res.invite || {}) });
+      toast.success(res.message || 'Invitación creada');
       setDrawerOpen(false);
       await fetchAssistants();
     } catch (err) {
@@ -226,6 +259,35 @@ export default function DoctorAssistantsPage() {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Enlace de la última invitación (por si el correo no llega) */}
+            {lastInvite?.inviteUrl && (
+              <div className="p-4 bg-sky-50 border border-sky-200 rounded-xl text-sm text-sky-900 space-y-2">
+                <p className="font-semibold flex items-center gap-2">
+                  <Mail className="w-4 h-4" />
+                  {lastInvite.emailSent
+                    ? `Le enviamos la invitación por correo a ${lastInvite.email}.`
+                    : `No pudimos enviar el correo a ${lastInvite.email}. Compártele este enlace:`}
+                </p>
+                <p className="text-xs text-sky-800">
+                  {lastInvite.needsActivation
+                    ? 'Con este enlace define su contraseña y queda vinculada a ti. Vence en 7 días.'
+                    : 'Ya tiene cuenta: con este enlace inicia sesión y acepta la invitación.'}
+                </p>
+                <code className="block text-xs bg-white border border-sky-200 rounded px-2 py-1 break-all">{lastInvite.inviteUrl}</code>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={copyInviteLink} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-white border border-sky-300 rounded-lg hover:bg-sky-100">
+                    <Copy className="w-3.5 h-3.5" /> Copiar enlace
+                  </button>
+                  <a href={whatsappInviteUrl(lastInvite)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
+                    <MessageCircle className="w-3.5 h-3.5" /> Enviar por WhatsApp
+                  </a>
+                  <button type="button" onClick={() => setLastInvite(null)} className="px-3 py-1.5 text-xs text-sky-800 hover:underline">
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* ASISTENTES ACTIVAS Y PENDIENTES */}
             <div className="space-y-4">
               <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
@@ -333,6 +395,19 @@ export default function DoctorAssistantsPage() {
                         />
                         <span>Anular recibos</span>
                       </label>
+
+                      {isPending && (
+                        <button
+                          type="button"
+                          disabled={resendingId === link.id}
+                          onClick={() => handleResend(link)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-slate-100 rounded-lg transition ml-2"
+                          title="Reenviar invitación"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>{resendingId === link.id ? 'Reenviando...' : 'Reenviar invitación'}</span>
+                        </button>
+                      )}
 
                       {/* Botón Desvincular */}
                       <button

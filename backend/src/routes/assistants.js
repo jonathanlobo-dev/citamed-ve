@@ -8,6 +8,17 @@ const router = express.Router();
 const assistantController = require('../controllers/assistantController');
 const { authenticateToken } = require('../middleware/auth');
 const { requireRoles } = require('../middleware/rbacMiddleware');
+const rateLimit = require('express-rate-limit');
+
+// Enlace de activación (público): pocas peticiones por IP para evitar adivinar tokens
+const inviteLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false,
+  message: { success: false, message: 'Demasiados intentos. Intenta de nuevo en unos minutos.' } });
+
+// ==========================================
+// RUTAS PÚBLICAS (activación desde el correo); van antes de las rutas con :linkId
+// ==========================================
+router.get('/invitation/:token', inviteLimiter, assistantController.getInvitation.bind(assistantController));
+router.post('/invitation/:token/activate', inviteLimiter, assistantController.activateInvitation.bind(assistantController));
 
 // ==========================================
 // RUTAS DEL MÉDICO (Gestión de sus asistentes)
@@ -27,6 +38,14 @@ router.post(
   authenticateToken,
   requireRoles(['doctor', 'admin']),
   assistantController.inviteAssistant.bind(assistantController)
+);
+
+// Reenviar invitación pendiente (genera un enlace nuevo)
+router.post(
+  '/:linkId/resend-invite',
+  authenticateToken,
+  requireRoles(['doctor', 'admin']),
+  assistantController.resendInvite.bind(assistantController)
 );
 
 // Actualizar permisos de una asistente

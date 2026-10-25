@@ -27,6 +27,30 @@ export const assistantService = {
   },
 
   /**
+   * Reenvía una invitación pendiente (genera un enlace nuevo). Respuesta: { success, message, invite: { inviteUrl, emailSent } }
+   */
+  resendInvite: async (linkId) => {
+    const res = await api.post(`/assistants/${linkId}/resend-invite`);
+    return res.data;
+  },
+
+  /**
+   * Datos de una invitación por su enlace (sin sesión). Respuesta: { success, data: { doctorName, assistantFirstName, email } }
+   */
+  getInvitation: async (token) => {
+    const res = await api.get(`/assistants/invitation/${token}`);
+    return res.data;
+  },
+
+  /**
+   * Activa la cuenta de la asistente con la clave que elige (sin sesión).
+   */
+  activateInvitation: async (token, password) => {
+    const res = await api.post(`/assistants/invitation/${token}/activate`, { password });
+    return res.data;
+  },
+
+  /**
    * Actualiza los permisos de una asistente vinculada.
    * @param {number|string} linkId - ID del registro en doctor_assistants
    * @param {{ canAgenda?: boolean, canPayments?: boolean, canVoidReceipts?: boolean }} permissions
