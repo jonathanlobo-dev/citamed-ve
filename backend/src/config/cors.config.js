@@ -91,7 +91,8 @@ const corsOptions = {
     'Accept',
     'Origin',
     'X-Auth-Token',
-    'X-API-Key'
+    'X-API-Key',
+    'X-Acting-Doctor' // Asistente que actúa en nombre de un médico (Semana 9)
   ],
 
   // Headers expuestos en responses
