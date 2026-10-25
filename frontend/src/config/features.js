@@ -13,7 +13,9 @@ const RELEASED_IN_PRODUCTION = {
   AI: true, // IA en el Espacio Clínico (liberada)
   SUPERADMIN: true, // Panel de superadministración (liberado)
   PWA: false, // App instalable (en construcción)
-  ASSISTANT: false // Asistente del médico (en construcción)
+  ASSISTANT: false, // Asistente del médico (en construcción)
+  PUBLIC_PAGE: false, // Página pública del médico con enlace propio (en construcción)
+  WA_CONFIRM: false // Confirmar o cancelar cita desde WhatsApp (en construcción)
 };
 
 const branch = typeof __BUILD_BRANCH__ !== 'undefined' ? __BUILD_BRANCH__ : 'local';
@@ -30,5 +32,7 @@ export const FEATURES = {
   ai: flag('AI'),
   superadmin: flag('SUPERADMIN'),
   pwa: flag('PWA'),
-  assistant: flag('ASSISTANT')
+  assistant: flag('ASSISTANT'),
+  publicPage: flag('PUBLIC_PAGE'),
+  waConfirm: flag('WA_CONFIRM')
 };

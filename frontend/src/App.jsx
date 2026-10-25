@@ -13,6 +13,8 @@ const VerificarDocumentoPage = lazy(() => import('./pages/public/VerificarDocume
 const AdminPanelPage = lazy(() => import('./pages/admin/AdminPanelPage'));
 const DoctorAssistantsPage = lazy(() => import('./pages/doctor/DoctorAssistantsPage'));
 const AssistantPortalPage = lazy(() => import('./pages/assistant/AssistantPortalPage'));
+const DoctorPublicSlugPage = lazy(() => import('./pages/public/DoctorPublicSlugPage'));
+const CitaConfirmacionPage = lazy(() => import('./pages/public/CitaConfirmacionPage'));
 import { FEATURES } from './config/features';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
@@ -77,6 +79,30 @@ function AppRoutes() {
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
             <VerificarDocumentoPage />
           </Suspense>
+        }
+      />
+      <Route
+        path="/dr/:slug"
+        element={
+          FEATURES.publicPage ? (
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
+              <DoctorPublicSlugPage />
+            </Suspense>
+          ) : (
+            <Navigate to="/" replace />
+          )
+        }
+      />
+      <Route
+        path="/cita/:token"
+        element={
+          FEATURES.waConfirm ? (
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
+              <CitaConfirmacionPage />
+            </Suspense>
+          ) : (
+            <Navigate to="/" replace />
+          )
         }
       />
 

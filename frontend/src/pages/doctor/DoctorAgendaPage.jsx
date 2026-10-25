@@ -13,13 +13,15 @@ import { motion } from 'framer-motion';
 import {
   Calendar, Clock, Plus, X, Save, Loader2, AlertCircle, CheckCircle,
   Users, Check, ChevronLeft, ChevronRight, XCircle, Phone, Mail, Building2,
-  CalendarRange, CalendarDays, FileText, Download, Share2
+  CalendarRange, CalendarDays, FileText, Download, Share2, MessageSquare
 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar/Navbar';
 import AssistantDoctorBanner from '../../components/assistant/AssistantDoctorBanner';
 import doctorService from '../../services/doctorService';
 import appointmentService from '../../services/appointmentService';
 import prescriptionAPI from '../../services/prescriptionService';
+import publicService from '../../services/publicService';
+import { FEATURES } from '../../config/features';
 import { shareRecipe, prefetchRecipePdf } from '../../utils/shareRecipe';
 import SideDrawer from '../../components/common/SideDrawer/SideDrawer';
 import toast from 'react-hot-toast';
@@ -191,6 +193,32 @@ function DayRow({ day, onToggle, onAddBlock, onRemoveBlock, onUpdateBlock }) {
 function DoctorAgendaPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const canAgenda = user?.role === 'doctor' || (user?.role === 'assistant' && user?.assistantPermissions?.includes('agenda'));
+  const [sendingWaAptId, setSendingWaAptId] = useState(null);
+
+  const handleSendWhatsApp = async (appointmentId) => {
+    try {
+      setSendingWaAptId(appointmentId);
+      const data = await publicService.getOrCreateConfirmationToken(appointmentId);
+      if (data?.waUrl) {
+        window.open(data.waUrl, '_blank', 'noopener,noreferrer');
+        toast.success('Enlace de WhatsApp generado');
+        setAppointments((prev) =>
+          prev.map((a) => (a.id === appointmentId ? { ...a, confirmationToken: data.token } : a))
+        );
+        if (drawerAppointment && drawerAppointment.id === appointmentId) {
+          setDrawerAppointment((prev) => ({ ...prev, confirmationToken: data.token }));
+        }
+      } else {
+        toast.error('No se pudo generar el enlace de WhatsApp');
+      }
+    } catch (err) {
+      console.error('Error al generar enlace de WhatsApp:', err);
+      toast.error(err?.response?.data?.message || 'Error al generar enlace de WhatsApp');
+    } finally {
+      setSendingWaAptId(null);
+    }
+  };
 
   // Pestaña activa: 'appointments' (citas) o 'availability' (horarios)
   const [activeTab, setActiveTab] = useState('appointments');
@@ -860,6 +888,12 @@ function DoctorAgendaPage() {
                                       ✓ Confirmada
                                     </span>
                                   )}
+                                  {apt.confirmedVia === 'whatsapp' && (
+                                    <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-xs font-semibold flex items-center gap-1">
+                                      <MessageSquare className="w-3 h-3 text-emerald-600" />
+                                      WhatsApp
+                                    </span>
+                                  )}
                                   {isInProgress && (
                                     <span className="px-2.5 py-0.5 bg-blue-100 text-blue-800 border border-blue-300 rounded-full text-xs font-semibold">
                                       👨‍⚕️ En Consulta
@@ -1145,6 +1179,22 @@ function DoctorAgendaPage() {
                                     <XCircle className="w-5 h-5" />
                                   </button>
                                 </>
+                              )}
+                              {FEATURES.waConfirm && canAgenda && (isPending || isConfirmed) && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendWhatsApp(apt.id)}
+                                  disabled={sendingWaAptId === apt.id}
+                                  className="px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-sm font-semibold rounded-lg transition flex items-center gap-1.5"
+                                  title="Enviar confirmación por WhatsApp"
+                                >
+                                  {sendingWaAptId === apt.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                                  ) : (
+                                    <MessageSquare className="w-4 h-4 text-emerald-600" />
+                                  )}
+                                  WhatsApp
+                                </button>
                               )}
                               <button
                                 type="button"
@@ -1514,7 +1564,14 @@ function DoctorAgendaPage() {
                 </div>
                 <div>
                   <span className="text-gray-500 block">Estado:</span>
-                  <span className="font-medium text-gray-900 capitalize">{drawerAppointment.status}</span>
+                  <span className="font-medium text-gray-900 capitalize flex items-center gap-1">
+                    {drawerAppointment.status}
+                    {drawerAppointment.confirmedVia === 'whatsapp' && (
+                      <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-[10px] font-bold">
+                        Vía WhatsApp
+                      </span>
+                    )}
+                  </span>
                 </div>
               </div>
               <div className="text-xs">
@@ -1579,6 +1636,21 @@ function DoctorAgendaPage() {
                 >
                   <FileText className="w-4 h-4" />
                   Ver en Espacio Clínico
+                </button>
+              )}
+              {FEATURES.waConfirm && canAgenda && (drawerAppointment.status === 'pending' || drawerAppointment.status === 'confirmed') && (
+                <button
+                  type="button"
+                  onClick={() => handleSendWhatsApp(drawerAppointment.id)}
+                  disabled={sendingWaAptId === drawerAppointment.id}
+                  className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2 text-sm shadow"
+                >
+                  {sendingWaAptId === drawerAppointment.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <MessageSquare className="w-4 h-4" />
+                  )}
+                  Enviar confirmación por WhatsApp
                 </button>
               )}
               <button

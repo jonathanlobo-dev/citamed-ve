@@ -208,6 +208,7 @@ const SectionHeader = ({ icon: Icon, title, color = 'teal', onEdit, editable = t
 // Editor de Información Básica
 const BasicInfoEditor = ({ profile, onSave, saving }) => {
   const [formData, setFormData] = useState({
+    publicSlug: profile?.publicSlug || '',
     bio: profile?.bio || '',
     experienceYears: profile?.experienceYears || 0,
     consultationFee: profile?.consultationFee || 0,
@@ -247,6 +248,32 @@ const BasicInfoEditor = ({ profile, onSave, saving }) => {
 
   return (
     <div className="space-y-6">
+      {/* Enlace público / Slug */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Enlace público de tu perfil
+        </label>
+        <p className="text-xs text-gray-500 mb-2">
+          Personaliza tu enlace directo en CitaMed. Solo letras, números y guiones (3 a 60 caracteres).
+        </p>
+        <div className="flex items-center rounded-xl border border-gray-300 overflow-hidden focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-transparent">
+          <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-3 border-r border-gray-200 select-none">
+            citamed.ve/dr/
+          </span>
+          <input
+            type="text"
+            value={formData.publicSlug}
+            onChange={(e) => {
+              const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+              setFormData(prev => ({ ...prev, publicSlug: val }));
+            }}
+            placeholder="tu-nombre-apellido"
+            maxLength={60}
+            className="flex-1 px-3 py-2.5 text-sm outline-none text-gray-800"
+          />
+        </div>
+      </div>
+
       {/* Biografía */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">

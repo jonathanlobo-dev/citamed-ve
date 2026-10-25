@@ -21,8 +21,13 @@ import {
   AlertCircle,
   Star,
   Plus,
-  UserCheck
+  UserCheck,
+  Globe,
+  Copy,
+  ExternalLink,
+  Share2
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Navbar from '../components/common/Navbar/Navbar';
 import useDoctorProfile from '../hooks/useDoctorProfile';
 import { FEATURES } from '../config/features';
@@ -36,6 +41,21 @@ function DashboardMedico() {
     fetchMyProfile();
     fetchCompleteness();
   }, [fetchMyProfile, fetchCompleteness]);
+
+  const slug = profile?.publicSlug || (user?.firstName ? `${user.firstName.toLowerCase().replace(/\s+/g, '-')}` : 'medico');
+  const publicPageUrl = `${window.location.origin}/dr/${slug}`;
+
+  const handleCopyLink = () => {
+    if (!publicPageUrl) return;
+    navigator.clipboard.writeText(publicPageUrl);
+    toast.success('¡Enlace a tu página pública copiado!');
+  };
+
+  const handleShareWhatsApp = () => {
+    if (!publicPageUrl) return;
+    const text = `Hola, te comparto mi perfil y enlace para agendar citas médicas en CitaMed: ${publicPageUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+  };
 
   const modules = [
     {
@@ -260,6 +280,65 @@ function DashboardMedico() {
             </div>
           </motion.div>
         </div>
+
+        {/* B4: Tarjeta "Tu página pública" con enlace, botón copiar y botón compartir por WhatsApp */}
+        {FEATURES.publicPage && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 bg-gradient-to-r from-teal-800 via-teal-900 to-slate-900 rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-5 border border-teal-500/20"
+          >
+            <div className="space-y-1.5 max-w-xl">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 bg-teal-500/20 rounded-lg text-teal-300">
+                  <Globe className="w-5 h-5" />
+                </span>
+                <h3 className="text-lg font-bold text-white tracking-tight">
+                  Tu página pública en CitaMed
+                </h3>
+                <span className="bg-teal-400/20 text-teal-200 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-teal-400/30">
+                  Enlace propio
+                </span>
+              </div>
+              <p className="text-xs text-teal-100/90 leading-relaxed">
+                Comparte este enlace con tus pacientes para que conozcan tus servicios y agenden citas directamente.
+              </p>
+              <div className="pt-1.5 flex items-center gap-2">
+                <code className="px-3 py-1.5 bg-black/40 rounded-lg text-xs font-mono text-teal-200 select-all border border-white/10">
+                  {publicPageUrl}
+                </code>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition border border-white/10 shadow-sm"
+              >
+                <Copy className="w-3.5 h-3.5 text-teal-300" />
+                <span>Copiar enlace</span>
+              </button>
+              <a
+                href={publicPageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition border border-white/10 shadow-sm"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-teal-300" />
+                <span>Ver página</span>
+              </a>
+              <button
+                type="button"
+                onClick={handleShareWhatsApp}
+                className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span>Compartir por WhatsApp</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
 
         {/* Modules Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
