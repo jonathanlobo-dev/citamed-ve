@@ -100,6 +100,32 @@ class DoctorPatientsController {
       });
     }
   }
+
+  /**
+   * POST /api/doctor/patients/import
+   */
+  async importPatients(req, res) {
+    try {
+      const { rows } = req.body;
+      const summary = await clinicalRecordService.importPatientsFromExcel(
+        req.user.id,
+        rows,
+        req.user
+      );
+      res.json({
+        success: true,
+        message: 'Importación completada',
+        summary
+      });
+    } catch (error) {
+      console.error('[DoctorPatientsController] importPatients error:', error);
+      const status = error.statusCode || 400;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 }
 
 module.exports = new DoctorPatientsController();

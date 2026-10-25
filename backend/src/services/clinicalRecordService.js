@@ -4,10 +4,13 @@
  */
 
 const { Op } = require('sequelize');
-const { formatCedula } = require('../utils/identity');
+const crypto = require('crypto');
+const { v4: uuidv4 } = require('uuid');
+const { formatCedula, normalizeCedula, normalizePhoneVE } = require('../utils/identity');
 const db = require('../models');
 const { todayCaracas } = require('../utils/dateCaracas');
 const { calculateAge, doctorTitle } = require('./pdf/pdfLayout');
+const auditService = require('./auditService');
 
 const {
   User,
@@ -602,10 +605,336 @@ async function getMyClinicalRecord(patientUserId) {
   };
 }
 
+/**
+ * Extrae valor de una fila buscando por varias claves o variantes
+ */
+function getRowValue(row, ...keys) {
+  if (!row || typeof row !== 'object') return null;
+  for (const k of keys) {
+    if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') {
+      return String(row[k]).trim();
+    }
+  }
+  const rowKeys = Object.keys(row);
+  for (const k of keys) {
+    const lowerK = k.toLowerCase().replace(/[\s_-]/g, '');
+    for (const rk of rowKeys) {
+      const cleanRk = rk.toLowerCase().replace(/[\s_-]/g, '');
+      if (cleanRk === lowerK && row[rk] !== undefined && row[rk] !== null && String(row[rk]).trim() !== '') {
+        return String(row[rk]).trim();
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Importa pacientes desde un arreglo de filas (Excel / CSV)
+ * @param {number} doctorId - ID del médico
+ * @param {Array} rawRows - Filas a importar (máx. 500)
+ * @param {Object} user - Usuario autenticado (o actuando en nombre del médico)
+ */
+async function importPatientsFromExcel(doctorId, rawRows, user) {
+  if (!Array.isArray(rawRows)) {
+    const err = new Error('Se requiere un listado de filas para la importación');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (rawRows.length === 0) {
+    const err = new Error('El listado no contiene filas');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (rawRows.length > 500) {
+    const err = new Error('Máximo 500 filas por envío');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const doctorProfile = await DoctorProfile.findOne({ where: { userId: doctorId } });
+  const doctorProfileId = doctorProfile?.id || null;
+
+  const summary = {
+    total: rawRows.length,
+    created: 0,
+    linked: 0,
+    alreadyLinked: 0,
+    errors: 0,
+    errorRows: []
+  };
+
+  for (let i = 0; i < rawRows.length; i++) {
+    const row = rawRows[i];
+    const rowNum = i + 1;
+
+    const firstName = getRowValue(row, 'nombre', 'firstName', 'nombres');
+    const lastName = getRowValue(row, 'apellido', 'lastName', 'apellidos');
+    const cedulaRaw = getRowValue(row, 'cedula', 'identificationNumber', 'ci', 'identificacion');
+    const phoneRaw = getRowValue(row, 'telefono', 'phone', 'celular', 'tlf');
+    const emailRaw = getRowValue(row, 'correo', 'email', 'correo_electronico');
+    const dobRaw = getRowValue(row, 'fecha_nacimiento', 'dateOfBirth', 'nacimiento', 'fechaNacimiento');
+    const genderRaw = getRowValue(row, 'sexo', 'gender');
+    const allergiesRaw = getRowValue(row, 'alergias', 'allergies');
+
+    // 1. Validar nombre y apellido
+    if (!firstName || !lastName) {
+      summary.errors++;
+      summary.errorRows.push({
+        row: rowNum,
+        cedula: cedulaRaw || '',
+        error: 'El nombre y apellido son obligatorios'
+      });
+      continue;
+    }
+
+    // 2. Validar cédula
+    if (!cedulaRaw) {
+      summary.errors++;
+      summary.errorRows.push({
+        row: rowNum,
+        cedula: '',
+        error: 'La cédula es obligatoria'
+      });
+      continue;
+    }
+
+    let type = 'V';
+    const upperCed = cedulaRaw.toUpperCase();
+    if (upperCed.startsWith('E')) {
+      type = 'E';
+    }
+    const digits = cedulaRaw.replace(/\D/g, '');
+    let normalizedCedula = null;
+    try {
+      normalizedCedula = normalizeCedula(type, digits);
+    } catch (cedErr) {
+      summary.errors++;
+      summary.errorRows.push({
+        row: rowNum,
+        cedula: cedulaRaw,
+        error: cedErr.message || 'Cédula no válida'
+      });
+      continue;
+    }
+
+    // 3. Validar teléfono
+    let normalizedPhone = null;
+    try {
+      normalizedPhone = normalizePhoneVE(phoneRaw);
+    } catch (phoneErr) {
+      summary.errors++;
+      summary.errorRows.push({
+        row: rowNum,
+        cedula: normalizedCedula,
+        error: phoneErr.message || 'Teléfono no válido'
+      });
+      continue;
+    }
+
+    // 4. Validar correo opcional
+    let cleanEmail = null;
+    if (emailRaw) {
+      cleanEmail = emailRaw.toLowerCase();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(cleanEmail)) {
+        summary.errors++;
+        summary.errorRows.push({
+          row: rowNum,
+          cedula: normalizedCedula,
+          error: 'El formato del correo electrónico es inválido'
+        });
+        continue;
+      }
+    }
+
+    // 5. Fecha de nacimiento opcional
+    let parsedDob = null;
+    if (dobRaw) {
+      const dmy = dobRaw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+      if (dmy) {
+        parsedDob = `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`;
+      } else if (/^\d{4}-\d{2}-\d{2}$/.test(dobRaw)) {
+        parsedDob = dobRaw;
+      }
+    }
+
+    // 6. Sexo opcional
+    let userGender = 'prefiero_no_decir';
+    let profileGender = 'prefer_not_to_say';
+    if (genderRaw) {
+      const g = genderRaw.toLowerCase();
+      if (g.startsWith('f') || g === 'mujer') {
+        userGender = 'femenino';
+        profileGender = 'female';
+      } else if (g.startsWith('m') || g === 'hombre') {
+        userGender = 'masculino';
+        profileGender = 'male';
+      } else if (g.startsWith('o')) {
+        userGender = 'otro';
+        profileGender = 'other';
+      }
+    }
+
+    // 7. Base de datos con transacción individual por fila
+    const transaction = await db.sequelize.transaction();
+    try {
+      let targetProfile = await PatientProfile.findOne({
+        where: { identificationNumber: normalizedCedula },
+        transaction
+      });
+
+      let targetUser = null;
+      if (targetProfile) {
+        targetUser = await User.findByPk(targetProfile.userId, { transaction });
+      } else if (cleanEmail) {
+        targetUser = await User.findOne({
+          where: { email: cleanEmail },
+          transaction
+        });
+        if (targetUser) {
+          targetProfile = await PatientProfile.findOne({
+            where: { userId: targetUser.id },
+            transaction
+          });
+        }
+      }
+
+      if (targetUser && targetProfile) {
+        // Verificar si ya tiene citas con este médico
+        const existingAppointment = await Appointment.findOne({
+          where: { doctorId, patientId: targetUser.id },
+          transaction
+        });
+
+        if (existingAppointment) {
+          summary.alreadyLinked++;
+        } else {
+          await Appointment.create({
+            doctorId,
+            patientId: targetUser.id,
+            doctorProfileId,
+            appointmentDate: todayCaracas(),
+            appointmentTime: '08:00:00',
+            status: 'completed',
+            appointmentType: 'first_consultation',
+            reasonForVisit: 'Importación de paciente desde Excel',
+            doctorNotes: 'Paciente importado desde Excel'
+          }, { transaction });
+          summary.linked++;
+        }
+      } else {
+        // Crear usuario sin reclamar y perfil
+        const finalEmail = cleanEmail || `paciente.${uuidv4()}@sin-correo.citamed.ve`;
+        const randomPassword = crypto.randomBytes(32).toString('hex');
+
+        targetUser = await User.create({
+          role: 'patient',
+          firstName,
+          lastName,
+          phone: normalizedPhone,
+          email: finalEmail,
+          password: randomPassword,
+          dateOfBirth: parsedDob || null,
+          gender: userGender,
+          isActive: true,
+          accountClaimed: false
+        }, { transaction });
+
+        targetProfile = await PatientProfile.create({
+          userId: targetUser.id,
+          firstName,
+          lastName,
+          identificationType: 'CI',
+          identificationNumber: normalizedCedula,
+          phoneNumber: normalizedPhone,
+          dateOfBirth: parsedDob || null,
+          gender: profileGender,
+          profileStatus: 'active',
+          consentForDataSharing: true
+        }, { transaction });
+
+        await Appointment.create({
+          doctorId,
+          patientId: targetUser.id,
+          doctorProfileId,
+          appointmentDate: todayCaracas(),
+          appointmentTime: '08:00:00',
+          status: 'completed',
+          appointmentType: 'first_consultation',
+          reasonForVisit: 'Importación de paciente desde Excel',
+          doctorNotes: 'Paciente importado desde Excel'
+        }, { transaction });
+
+        summary.created++;
+      }
+
+      // Registro de alergias si vienen especificadas
+      if (allergiesRaw && targetProfile) {
+        const allergens = allergiesRaw
+          .split(/[,;\n]/)
+          .map((s) => s.trim())
+          .filter((s) => s.length >= 2);
+
+        for (const allergen of allergens) {
+          const existingAllergy = await PatientAllergy.findOne({
+            where: { patientProfileId: targetProfile.id, allergen },
+            transaction
+          });
+          if (!existingAllergy) {
+            await PatientAllergy.create({
+              patientProfileId: targetProfile.id,
+              allergyType: 'other',
+              allergen: allergen.slice(0, 200),
+              severity: 'moderate',
+              diagnosedDate: todayCaracas()
+            }, { transaction });
+          }
+        }
+      }
+
+      await transaction.commit();
+    } catch (rowErr) {
+      await transaction.rollback();
+      summary.errors++;
+      summary.errorRows.push({
+        row: rowNum,
+        cedula: normalizedCedula || cedulaRaw,
+        error: rowErr.message || 'Error en base de datos al guardar fila'
+      });
+    }
+  }
+
+  // 8. Registro de auditoría
+  try {
+    await auditService.log({
+      userId: user.actingAssistantId || user.id,
+      action: 'patients_imported_excel',
+      resource: 'patients',
+      resourceId: doctorId,
+      metadata: {
+        total: summary.total,
+        created: summary.created,
+        linked: summary.linked,
+        alreadyLinked: summary.alreadyLinked,
+        errors: summary.errors,
+        onBehalfOfDoctorId: user.actingAssistantId ? doctorId : undefined
+      }
+    });
+  } catch (auditErr) {
+    console.error('[clinicalRecordService] Error registrando auditoría de importación:', auditErr);
+  }
+
+  return summary;
+}
+
 module.exports = {
   getDoctorPatients,
   getPatientRecordForDoctor,
   addPatientAllergy,
   addPatientCondition,
-  getMyClinicalRecord
+  getMyClinicalRecord,
+  importPatientsFromExcel
 };
+

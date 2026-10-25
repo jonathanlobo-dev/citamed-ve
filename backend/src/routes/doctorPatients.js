@@ -17,6 +17,14 @@ router.get(
   doctorPatientsController.getDoctorPatients.bind(doctorPatientsController)
 );
 
+// Importar pacientes desde Excel / CSV (Bloque E)
+router.post(
+  '/import',
+  authenticateToken,
+  requireRoles(['doctor', 'admin']),
+  doctorPatientsController.importPatients.bind(doctorPatientsController)
+);
+
 // Ficha clínica del paciente para el médico
 router.get(
   '/:patientId/record',

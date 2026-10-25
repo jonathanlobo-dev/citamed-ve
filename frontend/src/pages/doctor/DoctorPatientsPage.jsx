@@ -12,10 +12,13 @@ import {
   User,
   AlertCircle,
   RefreshCw,
-  FileText
+  FileText,
+  FileSpreadsheet
 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar/Navbar';
 import clinicalRecordService from '../../services/clinicalRecordService';
+import { FEATURES } from '../../config/features';
+import ExcelImportDrawer from '../../components/clinical/ExcelImportDrawer';
 import './DoctorPatientsPage.css';
 
 export default function DoctorPatientsPage() {
@@ -32,6 +35,7 @@ export default function DoctorPatientsPage() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [drawerImportOpen, setDrawerImportOpen] = useState(false);
 
   const debounceTimerRef = useRef(null);
 
@@ -130,13 +134,25 @@ export default function DoctorPatientsPage() {
                   </p>
                 </div>
               </div>
-              <Link
-                to="/medico/consulta/nueva"
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white font-semibold text-sm rounded-lg hover:bg-primary/90 transition shadow-sm self-start sm:self-auto"
-              >
-                <Plus className="w-4 h-4" />
-                Nueva consulta
-              </Link>
+              <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                {FEATURES.excelImport && (
+                  <button
+                    type="button"
+                    onClick={() => setDrawerImportOpen(true)}
+                    className="inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-emerald-600 text-white font-semibold text-sm rounded-lg hover:bg-emerald-700 transition shadow-sm"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span>Importar desde Excel</span>
+                  </button>
+                )}
+                <Link
+                  to="/medico/consulta/nueva"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white font-semibold text-sm rounded-lg hover:bg-primary/90 transition shadow-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  Nueva consulta
+                </Link>
+              </div>
             </div>
           </div>
 
@@ -378,6 +394,15 @@ export default function DoctorPatientsPage() {
           </div>
         )}
       </main>
+
+      {/* Panel lateral para importar pacientes desde Excel / CSV (Bloque E) */}
+      <ExcelImportDrawer
+        open={drawerImportOpen}
+        onClose={() => setDrawerImportOpen(false)}
+        onSuccess={() => {
+          setPagination((prev) => ({ ...prev, page: 1 }));
+        }}
+      />
     </div>
   );
 }

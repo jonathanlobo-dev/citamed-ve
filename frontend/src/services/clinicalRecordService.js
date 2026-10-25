@@ -45,7 +45,15 @@ const clinicalRecordService = {
    * @returns {Promise<{success: boolean, data: Object}>}
    */
   getMyClinicalRecord: () =>
-    api.get('/patients/me/record').then((res) => res.data)
+    api.get('/patients/me/record').then((res) => res.data),
+
+  /**
+   * Importa pacientes desde un arreglo de filas parseado de Excel/CSV (Bloque E)
+   * @param {Array} rows - Filas a importar (máx. 500)
+   * @returns {Promise<{success: boolean, message: string, summary: Object}>}
+   */
+  importPatients: (rows) =>
+    api.post('/doctor/patients/import', { rows }).then((res) => res.data)
 };
 
 export default clinicalRecordService;

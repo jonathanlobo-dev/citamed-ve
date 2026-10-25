@@ -15,7 +15,9 @@ const RELEASED_IN_PRODUCTION = {
   PWA: false, // App instalable (en construcción)
   ASSISTANT: false, // Asistente del médico (en construcción)
   PUBLIC_PAGE: false, // Página pública del médico con enlace propio (en construcción)
-  WA_CONFIRM: false // Confirmar o cancelar cita desde WhatsApp (en construcción)
+  WA_CONFIRM: false, // Confirmar o cancelar cita desde WhatsApp (en construcción)
+  AI_PATIENT_INSTRUCTIONS: false, // Indicaciones para el paciente con IA (en construcción)
+  EXCEL_IMPORT: false // Importar pacientes desde Excel (en construcción)
 };
 
 const branch = typeof __BUILD_BRANCH__ !== 'undefined' ? __BUILD_BRANCH__ : 'local';
@@ -34,5 +36,7 @@ export const FEATURES = {
   pwa: flag('PWA'),
   assistant: flag('ASSISTANT'),
   publicPage: flag('PUBLIC_PAGE'),
-  waConfirm: flag('WA_CONFIRM')
+  waConfirm: flag('WA_CONFIRM'),
+  aiPatientInstructions: flag('AI_PATIENT_INSTRUCTIONS'),
+  excelImport: flag('EXCEL_IMPORT')
 };
