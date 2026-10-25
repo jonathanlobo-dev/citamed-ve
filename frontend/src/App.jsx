@@ -4,6 +4,46 @@ import { AuthProvider } from './context/AuthContext';
 import { PermissionsProvider } from './hooks/usePermissions';
 import ProtectedRoute from './components/ProtectedRoute';
 
+import { FEATURES } from './config/features';
+import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/LoginPage';
+import RegistroPage from './pages/RegistroPage';
+
+// Lazy-loaded pages (F1)
+const DashboardPaciente = lazy(() => import('./pages/DashboardPaciente'));
+const DashboardMedico = lazy(() => import('./pages/DashboardMedico'));
+const DashboardProveedor = lazy(() => import('./pages/DashboardProveedor'));
+const DirectorioMedicoPage = lazy(() => import('./pages/DirectorioMedicoPage'));
+const ClinicasPage = lazy(() => import('./pages/ClinicasPage'));
+const SegurosPage = lazy(() => import('./pages/SegurosPage'));
+const AgendamientoPage = lazy(() => import('./pages/modules/AgendamientoPage'));
+const TelemedicinaPage = lazy(() => import('./pages/modules/TelemedicinaPage'));
+const MarketMedPage = lazy(() => import('./pages/modules/MarketMedPage'));
+const CitamedPagaPage = lazy(() => import('./pages/modules/CitamedPagaPage'));
+const EmailVerificationPage = lazy(() => import('./pages/verification/EmailVerificationPage'));
+const PhoneVerificationPage = lazy(() => import('./pages/verification/PhoneVerificationPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'));
+const SessionsPage = lazy(() => import('./pages/settings/SessionsPage'));
+const AuditLogsPage = lazy(() => import('./components/audit/AuditLogsPage'));
+const AuditStatsPage = lazy(() => import('./components/audit/AuditStatsPage'));
+const DoctorProfilePage = lazy(() => import('./pages/doctor/DoctorProfilePage'));
+const DoctorProfileEditPage = lazy(() => import('./pages/doctor/DoctorProfileEditPage'));
+const PatientProfilePage = lazy(() => import('./pages/patient/PatientProfilePage'));
+const PatientProfileEditPage = lazy(() => import('./pages/patient/PatientProfileEditPage'));
+const DocumentUploadPage = lazy(() => import('./pages/doctor/verification/DocumentUploadPage'));
+const VerificationQueuePage = lazy(() => import('./pages/admin/verification/VerificationQueuePage'));
+const DoctorReputationPage = lazy(() => import('./pages/doctor/DoctorReputationPage'));
+const DoctorAgendaPage = lazy(() => import('./pages/doctor/DoctorAgendaPage'));
+const ComingSoonPage = lazy(() => import('./pages/ComingSoonPage'));
+const SearchPage = lazy(() => import('./pages/SearchPage'));
+const ProviderProfilePage = lazy(() => import('./pages/provider/ProviderProfilePage'));
+const ClinicProfilePage = lazy(() => import('./pages/clinics/ClinicProfilePage'));
+const PatientWaitingRoomPage = lazy(() => import('./pages/waitingRoom/PatientWaitingRoomPage'));
+const DoctorWaitingRoomPage = lazy(() => import('./pages/waitingRoom/DoctorWaitingRoomPage'));
+const SalaEsperaPage = lazy(() => import('./pages/waitingRoom/SalaEsperaPage'));
+const MisCitasPage = lazy(() => import('./pages/appointments/MisCitasPage'));
+const AgendarCitaPage = lazy(() => import('./pages/appointments/AgendarCitaPage'));
 const DoctorPatientsPage = lazy(() => import('./pages/doctor/DoctorPatientsPage'));
 const PatientRecordPage = lazy(() => import('./pages/doctor/PatientRecordPage'));
 const PatientMyRecordPage = lazy(() => import('./pages/patient/PatientMyRecordPage'));
@@ -15,42 +55,14 @@ const DoctorAssistantsPage = lazy(() => import('./pages/doctor/DoctorAssistantsP
 const AssistantPortalPage = lazy(() => import('./pages/assistant/AssistantPortalPage'));
 const DoctorPublicSlugPage = lazy(() => import('./pages/public/DoctorPublicSlugPage'));
 const CitaConfirmacionPage = lazy(() => import('./pages/public/CitaConfirmacionPage'));
-import { FEATURES } from './config/features';
-import LandingPage from './pages/LandingPage';
-import LoginPage from './pages/LoginPage';
-import RegistroPage from './pages/RegistroPage';
-import DashboardPaciente from './pages/DashboardPaciente';
-import DashboardMedico from './pages/DashboardMedico';
-import DashboardProveedor from './pages/DashboardProveedor';
-import DirectorioMedicoPage from './pages/DirectorioMedicoPage';
-import ClinicasPage from './pages/ClinicasPage';
-import SegurosPage from './pages/SegurosPage';
-import AgendamientoPage from './pages/modules/AgendamientoPage';
-import TelemedicinaPage from './pages/modules/TelemedicinaPage';
-import MarketMedPage from './pages/modules/MarketMedPage';
-import CitamedPagaPage from './pages/modules/CitamedPagaPage';
-import { EmailVerificationPage, PhoneVerificationPage } from './pages/verification';
-import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
-import ResetPasswordPage from './pages/auth/ResetPasswordPage';
-import SessionsPage from './pages/settings/SessionsPage';
-import { AuditLogsPage, AuditStatsPage } from './components/audit';
-import DoctorProfilePage from './pages/doctor/DoctorProfilePage';
-import DoctorProfileEditPage from './pages/doctor/DoctorProfileEditPage';
-import PatientProfilePage from './pages/patient/PatientProfilePage';
-import PatientProfileEditPage from './pages/patient/PatientProfileEditPage';
-import DocumentUploadPage from './pages/doctor/verification/DocumentUploadPage';
-import VerificationQueuePage from './pages/admin/verification/VerificationQueuePage';
-import DoctorReputationPage from './pages/doctor/DoctorReputationPage';
-import DoctorAgendaPage from './pages/doctor/DoctorAgendaPage';
-import ComingSoonPage from './pages/ComingSoonPage';
-import SearchPage from './pages/SearchPage';
-import ProviderProfilePage from './pages/provider/ProviderProfilePage';
-import ClinicProfilePage from './pages/clinics/ClinicProfilePage';
-import PatientWaitingRoomPage from './pages/waitingRoom/PatientWaitingRoomPage';
-import DoctorWaitingRoomPage from './pages/waitingRoom/DoctorWaitingRoomPage';
-import SalaEsperaPage from './pages/waitingRoom/SalaEsperaPage';
-import MisCitasPage from './pages/appointments/MisCitasPage';
-import AgendarCitaPage from './pages/appointments/AgendarCitaPage';
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 function VerificarRecipeRedirect() {
   const { code } = useParams();
   return <Navigate to={`/verificar/${code}`} replace />;
@@ -58,7 +70,8 @@ function VerificarRecipeRedirect() {
 
 function AppRoutes() {
   return (
-    <Routes>
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
@@ -530,6 +543,7 @@ function AppRoutes() {
         }
       />
     </Routes>
+    </Suspense>
   );
 }
 

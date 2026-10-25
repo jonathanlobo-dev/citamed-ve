@@ -24,5 +24,41 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify('0.4.0'),
     __COMMIT_HASH__: JSON.stringify(commitHash),
     __BUILD_BRANCH__: JSON.stringify(buildBranch),
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          const normalized = id.replace(/\\/g, '/');
+          if (normalized.includes('/node_modules/')) {
+            if (normalized.includes('/xlsx/')) {
+              return 'vendor-xlsx';
+            }
+            if (
+              normalized.includes('/recharts/') ||
+              normalized.includes('/d3-') ||
+              normalized.includes('/victory') ||
+              normalized.includes('/decimal.js/')
+            ) {
+              return 'vendor-charts';
+            }
+            if (normalized.includes('/framer-motion/')) {
+              return 'vendor-framer-motion';
+            }
+            if (normalized.includes('/lucide-react/')) {
+              return 'vendor-lucide';
+            }
+            if (
+              normalized.includes('/react/') ||
+              normalized.includes('/react-dom/') ||
+              normalized.includes('/react-router/') ||
+              normalized.includes('/react-router-dom/')
+            ) {
+              return 'vendor-react';
+            }
+          }
+        }
+      }
+    }
   }
 })
