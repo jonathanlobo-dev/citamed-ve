@@ -88,7 +88,7 @@ export default function AiPatientInstructionsDrawer({
 
   return (
     <SideDrawer
-      isOpen={open}
+      open={open}
       onClose={onClose}
       title="Indicaciones para el paciente (IA)"
       subtitle="Explicación clara y cálida del récipe para el paciente"

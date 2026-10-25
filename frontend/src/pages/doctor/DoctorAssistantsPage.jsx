@@ -386,7 +386,7 @@ export default function DoctorAssistantsPage() {
 
       {/* PANEL LATERAL PARA INVITAR ASISTENTE */}
       <SideDrawer
-        isOpen={drawerOpen}
+        open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         title="Invitar Asistente"
       >

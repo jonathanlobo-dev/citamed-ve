@@ -10,10 +10,11 @@ import './SideDrawer.css';
  * @param {boolean} open - Si el panel está abierto
  * @param {Function} onClose - Callback al cerrar
  * @param {React.ReactNode} title - Título del encabezado
+ * @param {React.ReactNode} [subtitle] - Texto breve bajo el título (opcional)
  * @param {React.ReactNode} children - Contenido del panel
  * @param {React.ReactNode} [footer] - Acciones del pie de página
  */
-export default function SideDrawer({ open, onClose, title, children, footer }) {
+export default function SideDrawer({ open, onClose, title, subtitle, children, footer }) {
   const panelRef = useRef(null);
   const previouslyFocusedRef = useRef(null);
 
@@ -76,7 +77,10 @@ export default function SideDrawer({ open, onClose, title, children, footer }) {
         onClick={(e) => e.stopPropagation()}
       >
         <header className="sidedrawer-header">
-          <h2 className="sidedrawer-title">{title}</h2>
+          <div>
+            <h2 className="sidedrawer-title">{title}</h2>
+            {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+          </div>
           <button
             type="button"
             className="sidedrawer-close-btn"

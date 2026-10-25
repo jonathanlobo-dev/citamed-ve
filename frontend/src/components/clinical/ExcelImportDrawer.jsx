@@ -304,7 +304,7 @@ export default function ExcelImportDrawer({
 
   return (
     <SideDrawer
-      isOpen={open}
+      open={open}
       onClose={handleClose}
       title="Importar Pacientes desde Excel"
       subtitle="Carga masiva de pacientes al directorio médico de CitaMed"

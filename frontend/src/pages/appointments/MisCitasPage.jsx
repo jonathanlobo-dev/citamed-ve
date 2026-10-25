@@ -780,7 +780,7 @@ const MisCitasPage = () => {
 
       {/* Panel lateral para ver indicaciones del tratamiento (Bloque D) */}
       <SideDrawer
-        isOpen={Boolean(instructionsDrawerDoc)}
+        open={Boolean(instructionsDrawerDoc)}
         onClose={() => setInstructionsDrawerDoc(null)}
         title="Indicaciones del Tratamiento"
         subtitle={`Récipe #${instructionsDrawerDoc?.verificationCode || ''}`}
