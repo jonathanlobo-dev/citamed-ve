@@ -596,6 +596,105 @@ class AppointmentController {
       });
     }
   }
+
+  /**
+   * POST /api/appointments/:id/confirmation-token
+   * Genera o recupera el token de confirmación de asistencia para enviar por WhatsApp
+   */
+  async getOrCreateConfirmationToken(req, res) {
+    try {
+      const { id } = req.params;
+      const crypto = require('crypto');
+      const { Appointment, User, DoctorProfile, Specialty } = require('../models');
+
+      const appointment = await Appointment.findByPk(id, {
+        include: [
+          {
+            model: User,
+            as: 'patient',
+            attributes: ['id', 'firstName', 'lastName', 'phone']
+          },
+          {
+            model: User,
+            as: 'doctor',
+            attributes: ['id', 'firstName', 'lastName']
+          },
+          {
+            model: DoctorProfile,
+            as: 'doctorProfile',
+            attributes: ['clinicName', 'clinicAddress', 'city']
+          },
+          {
+            model: Specialty,
+            as: 'specialty',
+            attributes: ['id', 'name']
+          }
+        ]
+      });
+
+      if (!appointment) {
+        return res.status(404).json({
+          success: false,
+          message: 'Cita no encontrada.'
+        });
+      }
+
+      // El médico o asistente solo puede gestionar citas de ese médico (req.user.id es el doctorId gracias a allowAssistant)
+      if (req.user.role === 'doctor' && appointment.doctorId !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permiso para gestionar esta cita.'
+        });
+      }
+
+      if (!appointment.confirmationToken) {
+        appointment.confirmationToken = crypto.randomBytes(20).toString('hex');
+        await appointment.save();
+      }
+
+      // Generar texto y URL de WhatsApp
+      const rawPhone = appointment.patient?.phone || '';
+      let phoneDigits = String(rawPhone).replace(/\D/g, '');
+      if (phoneDigits.startsWith('0')) {
+        phoneDigits = '58' + phoneDigits.slice(1);
+      } else if (!phoneDigits.startsWith('58') && phoneDigits.length === 10) {
+        phoneDigits = '58' + phoneDigits;
+      }
+
+      const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || 'http://localhost:5175';
+      const confirmLink = `${clientOrigin}/cita/${appointment.confirmationToken}`;
+      const clinicStr = appointment.doctorProfile?.clinicName ? ` en ${appointment.doctorProfile.clinicName}` : '';
+      const doctorStr = appointment.doctor ? `Dr(a). ${appointment.doctor.firstName} ${appointment.doctor.lastName}` : 'tu médico';
+      const patientStr = appointment.patient ? `Hola ${appointment.patient.firstName}, ` : 'Hola, ';
+
+      const timeStr = appointment.appointmentTime ? appointment.appointmentTime.slice(0, 5) : '';
+      const waText = `${patientStr}te recordamos tu cita médica con ${doctorStr} el ${appointment.appointmentDate} a las ${timeStr}${clinicStr}. Por favor confirma tu asistencia o avísanos si no podrás ir desde este enlace: ${confirmLink}`;
+
+      const whatsappUrl = phoneDigits
+        ? `https://wa.me/${phoneDigits}?text=${encodeURIComponent(waText)}`
+        : `https://wa.me/?text=${encodeURIComponent(waText)}`;
+
+      return res.json({
+        success: true,
+        data: {
+          token: appointment.confirmationToken,
+          confirmLink,
+          whatsappUrl,
+          message: waText,
+          patientPhone: rawPhone,
+          confirmedVia: appointment.confirmedVia,
+          status: appointment.status
+        }
+      });
+    } catch (error) {
+      console.error('[AppointmentController] getOrCreateConfirmationToken error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al generar enlace de confirmación',
+        error: error.message
+      });
+    }
+  }
 }
 
 module.exports = new AppointmentController();

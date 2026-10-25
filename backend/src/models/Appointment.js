@@ -298,8 +298,19 @@ module.exports = (sequelize) => {
     },
 
     // ========================================
-    // CANCELACIÓN Y REPROGRAMACIÓN
+    // CANCELACIÓN, CONFIRMACIÓN Y REPROGRAMACIÓN
     // ========================================
+    confirmationToken: {
+      type: DataTypes.STRING(40),
+      allowNull: true,
+      unique: true,
+      comment: 'Token aleatorio para confirmación o cancelación de cita'
+    },
+    confirmedVia: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+      comment: 'Canal de confirmación de asistencia (whatsapp, web, etc.)'
+    },
     cancellationReason: {
       type: DataTypes.TEXT,
       allowNull: true,
@@ -378,6 +389,7 @@ module.exports = (sequelize) => {
       { fields: ['status'] },
       { fields: ['paymentStatus'] },
       { fields: ['appointmentType'] },
+      { fields: ['confirmationToken'], unique: true },
     ]
   });
 

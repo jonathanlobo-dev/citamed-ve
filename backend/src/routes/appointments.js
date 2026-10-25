@@ -273,4 +273,19 @@ router.put(
   appointmentController.setAiConsent.bind(appointmentController)
 );
 
+/**
+ * @swagger
+ * /api/appointments/{id}/confirmation-token:
+ *   post:
+ *     tags: [Appointments]
+ *     summary: Generar o recuperar enlace de confirmación por WhatsApp
+ */
+router.post(
+  '/:id/confirmation-token',
+  authenticateToken,
+  allowAssistant('agenda'),
+  requireRoles(['doctor', 'admin', 'assistant']),
+  appointmentController.getOrCreateConfirmationToken.bind(appointmentController)
+);
+
 module.exports = router;

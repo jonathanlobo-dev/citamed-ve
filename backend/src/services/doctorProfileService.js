@@ -145,6 +145,56 @@ async function updateBasicInfo(doctorProfileId, data) {
     }
   }
 
+  // B1: Manejo y validación de publicSlug (3 a 60 caracteres, solo letras, números y guiones)
+  if (data.publicSlug !== undefined && data.publicSlug !== null) {
+    const rawSlug = String(data.publicSlug).trim();
+    if (rawSlug) {
+      const cleanSlug = rawSlug
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+
+      if (cleanSlug.length < 3 || cleanSlug.length > 60) {
+        throw new Error('El enlace público debe tener entre 3 y 60 caracteres (letras, números y guiones).');
+      }
+
+      const { Op } = require('sequelize');
+      const existing = await DoctorProfile.findOne({
+        where: {
+          publicSlug: cleanSlug,
+          id: { [Op.ne]: doctorProfileId }
+        }
+      });
+      if (existing) {
+        throw new Error('Este enlace público ya está en uso por otro médico.');
+      }
+      updateData.publicSlug = cleanSlug;
+    }
+  } else if (!profile.publicSlug && (profile.firstName || profile.lastName)) {
+    // Generación automática inicial si no tiene slug
+    const baseSlug = `${profile.firstName || ''} ${profile.lastName || ''}`
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'medico';
+
+    const { Op } = require('sequelize');
+    let candidate = baseSlug;
+    let counter = 1;
+    while (true) {
+      const existing = await DoctorProfile.findOne({
+        where: { publicSlug: candidate, id: { [Op.ne]: doctorProfileId } }
+      });
+      if (!existing) break;
+      counter++;
+      candidate = `${baseSlug}-${counter}`;
+    }
+    updateData.publicSlug = candidate;
+  }
+
   await profile.update(updateData);
 
   // Recalcular completitud

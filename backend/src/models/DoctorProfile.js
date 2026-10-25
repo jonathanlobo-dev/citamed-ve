@@ -263,6 +263,12 @@ module.exports = (sequelize) => {
     // ========================================
     // PERFIL PÚBLICO
     // ========================================
+    publicSlug: {
+      type: DataTypes.STRING(60),
+      allowNull: true,
+      unique: true,
+      comment: 'Slug amigable para perfil público (/dr/:slug)'
+    },
     bio: {
       type: DataTypes.TEXT,
       allowNull: true,
@@ -471,6 +477,7 @@ module.exports = (sequelize) => {
       { fields: ['isVerified'] },
       { fields: ['verification_status'] },
       { fields: ['verified_at'] },
+      { fields: ['publicSlug'], unique: true },
     ]
   });
 

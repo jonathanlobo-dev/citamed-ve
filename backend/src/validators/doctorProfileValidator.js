@@ -60,6 +60,12 @@ const validateSpecialtyId = [
 // ═══════════════════════════════════════════════════════════════
 
 const validateUpdateProfile = [
+  body('publicSlug')
+    .optional()
+    .matches(/^[a-z0-9-]+$/i)
+    .withMessage('El enlace público solo puede contener letras, números y guiones')
+    .isLength({ min: 3, max: 60 })
+    .withMessage('El enlace público debe tener entre 3 y 60 caracteres'),
   body('bio')
     .optional()
     .isLength({ max: 2000 })

@@ -113,10 +113,12 @@ const aiRoutes = require("./routes/ai");
 const exchangeRateRoutes = require("./routes/exchangeRates");
 const paymentRoutes = require("./routes/payments");
 const assistantRoutes = require("./routes/assistants");
+const publicRoutes = require("./routes/public");
 
 // ==================== USAR RUTAS ====================
 // Auth routes con rate limiting estricto (5 req/15min)
 app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/public", publicRoutes);
 app.use("/api/verification", verificationRoutes);
 app.use("/api/metrics", metricsRoutes);
 
