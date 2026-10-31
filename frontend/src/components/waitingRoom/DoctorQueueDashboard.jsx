@@ -96,15 +96,17 @@ const DoctorQueueDashboard = ({
             📢 Llamar al siguiente
           </button>
 
-          <button
-            type="button"
-            className={`online-toggle ${isOnline ? 'online' : 'offline'}`}
-            onClick={isOnline ? onGoOffline : onGoOnline}
-            disabled={actionLoading}
-          >
-            <span className="status-dot"></span>
-            {isOnline ? 'Online - Atendiendo' : 'Offline'}
-          </button>
+          {userRole !== 'assistant' && (
+            <button
+              type="button"
+              className={`online-toggle ${isOnline ? 'online' : 'offline'}`}
+              onClick={isOnline ? onGoOffline : onGoOnline}
+              disabled={actionLoading}
+            >
+              <span className="status-dot"></span>
+              {isOnline ? 'Online - Atendiendo' : 'Offline'}
+            </button>
+          )}
         </div>
       </div>
 

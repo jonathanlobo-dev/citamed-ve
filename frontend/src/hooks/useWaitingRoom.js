@@ -223,10 +223,12 @@ const useWaitingRoom = (token, userRole, initialOptions = {}) => {
 
   // Funciones para doctores
   const goOnline = useCallback(() => {
+    // La disponibilidad (en línea / fuera de línea) es solo del médico
+    if (userRole === 'assistant') return;
     if (socketRef.current) {
       socketRef.current.emit(EVENTS.WR_DOCTOR_ONLINE);
     }
-  }, []);
+  }, [userRole]);
 
   const goOffline = useCallback(() => {
     if (socketRef.current) {

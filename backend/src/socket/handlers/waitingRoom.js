@@ -35,7 +35,10 @@ const waitingRoomHandler = (socket, nsp) => {
    */
   socket.on(WAITING_ROOM_EVENTS.WR_DOCTOR_ONLINE, async () => {
     if (userRole !== 'doctor') {
-      socket.emit(EVENTS.ERROR, { message: 'Only doctors can go online' });
+      // La asistente ve la sala del médico pero no marca su disponibilidad: se ignora sin error
+      if (userRole !== 'assistant') {
+        socket.emit(EVENTS.ERROR, { message: 'Solo los médicos pueden ponerse en línea' });
+      }
       return;
     }
 
