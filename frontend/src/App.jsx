@@ -6,6 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 import { FEATURES } from './config/features';
 import LandingPage from './pages/LandingPage';
+import { isAppHost } from './config/appUrl';
 import LoginPage from './pages/LoginPage';
 import RegistroPage from './pages/RegistroPage';
 
@@ -74,7 +75,7 @@ function AppRoutes() {
     <Suspense fallback={<PageLoader />}>
       <Routes>
       {/* Public Routes */}
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={isAppHost() ? <Navigate to="/login" replace /> : <LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/registro" element={<RegistroPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />

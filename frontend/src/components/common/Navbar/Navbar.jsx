@@ -7,6 +7,7 @@ import Button from '../Button/button';
 import { LogOut, User, Calendar, Menu, X, Home, Grid, Stethoscope, Building2, Shield, HelpCircle, Search, MapPin, Star, Download } from 'lucide-react';
 import usePwaInstall from '../../../hooks/usePwaInstall';
 import searchService from '../../../services/searchService';
+import { goToApp } from '../../../config/appUrl';
 
 function Navbar() {
   const navigate = useNavigate();
@@ -320,14 +321,14 @@ function Navbar() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => navigate('/login')}
+                  onClick={() => goToApp(navigate, '/login')}
                 >
                   Iniciar Sesión
                 </Button>
                 <Button
                   variant="primary"
                   size="md"
-                  onClick={() => navigate('/registro')}
+                  onClick={() => goToApp(navigate, '/registro')}
                   className="shadow-lg hover:shadow-xl transition-shadow"
                 >
                   Crear Cuenta
@@ -456,7 +457,7 @@ function Navbar() {
                     variant="ghost"
                     size="md"
                     onClick={() => {
-                      navigate('/login');
+                      goToApp(navigate, '/login');
                       setMobileMenuOpen(false);
                     }}
                     className="w-full"
@@ -467,7 +468,7 @@ function Navbar() {
                     variant="primary"
                     size="md"
                     onClick={() => {
-                      navigate('/registro');
+                      goToApp(navigate, '/registro');
                       setMobileMenuOpen(false);
                     }}
                     className="w-full shadow-lg"

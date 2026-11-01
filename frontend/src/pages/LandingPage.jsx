@@ -11,6 +11,7 @@ import ModuleCard from '../components/common/ModuleCard/ModuleCard';
 import Button, { Icons } from '../components/common/Button/button';
 import { Calendar, Video, ShoppingCart, DollarSign, Users, Shield, TrendingUp, Heart, Search, Stethoscope } from 'lucide-react';
 import axios from 'axios';
+import { goToApp } from '../config/appUrl';
 
 function LandingPage() {
   const navigate = useNavigate();
@@ -149,7 +150,7 @@ function LandingPage() {
                 variant="secondary"
                 size="xl"
                 icon={<Icons.User />}
-                onClick={() => navigate('/registro?role=patient')}
+                onClick={() => goToApp(navigate, '/registro?role=patient')}
               >
                 Soy Paciente
               </Button>
@@ -157,7 +158,7 @@ function LandingPage() {
                 variant="outline"
                 size="xl"
                 icon={<Icons.Doctor />}
-                onClick={() => navigate('/registro?role=doctor')}
+                onClick={() => goToApp(navigate, '/registro?role=doctor')}
                 className="bg-white hover:bg-gray-50 text-primary border-white"
               >
                 Soy Médico
@@ -166,7 +167,7 @@ function LandingPage() {
                 variant="primary"
                 size="xl"
                 icon={<Icons.Store />}
-                onClick={() => navigate('/registro?role=provider')}
+                onClick={() => goToApp(navigate, '/registro?role=provider')}
                 className="bg-accent hover:bg-accent-dark"
               >
                 Soy Proveedor
@@ -418,7 +419,7 @@ function LandingPage() {
             <Button
               variant="secondary"
               size="xl"
-              onClick={() => navigate('/registro')}
+              onClick={() => goToApp(navigate, '/registro')}
               className="bg-white text-primary hover:bg-gray-100"
             >
               Crear Cuenta Gratis
@@ -451,8 +452,8 @@ function LandingPage() {
             <div>
               <h4 className="font-bold mb-4">Acceso</h4>
               <ul className="space-y-2 text-gray-400">
-                <li className="hover:text-white cursor-pointer" onClick={() => navigate('/login')}>Iniciar Sesión</li>
-                <li className="hover:text-white cursor-pointer" onClick={() => navigate('/registro')}>Registrarse</li>
+                <li className="hover:text-white cursor-pointer" onClick={() => goToApp(navigate, '/login')}>Iniciar Sesión</li>
+                <li className="hover:text-white cursor-pointer" onClick={() => goToApp(navigate, '/registro')}>Registrarse</li>
                 <li className="hover:text-white cursor-pointer" onClick={() => navigate('/directorio')}>Directorio Médico</li>
               </ul>
             </div>
