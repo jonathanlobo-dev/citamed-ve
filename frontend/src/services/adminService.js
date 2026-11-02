@@ -7,6 +7,19 @@ import api from './api';
 
 export const adminService = {
   /**
+   * Solicitudes de cambio de datos protegidos (nombre, cédula, MPPS)
+   */
+  async getChangeRequests({ status = 'pending', page = 1, limit = 25 } = {}) {
+    const res = await api.get('/admin/change-requests', { params: { status, page, limit } });
+    return res.data;
+  },
+
+  async reviewChangeRequest(id, { decision, note }) {
+    const res = await api.put(`/admin/change-requests/${id}/review`, { decision, note });
+    return res.data;
+  },
+
+  /**
    * Obtiene métricas y resumen general de la plataforma
    */
   async getOverview() {

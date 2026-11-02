@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { FEATURES } from '../../../config/features';
 import Button from '../Button/button';
-import { LogOut, User, Calendar, Menu, X, Home, Grid, Stethoscope, Building2, Shield, HelpCircle, Search, MapPin, Star, Download } from 'lucide-react';
+import { LogOut, User, Calendar, Menu, X, Home, Grid, Stethoscope, Building2, Shield, HelpCircle, Search, MapPin, Star, Download, UserCog } from 'lucide-react';
 import usePwaInstall from '../../../hooks/usePwaInstall';
 import searchService from '../../../services/searchService';
 import { goToApp, goToHome } from '../../../config/appUrl';
@@ -310,6 +310,14 @@ function Navbar() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  icon={<UserCog className="w-4 h-4" />}
+                  onClick={() => navigate('/cuenta')}
+                >
+                  <span className="hidden xl:inline">Mi cuenta</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   icon={<LogOut className="w-4 h-4" />}
                   onClick={handleLogout}
                 >
@@ -441,6 +449,18 @@ function Navbar() {
                       Instalar app
                     </Button>
                   )}
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    icon={<UserCog className="w-4 h-4" />}
+                    onClick={() => {
+                      navigate('/cuenta');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full"
+                  >
+                    Mi cuenta
+                  </Button>
                   <Button
                     variant="ghost"
                     size="md"

@@ -159,7 +159,7 @@ const VerificationBadge = ({ isVerified, verificationStatus }) => {
   }
   return (
     <Link
-      to="/verificacion/kyc"
+      to="/medico/verificacion"
       className="inline-flex items-center gap-1.5 bg-amber-500/20 text-amber-100 px-3 py-1.5 rounded-full text-sm font-medium hover:bg-amber-500/30 transition-colors"
     >
       <AlertCircle className="w-4 h-4" />

@@ -58,6 +58,7 @@ const AssistantPortalPage = lazy(() => import('./pages/assistant/AssistantPortal
 const DoctorPublicSlugPage = lazy(() => import('./pages/public/DoctorPublicSlugPage'));
 const CitaConfirmacionPage = lazy(() => import('./pages/public/CitaConfirmacionPage'));
 const ActivarAsistentePage = lazy(() => import('./pages/assistant/ActivarAsistentePage'));
+const MiCuentaPage = lazy(() => import('./pages/account/MiCuentaPage'));
 
 function PageLoader() {
   return (
@@ -495,6 +496,16 @@ function AppRoutes() {
       />
       {/* Redirect /proveedor to dashboard */}
       <Route path="/proveedor" element={<Navigate to="/proveedor/dashboard" replace />} />
+
+      {/* Mi cuenta: correo, clave y datos que identifican la cuenta (todos los roles) */}
+      <Route
+        path="/cuenta"
+        element={
+          <ProtectedRoute allowedRoles={['patient', 'doctor', 'provider', 'assistant', 'admin']}>
+            <MiCuentaPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Settings Routes */}
       <Route

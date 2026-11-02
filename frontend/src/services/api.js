@@ -4,6 +4,7 @@
  */
 
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
 // URL del backend (configurable por entorno, puerto 5000 en desarrollo)
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -86,6 +87,12 @@ api.interceptors.response.use(
       localStorage.removeItem('citamed_acting_doctor_id');
       localStorage.removeItem('citamed_acting_doctor_permissions');
       window.location.href = '/login';
+    } else if (
+      error.response?.status === 403 &&
+      error.response?.data?.code === 'DOCTOR_NOT_VERIFIED'
+    ) {
+      // Médico aún sin verificar: se explica en lugar de dejar un botón que no hace nada
+      toast.error(error.response.data.message, { id: 'doctor-not-verified', duration: 7000 });
     } else if (
       error.response?.status === 403 &&
       error.response?.data?.code === 'ACCOUNT_SUSPENDED'

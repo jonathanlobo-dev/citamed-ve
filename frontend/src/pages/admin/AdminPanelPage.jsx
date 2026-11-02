@@ -36,6 +36,7 @@ import toast from 'react-hot-toast';
 import Navbar from '../../components/common/Navbar/Navbar';
 import SideDrawer from '../../components/common/SideDrawer/SideDrawer';
 import adminService from '../../services/adminService';
+import ChangeRequestsPanel from './ChangeRequestsPanel';
 import './AdminPanelPage.css';
 
 const TEXT_PROVIDERS = ['gemini', 'groq', 'openai', 'anthropic', 'mock'];
@@ -666,7 +667,17 @@ export default function AdminPanelPage() {
             <Bot className="w-4 h-4" />
             <span>Inteligencia Artificial</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('requests')}
+            className={`admin-tab-btn ${activeTab === 'requests' ? 'active' : ''}`}
+          >
+            <FileText className="w-4 h-4" />
+            <span>Solicitudes</span>
+          </button>
         </nav>
+
+        {activeTab === 'requests' && <ChangeRequestsPanel />}
 
         {/* ========================================================= */}
         {/* PESTAÑA 1: RESUMEN (OVERVIEW) */}
