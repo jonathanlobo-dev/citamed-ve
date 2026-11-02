@@ -9,6 +9,7 @@ const appointmentController = require('../controllers/appointmentController');
 const { authenticateToken } = require('../middleware/auth');
 const { requirePermission, requireRoles } = require('../middleware/rbacMiddleware');
 const { allowAssistant } = require('../middleware/assistantAccess');
+const { requireVerifiedDoctor } = require('../middleware/doctorVerification');
 const { walkInValidator } = require('../validators/walkInValidator');
 const { validationErrorHandler } = require('../middleware/validationErrorHandler');
 
@@ -81,6 +82,7 @@ router.post(
   '/walk-in',
   authenticateToken,
   requireRoles(['doctor']),
+  requireVerifiedDoctor,
   walkInValidator,
   validationErrorHandler,
   appointmentController.createWalkIn.bind(appointmentController)
@@ -128,6 +130,7 @@ router.put(
   '/:id/start',
   authenticateToken,
   requireRoles(['doctor', 'admin']),
+  requireVerifiedDoctor,
   appointmentController.start.bind(appointmentController)
 );
 
@@ -139,6 +142,7 @@ router.put(
   '/:id/clinical-note',
   authenticateToken,
   requireRoles(['doctor', 'admin']),
+  requireVerifiedDoctor,
   appointmentController.saveClinicalNote.bind(appointmentController)
 );
 
@@ -150,6 +154,7 @@ router.put(
   '/:id/complete',
   authenticateToken,
   requireRoles(['doctor', 'admin']),
+  requireVerifiedDoctor,
   appointmentController.complete.bind(appointmentController)
 );
 
@@ -241,6 +246,7 @@ router.put(
   '/:id/notes',
   authenticateToken,
   requireRoles(['doctor', 'admin']),
+  requireVerifiedDoctor,
   appointmentController.updateNotes.bind(appointmentController)
 );
 
@@ -270,6 +276,7 @@ router.put(
   '/:id/ai-consent',
   authenticateToken,
   requireRoles(['doctor']),
+  requireVerifiedDoctor,
   appointmentController.setAiConsent.bind(appointmentController)
 );
 

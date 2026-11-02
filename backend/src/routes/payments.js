@@ -9,6 +9,7 @@ const paymentController = require('../controllers/paymentController');
 const { authenticateToken } = require('../middleware/auth');
 const { requireRoles } = require('../middleware/rbacMiddleware');
 const { allowAssistant } = require('../middleware/assistantAccess');
+const { requireVerifiedDoctor } = require('../middleware/doctorVerification');
 const { creationLimiter, generalLimiter } = require('../middleware/rateLimiter');
 
 // ==========================================
@@ -107,6 +108,7 @@ router.post(
   authenticateToken,
   allowAssistant('payments'),
   requireRoles(['doctor', 'admin']),
+  requireVerifiedDoctor,
   creationLimiter,
   paymentController.recordPayment.bind(paymentController)
 );
@@ -115,6 +117,7 @@ router.post(
   authenticateToken,
   allowAssistant('payments'),
   requireRoles(['doctor', 'admin']),
+  requireVerifiedDoctor,
   creationLimiter,
   paymentController.recordPayment.bind(paymentController)
 );

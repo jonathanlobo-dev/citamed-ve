@@ -8,12 +8,13 @@ const router = express.Router();
 const rateLimit = require('express-rate-limit');
 const { authenticateToken } = require('../middleware/auth');
 const { requireRoles } = require('../middleware/rbacMiddleware');
+const { requireVerifiedDoctor } = require('../middleware/doctorVerification');
 const { uploadAudioFile } = require('../middleware/uploadMiddleware');
 const platformSettingsService = require('../services/platformSettingsService');
 const aiService = require('../services/ai/aiService');
 
 // Todas las rutas requieren autenticación y rol de médico
-router.use(authenticateToken, requireRoles(['doctor']));
+router.use(authenticateToken, requireRoles(['doctor']), requireVerifiedDoctor);
 
 // Limitador de ráfaga por usuario (ventana de 60s, max configurable por ai_limits.perMinutePerUser)
 const aiBurstLimiter = rateLimit({

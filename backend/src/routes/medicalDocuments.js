@@ -8,6 +8,7 @@ const router = express.Router();
 const medicalDocumentController = require('../controllers/medicalDocumentController');
 const { authenticateToken } = require('../middleware/auth');
 const { requireRoles } = require('../middleware/rbacMiddleware');
+const { requireVerifiedDoctor } = require('../middleware/doctorVerification');
 const { generalLimiter } = require('../middleware/rateLimiter');
 const { uploadAttachmentFile } = require('../middleware/uploadMiddleware');
 const LAB_CATALOG = require('../utils/labCatalog');
@@ -40,6 +41,7 @@ router.post(
   '/',
   authenticateToken,
   requireRoles(['doctor', 'admin']),
+  requireVerifiedDoctor,
   medicalDocumentController.create.bind(medicalDocumentController)
 );
 
@@ -62,6 +64,7 @@ router.put(
   '/:id/void',
   authenticateToken,
   requireRoles(['doctor', 'admin']),
+  requireVerifiedDoctor,
   medicalDocumentController.void.bind(medicalDocumentController)
 );
 

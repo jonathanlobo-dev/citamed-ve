@@ -8,6 +8,7 @@ const router = express.Router();
 const prescriptionController = require('../controllers/prescriptionController');
 const { authenticateToken } = require('../middleware/auth');
 const { requireRoles } = require('../middleware/rbacMiddleware');
+const { requireVerifiedDoctor } = require('../middleware/doctorVerification');
 const { generalLimiter } = require('../middleware/rateLimiter');
 
 // ==========================================
@@ -24,6 +25,7 @@ router.post(
   '/',
   authenticateToken,
   requireRoles(['doctor', 'admin']),
+  requireVerifiedDoctor,
   prescriptionController.create
 );
 
@@ -46,6 +48,7 @@ router.put(
   '/:id/void',
   authenticateToken,
   requireRoles(['doctor', 'admin']),
+  requireVerifiedDoctor,
   prescriptionController.voidPrescription
 );
 
@@ -54,6 +57,7 @@ router.patch(
   '/:id/patient-instructions',
   authenticateToken,
   requireRoles(['doctor', 'admin']),
+  requireVerifiedDoctor,
   prescriptionController.updatePatientInstructions
 );
 

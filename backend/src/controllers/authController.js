@@ -101,7 +101,8 @@ const authController = {
             lastName: user.lastName,
             name: fullName,
             phone: user.phone,
-            role: user.role
+            role: user.role,
+            emailVerified: user.emailVerified === true
           },
           profile
         }
@@ -258,6 +259,7 @@ const authController = {
             name: fullName,
             phone: user.phone,
             role: user.role,
+            emailVerified: user.emailVerified === true,
             twoFactorEnabled: user.twoFactorEnabled
           },
           profile
@@ -381,6 +383,7 @@ const authController = {
             name: fullName,
             phone: user.phone,
             role: user.role,
+            emailVerified: user.emailVerified === true,
             twoFactorEnabled: user.twoFactorEnabled
           },
           profile,
