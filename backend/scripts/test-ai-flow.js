@@ -4,6 +4,7 @@
  */
 
 const axios = require('axios');
+const { approveRegisteredDoctor } = require('./lib/approveDoctor');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const { todayCaracas } = require('../src/utils/dateCaracas');
@@ -196,6 +197,8 @@ async function runTest() {
     };
 
     const docARes = await axios.post(`${API_BASE}/auth/register/doctor`, docAPayload);
+
+    await approveRegisteredDoctor(API_BASE, docARes);
     docAToken = docARes.data.token || docARes.data.data?.token;
     docAId = docARes.data.user?.id || docARes.data.data?.user?.id;
     docAProfileId = docARes.data.doctorProfile?.id || docARes.data.data?.doctorProfile?.id;
@@ -247,6 +250,7 @@ async function runTest() {
       priceConsultation: 50.00
     };
     const docBRes = await axios.post(`${API_BASE}/auth/register/doctor`, docBPayload);
+    await approveRegisteredDoctor(API_BASE, docBRes);
     docBToken = docBRes.data.token || docBRes.data.data?.token;
     docBId = docBRes.data.user?.id || docBRes.data.data?.user?.id;
 

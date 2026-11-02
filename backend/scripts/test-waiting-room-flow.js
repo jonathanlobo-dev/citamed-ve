@@ -16,6 +16,7 @@
  */
 
 const axios = require('axios');
+const { approveRegisteredDoctor } = require('./lib/approveDoctor');
 const { io } = require('socket.io-client');
 
 const API_BASE = process.env.API_URL || 'http://localhost:5000/api';
@@ -100,6 +101,8 @@ async function runE2E() {
     };
 
     const docRes = await axios.post(`${API_BASE}/auth/register/doctor`, docPayload);
+
+    await approveRegisteredDoctor(API_BASE, docRes);
     const docToken = docRes.data?.data?.token;
     const docUser = docRes.data?.data?.user;
     let docProfileId = docRes.data?.data?.profile?.id;

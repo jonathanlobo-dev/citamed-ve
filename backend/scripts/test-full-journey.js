@@ -10,8 +10,9 @@
  */
 
 const axios = require('axios');
+const { approveRegisteredDoctor } = require('./lib/approveDoctor');
 
-const API_BASE = process.env.API_URL || 'https://citamed-api.onrender.com/api';
+const API_BASE = process.env.API_URL || 'http://localhost:5000/api';
 console.log(`\n🚀 Iniciando Prueba E2E en: ${API_BASE}\n`);
 
 // Helper para calcular fecha de próximo Lunes
@@ -68,6 +69,8 @@ async function runTest() {
     };
 
     const docRegRes = await axios.post(`${API_BASE}/auth/register/doctor`, docRegPayload);
+
+    await approveRegisteredDoctor(API_BASE, docRegRes);
     const docToken = docRegRes.data?.data?.token;
     const docUser = docRegRes.data?.data?.user;
     let docProfileId = docRegRes.data?.data?.profile?.id;

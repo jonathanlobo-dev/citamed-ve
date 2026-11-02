@@ -6,6 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const { approveRegisteredDoctor } = require('./lib/approveDoctor');
 
 const API_BASE = process.env.API_URL || 'http://localhost:5000/api';
 
@@ -108,6 +109,7 @@ async function runTest() {
     let docAToken, docAId, docAProfileId;
     try {
       const res = await axios.post(`${API_BASE}/auth/register/doctor`, docAPayload);
+      await approveRegisteredDoctor(API_BASE, res);
       docAToken = res.data.token || res.data.data?.token;
       docAId = res.data.user?.id || res.data.data?.user?.id;
       docAProfileId = res.data.doctorProfile?.id || res.data.data?.doctorProfile?.id;
@@ -171,6 +173,7 @@ async function runTest() {
     let docBToken, docBId;
     try {
       const res = await axios.post(`${API_BASE}/auth/register/doctor`, docBPayload);
+      await approveRegisteredDoctor(API_BASE, res);
       docBToken = res.data.token || res.data.data?.token;
       docBId = res.data.user?.id || res.data.data?.user?.id;
       pass(`Médico B registrado (id: ${docBId}, email: ${docBEmail})`);
