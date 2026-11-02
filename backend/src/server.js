@@ -130,6 +130,8 @@ app.use("/api/sessions", sessionRoutes);
 app.use("/api/2fa", twoFactorRoutes);
 app.use("/api/rbac", rbacRoutes);
 app.use("/api/password", passwordRecoveryRoutes);
+// La pantalla de recuperar clave llama a /api/password-recovery: ambas direcciones llegan a lo mismo
+app.use("/api/password-recovery", passwordRecoveryRoutes);
 
 // Profile & Resource routes
 app.use("/api/profiles", profileRoutes);
