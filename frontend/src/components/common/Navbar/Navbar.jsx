@@ -7,7 +7,7 @@ import Button from '../Button/button';
 import { LogOut, User, Calendar, Menu, X, Home, Grid, Stethoscope, Building2, Shield, HelpCircle, Search, MapPin, Star, Download } from 'lucide-react';
 import usePwaInstall from '../../../hooks/usePwaInstall';
 import searchService from '../../../services/searchService';
-import { goToApp } from '../../../config/appUrl';
+import { goToApp, goToHome } from '../../../config/appUrl';
 
 function Navbar() {
   const navigate = useNavigate();
@@ -92,7 +92,7 @@ function Navbar() {
   };
 
   const navItems = [
-    { label: 'Inicio', action: () => navigate('/'), icon: <Home className="w-4 h-4" />, type: 'navigate' },
+    { label: 'Inicio', action: () => goToHome(navigate), icon: <Home className="w-4 h-4" />, type: 'navigate' },
     { label: 'Módulos', action: () => scrollToSection('modulos'), icon: <Grid className="w-4 h-4" />, type: 'scroll' },
     { label: 'Directorio Médico', action: () => navigate('/directorio'), icon: <Stethoscope className="w-4 h-4" />, type: 'navigate' },
     { label: 'Clínicas', action: () => navigate('/clinicas'), icon: <Building2 className="w-4 h-4" />, type: 'navigate' },
@@ -107,7 +107,7 @@ function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* LOGO */}
           <div
-            onClick={() => navigate('/')}
+            onClick={() => goToHome(navigate)}
             className="flex items-center cursor-pointer hover:opacity-80 transition-opacity"
           >
             <h1 className="text-2xl font-extrabold text-primary flex items-baseline">

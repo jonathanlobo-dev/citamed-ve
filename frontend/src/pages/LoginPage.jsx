@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
+import { goToHome } from '../config/appUrl';
 import { useAuth } from '../context/AuthContext';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
@@ -190,7 +191,7 @@ function LoginPage() {
         className="w-full max-w-md"
       >
         <button
-          onClick={() => navigate('/')}
+          onClick={() => goToHome(navigate)}
           className="mb-6 flex items-center gap-2 text-white/80 hover:text-white transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />

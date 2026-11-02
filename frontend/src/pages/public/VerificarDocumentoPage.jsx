@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { homeUrl } from '../../config/appUrl';
 import axios from 'axios';
 import {
   CheckCircle2,
@@ -121,14 +122,14 @@ export default function VerificarDocumentoPage() {
       {/* Header Institucional CitaMed */}
       <header className="verificar-doc-header">
         <div className="verificar-doc-header-content">
-          <Link to="/" className="verificar-doc-logo" title="Ir al inicio de CitaMed">
+          <a href={homeUrl()} className="verificar-doc-logo" title="Ir al inicio de CitaMed">
             <div className="verificar-doc-logo-icon">
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
             <span className="verificar-doc-brand">
               CITAMED<span className="text-teal-400">.VE</span>
             </span>
-          </Link>
+          </a>
           <span className="verificar-doc-badge">Verificación Oficial de Documentos</span>
         </div>
       </header>

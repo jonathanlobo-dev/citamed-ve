@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
+import { goToHome } from '../config/appUrl';
 import { motion } from 'framer-motion';
 import { Construction, ArrowLeft, Home } from 'lucide-react';
 import Navbar from '../components/common/Navbar/Navbar';
@@ -46,7 +47,7 @@ function ComingSoonPage() {
               Volver
             </button>
             <button
-              onClick={() => navigate('/')}
+              onClick={() => goToHome(navigate)}
               className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
             >
               <Home className="w-5 h-5" />

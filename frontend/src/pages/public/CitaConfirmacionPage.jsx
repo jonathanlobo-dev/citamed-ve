@@ -11,6 +11,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { goToHome } from '../../config/appUrl';
 import {
   Calendar,
   Clock,
@@ -168,7 +169,7 @@ export default function CitaConfirmacionPage() {
         </p>
         <button
           type="button"
-          onClick={() => navigate('/')}
+          onClick={() => goToHome(navigate)}
           className="px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 transition shadow-sm"
         >
           Ir a CitaMed
@@ -189,7 +190,7 @@ export default function CitaConfirmacionPage() {
       {/* Encabezado */}
       <header className="bg-white border-b border-slate-100">
         <div className="max-w-md mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => goToHome(navigate)}>
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-base shadow-sm">
               C
             </div>

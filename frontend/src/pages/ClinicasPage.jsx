@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { goToHome } from '../config/appUrl';
 import { motion } from 'framer-motion';
 import { Search, MapPin, Phone, Clock, Star, Building2, ChevronRight } from 'lucide-react';
 import Navbar from '../components/common/Navbar/Navbar';
@@ -173,7 +174,7 @@ function ClinicasPage() {
                   <Button
                     variant="outline"
                     size="lg"
-                    onClick={() => navigate('/')}
+                    onClick={() => goToHome(navigate)}
                   >
                     Volver al Inicio
                   </Button>

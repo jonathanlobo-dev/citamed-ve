@@ -10,6 +10,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { goToHome } from '../config/appUrl';
 import { motion } from 'framer-motion';
 import { User, Stethoscope, Building2, ArrowLeft } from 'lucide-react';
 import { PatientWizard } from '../components/auth/PatientWizard';
@@ -196,7 +197,7 @@ function RegistroPage() {
       {/* Back button */}
       <div className="max-w-4xl mx-auto mb-6">
         <button
-          onClick={() => selectedRole ? handleBack() : navigate('/')}
+          onClick={() => selectedRole ? handleBack() : goToHome(navigate)}
           className="flex items-center gap-2 text-gray-600 hover:text-primary transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />

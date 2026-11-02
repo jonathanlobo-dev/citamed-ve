@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { homeUrl } from '../../config/appUrl';
 import { motion } from 'framer-motion';
 import {
   User,
@@ -316,7 +317,7 @@ const DoctorProfilePage = () => {
             animate={{ opacity: 1, y: 0 }}
             className="flex items-center gap-2 text-white/70 text-sm mb-8"
           >
-            <Link to="/" className="hover:text-white transition-colors">Inicio</Link>
+            <a href={homeUrl()} className="hover:text-white transition-colors">Inicio</a>
             <ChevronRight className="w-4 h-4" />
             <Link to="/directorio" className="hover:text-white transition-colors">Directorio Médico</Link>
             <ChevronRight className="w-4 h-4" />
