@@ -10,6 +10,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { requireRoles } = require('../middleware/rbacMiddleware');
 const exchangeRateService = require('../services/exchangeRateService');
 const auditService = require('../services/auditService');
+const accountService = require('../services/accountService');
 
 // Todas las rutas requieren autenticación y rol de administrador
 router.use(authenticateToken, requireRoles(['admin']));
@@ -56,6 +57,24 @@ router.post('/exchange-rate/manual', async (req, res) => {
     return res.json({ success: true, data: row });
   } catch (error) {
     return res.status(error.status || 500).json({ success: false, message: error.message });
+  }
+});
+
+// Solicitudes de cambio de datos protegidos (nombre, cédula, MPPS)
+router.get('/change-requests', async (req, res) => {
+  try {
+    const data = await accountService.listChangeRequests(req.query);
+    return res.json({ success: true, data });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({ success: false, message: error.message });
+  }
+});
+router.put('/change-requests/:id/review', async (req, res) => {
+  try {
+    const data = await accountService.reviewChangeRequest(parseInt(req.params.id, 10), req.user, req.body || {});
+    return res.json({ success: true, data });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({ success: false, code: error.code, message: error.message });
   }
 });
 

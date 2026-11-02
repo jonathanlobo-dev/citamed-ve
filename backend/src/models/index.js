@@ -203,6 +203,11 @@ try {
   db.DoctorAssistant = DoctorAssistantModel(sequelize);
   console.log('  ✅ DoctorAssistant cargado');
 
+  // Mi cuenta - solicitudes de cambio de datos protegidos
+  const ProfileChangeRequestModel = require('./ProfileChangeRequest');
+  db.ProfileChangeRequest = ProfileChangeRequestModel(sequelize);
+  console.log('  ✅ ProfileChangeRequest cargado');
+
   console.log('✅ Todos los modelos cargados exitosamente\n');
 } catch (error) {
   console.error('❌ Error cargando modelos:', error.message);
@@ -961,6 +966,9 @@ try {
     as: 'doctorLinks'
   });
   console.log('  ✅ DoctorAssistant <-> User (Doctor & Assistant)');
+
+  db.ProfileChangeRequest.belongsTo(db.User, { foreignKey: 'userId', as: 'user' });
+  db.ProfileChangeRequest.belongsTo(db.User, { foreignKey: 'reviewedBy', as: 'reviewer' });
 
   console.log('✅ Asociaciones establecidas correctamente\n');
 } catch (error) {

@@ -89,6 +89,7 @@ const { sequelize, Specialty, User, DoctorProfile, PatientProfile, Appointment }
 // ==================== IMPORTAR RUTAS ====================
 const authRoutes = require("./routes/auth");
 const verificationRoutes = require("./routes/identityVerification");
+const accountRoutes = require("./routes/account");
 const metricsRoutes = require("./routes/metrics");
 const auditRoutes = require("./routes/audit");
 const sessionRoutes = require("./routes/sessions");
@@ -120,6 +121,7 @@ const publicRoutes = require("./routes/public");
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/public", publicRoutes);
 app.use("/api/verification", verificationRoutes);
+app.use("/api/account", accountRoutes);
 app.use("/api/metrics", metricsRoutes);
 
 // Security & Admin routes
