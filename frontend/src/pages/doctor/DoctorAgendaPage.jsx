@@ -22,6 +22,7 @@ import appointmentService from '../../services/appointmentService';
 import prescriptionAPI from '../../services/prescriptionService';
 import publicService from '../../services/publicService';
 import { FEATURES } from '../../config/features';
+import { SCHEDULE_PARTS, partOfTime } from '../../config/scheduleBlocks';
 import { shareRecipe, prefetchRecipePdf } from '../../utils/shareRecipe';
 import SideDrawer from '../../components/common/SideDrawer/SideDrawer';
 import toast from 'react-hot-toast';
@@ -137,13 +138,25 @@ function DayRow({ day, onToggle, onAddBlock, onRemoveBlock, onUpdateBlock }) {
           {!day.enabled && <span className="text-sm text-gray-400">No atiende</span>}
         </div>
         {day.enabled && (
-          <button
-            type="button"
-            onClick={onAddBlock}
-            className="flex items-center gap-1 text-sm text-primary font-medium hover:text-primary/80"
-          >
-            <Plus className="h-4 w-4" /> Agregar bloque
-          </button>
+          <div className="flex items-center gap-1.5">
+            {SCHEDULE_PARTS.map((part) => {
+              const used = day.blocks.some((b) => partOfTime(b.startTime).key === part.key);
+              return (
+                <button
+                  key={part.key}
+                  type="button"
+                  disabled={used}
+                  onClick={() => onAddBlock(part)}
+                  className={`flex items-center gap-1 text-sm font-medium px-2.5 py-1 rounded-full border transition-colors
+                    ${used
+                      ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                      : 'border-primary/40 text-primary hover:bg-primary/10'}`}
+                >
+                  <Plus className="h-3.5 w-3.5" /> {part.label}
+                </button>
+              );
+            })}
+          </div>
         )}
       </div>
 
@@ -151,11 +164,12 @@ function DayRow({ day, onToggle, onAddBlock, onRemoveBlock, onUpdateBlock }) {
         <div className="mt-3 space-y-2">
           {day.blocks.length === 0 && (
             <p className="text-sm text-gray-500">
-              Sin bloques de horario. Agrega uno para atender este día.
+              Sin horario. Elige Mañana, Tarde o Noche para atender este día.
             </p>
           )}
           {day.blocks.map((block, index) => (
             <div key={index} className="flex items-center gap-2">
+              <span className="w-16 text-sm font-medium text-gray-600">{partOfTime(block.startTime).label}</span>
               <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-2">
                 <Clock className="h-4 w-4 text-gray-400 flex-shrink-0" />
                 <input
@@ -547,10 +561,11 @@ function DoctorAgendaPage() {
     }));
   };
 
-  const handleAddBlock = (dayOfWeek) => {
+  const handleAddBlock = (dayOfWeek, part) => {
     updateDay(dayOfWeek, (day) => ({
       ...day,
-      blocks: [...day.blocks, { startTime: '14:00', endTime: '17:00' }]
+      blocks: [...day.blocks, { startTime: part.startTime, endTime: part.endTime }]
+        .sort((a, b) => a.startTime.localeCompare(b.startTime))
     }));
   };
 
@@ -1475,7 +1490,7 @@ function DoctorAgendaPage() {
                         key={day.dayOfWeek}
                         day={day}
                         onToggle={() => handleToggle(day.dayOfWeek)}
-                        onAddBlock={() => handleAddBlock(day.dayOfWeek)}
+                        onAddBlock={(part) => handleAddBlock(day.dayOfWeek, part)}
                         onRemoveBlock={(index) => handleRemoveBlock(day.dayOfWeek, index)}
                         onUpdateBlock={(index, field, value) => handleUpdateBlock(day.dayOfWeek, index, field, value)}
                       />

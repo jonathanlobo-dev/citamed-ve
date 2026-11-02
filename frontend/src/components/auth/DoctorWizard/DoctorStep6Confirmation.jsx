@@ -9,6 +9,7 @@
  */
 
 import { useState } from 'react';
+import { SCHEDULE_PARTS } from '../../../config/scheduleBlocks';
 import { motion } from 'framer-motion';
 import {
   Mail, User, CreditCard, Calendar, Phone, Award, GraduationCap,
@@ -163,7 +164,7 @@ function DoctorStep6Confirmation({
             <SummaryField icon={MapPin} label="Estado" value={formData.state} />
           </div>
           <SummaryField icon={Calendar} label="Días de atención" value={formatDays(formData.availableDays)} iconColor="text-blue-500" />
-          <SummaryField icon={Clock} label="Horario" value={formData.startTime && formData.endTime ? `${formData.startTime} - ${formData.endTime}` : ''} iconColor="text-orange-500" />
+          <SummaryField icon={Clock} label="Horario" value={(formData.scheduleBlocks || []).map((b) => `${SCHEDULE_PARTS.find((p) => p.key === b.key)?.label} ${b.startTime} - ${b.endTime}`).join(', ')} iconColor="text-orange-500" />
           {formData.acceptsHomeVisits && (
             <p className="text-sm text-green-600 flex items-center gap-2">
               <Check className="h-4 w-4" /> Ofrece visitas a domicilio

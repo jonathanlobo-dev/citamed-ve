@@ -60,6 +60,7 @@ const INITIAL_DATA = {
   city: '',
   state: '',
   availableDays: [],
+  scheduleBlocks: [],
   startTime: '',
   endTime: '',
   acceptsHomeVisits: false,
