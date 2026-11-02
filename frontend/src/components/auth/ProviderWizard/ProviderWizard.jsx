@@ -22,6 +22,7 @@ import ProviderStep3Services from './ProviderStep3Services';
 import ProviderStep4Location from './ProviderStep4Location';
 import ProviderStep5Confirmation from './ProviderStep5Confirmation';
 import authService from '../../../services/authService';
+import { useAuth } from '../../../context/AuthContext';
 
 const TOTAL_STEPS = 5;
 const STEP_LABELS = [
@@ -60,6 +61,7 @@ const INITIAL_DATA = {
 
 function ProviderWizard() {
   const navigate = useNavigate();
+  const { startSession } = useAuth();
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [registrationError, setRegistrationError] = useState(null);
 
@@ -120,15 +122,21 @@ function ProviderWizard() {
         clearWizard();
         setRegistrationSuccess(true);
 
-        // Redirigir después de 4 segundos
-        setTimeout(() => {
-          navigate('/login', {
-            state: {
-              message: 'Registro exitoso. Su cuenta está en revisión. Le notificaremos cuando sea aprobada.',
-              email: formData.email
-            }
-          });
-        }, 4000);
+        if (response.data?.token) {
+          const sessionUser = startSession(response.data.token, response.data.user, response.data.profile);
+          setTimeout(() => {
+            navigate(`/verificar/email?userId=${sessionUser.id}&email=${encodeURIComponent(sessionUser.email)}&returnTo=${encodeURIComponent('/proveedor/dashboard')}`);
+          }, 3000);
+        } else {
+          setTimeout(() => {
+            navigate('/login', {
+              state: {
+                message: 'Registro exitoso. Su cuenta está en revisión. Le notificaremos cuando sea aprobada.',
+                email: formData.email
+              }
+            });
+          }, 4000);
+        }
       }
     } catch (error) {
       console.error('Error en registro:', error);

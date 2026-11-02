@@ -25,6 +25,7 @@ import DoctorStep5Pricing from './DoctorStep5Pricing';
 import DoctorStep6Confirmation from './DoctorStep6Confirmation';
 import authService from '../../../services/authService';
 import api from '../../../services/api';
+import { useAuth } from '../../../context/AuthContext';
 
 const TOTAL_STEPS = 6;
 const STEP_LABELS = [
@@ -75,6 +76,7 @@ const INITIAL_DATA = {
 
 function DoctorWizard() {
   const navigate = useNavigate();
+  const { startSession } = useAuth();
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [registrationError, setRegistrationError] = useState(null);
   const [specialties, setSpecialties] = useState([]);
@@ -160,15 +162,22 @@ function DoctorWizard() {
         clearWizard();
         setRegistrationSuccess(true);
 
-        // Redirigir después de 4 segundos
-        setTimeout(() => {
-          navigate('/login', {
-            state: {
-              message: 'Registro exitoso. Su cuenta está en revisión. Le notificaremos cuando sea aprobada.',
-              email: formData.email
-            }
-          });
-        }, 4000);
+        // Abre la sesión y lleva a verificar el correo; la verificación profesional queda en revisión
+        if (response.data?.token) {
+          const sessionUser = startSession(response.data.token, response.data.user, response.data.profile);
+          setTimeout(() => {
+            navigate(`/verificar/email?userId=${sessionUser.id}&email=${encodeURIComponent(sessionUser.email)}&returnTo=${encodeURIComponent('/medico/dashboard')}`);
+          }, 3000);
+        } else {
+          setTimeout(() => {
+            navigate('/login', {
+              state: {
+                message: 'Registro exitoso. Su cuenta está en revisión. Le notificaremos cuando sea aprobada.',
+                email: formData.email
+              }
+            });
+          }, 4000);
+        }
       }
     } catch (error) {
       console.error('Error en registro:', error);

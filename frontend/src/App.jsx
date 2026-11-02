@@ -7,6 +7,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { FEATURES } from './config/features';
 import LandingPage from './pages/LandingPage';
 import { isAppHost } from './config/appUrl';
+import AccountBanners from './components/common/AccountBanners';
 import LoginPage from './pages/LoginPage';
 import RegistroPage from './pages/RegistroPage';
 
@@ -559,6 +560,7 @@ function App() {
       <PermissionsProvider>
         <Router>
           <div className="app">
+            <AccountBanners />
             <AppRoutes />
 
           </div>

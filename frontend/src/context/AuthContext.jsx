@@ -17,6 +17,17 @@ axios.interceptors.request.use((config) => {
   return config;
 });
 
+// Un médico sin verificar no puede atender, emitir ni cobrar: el servidor lo rechaza y aquí se explica
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 403 && error.response?.data?.code === 'DOCTOR_NOT_VERIFIED') {
+      toast.error(error.response.data.message, { id: 'doctor-not-verified', duration: 7000 });
+    }
+    return Promise.reject(error);
+  }
+);
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -159,6 +170,15 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Abre la sesión con un token que ya tenemos (por ejemplo, justo después de registrarse)
+  const startSession = (token, userData, profile = null) => {
+    localStorage.setItem('citamed_token', token);
+    const userWithProfile = { ...userData, profile };
+    localStorage.setItem('citamed_user', JSON.stringify(userWithProfile));
+    setUser(userWithProfile);
+    return userWithProfile;
+  };
+
   const getUserRole = () => {
     return user?.role || null;
   };
@@ -215,7 +235,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, loginWith2FA, logout, register, getUserRole, getDashboardPath, refreshUser, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, startSession, loginWith2FA, logout, register, getUserRole, getDashboardPath, refreshUser, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -59,7 +59,7 @@ function PatientWizard() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { login } = useAuth();
+  const { startSession } = useAuth();
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [registrationError, setRegistrationError] = useState(null);
 
@@ -134,7 +134,7 @@ function PatientWizard() {
 
         // Si el API devuelve token, hacer login automático
         if (response.data?.token) {
-          login(response.data.token, response.data.user);
+          startSession(response.data.token, response.data.user, response.data.profile);
           const userId = response.data.user?.id;
           const userEmail = response.data.user?.email || formData.email;
           const hasPhone = !!formData.phone;
