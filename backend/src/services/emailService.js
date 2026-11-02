@@ -22,6 +22,13 @@ const CONFIG = {
 };
 
 /**
+ * Hay algún proveedor de correo configurado (Resend o SendGrid).
+ */
+function hasProvider() {
+  return !!(process.env.RESEND_API_KEY || process.env.SENDGRID_API_KEY);
+}
+
+/**
  * Genera HTML para email de verificación
  * @param {Object} params
  * @returns {string} HTML del email
@@ -165,56 +172,32 @@ const emailService = {
   async sendVerificationEmail({ to, code, userName, token, expiryHours = 24 }) {
     try {
       // Verificar configuración
-      if (!process.env.SENDGRID_API_KEY) {
+      if (!hasProvider()) {
         if (CONFIG.devMode) {
-          logger.warn('SendGrid no configurado - modo desarrollo activo', { to, code });
+          logger.warn('Correo no configurado - modo desarrollo activo', { to, code });
           return { success: true, messageId: 'dev-mode', devMode: true };
         }
-        throw new Error('SENDGRID_API_KEY no configurada');
+        throw new Error('Ni RESEND_API_KEY ni SENDGRID_API_KEY están configuradas');
       }
 
-      const msg = {
+      const result = await emailService.sendTransactional({
         to,
-        from: {
-          email: CONFIG.fromEmail,
-          name: CONFIG.fromName
-        },
         subject: 'Verifica tu cuenta en CITAMED.VE',
-        text: generateVerificationEmailText({ code, userName, token, expiryHours }),
-        html: generateVerificationEmailHTML({ code, userName, token, expiryHours }),
-        trackingSettings: {
-          clickTracking: { enable: false },
-          openTracking: { enable: true }
-        }
-      };
+        html: generateVerificationEmailHTML({ code, userName, token, expiryHours })
+      });
 
-      // Si hay template ID configurado, usarlo
-      if (CONFIG.templateId) {
-        msg.templateId = CONFIG.templateId;
-        msg.dynamicTemplateData = {
-          code,
-          userName,
-          verifyUrl: `${CONFIG.baseUrl}/verify-email/${token}`,
-          expiryHours
-        };
-        delete msg.text;
-        delete msg.html;
+      if (!result.success) {
+        throw new Error(result.error || 'No se pudo enviar el correo');
       }
 
-      const response = await sgMail.send(msg);
-
-      logger.info('Email de verificación enviado via SendGrid', {
-        to,
-        messageId: response[0]?.headers?.['x-message-id'],
-        statusCode: response[0]?.statusCode
-      });
+      logger.info('Email de verificación enviado', { to, provider: result.provider, messageId: result.messageId });
 
       return {
         success: true,
-        messageId: response[0]?.headers?.['x-message-id']
+        messageId: result.messageId
       };
     } catch (error) {
-      logger.error('Error enviando email via SendGrid', {
+      logger.error('Error enviando email de verificación', {
         to,
         error: error.message,
         code: error.code,
@@ -236,12 +219,12 @@ const emailService = {
    */
   async sendWelcomeEmail({ to, userName, role }) {
     try {
-      if (!process.env.SENDGRID_API_KEY) {
+      if (!hasProvider()) {
         if (CONFIG.devMode) {
-          logger.warn('SendGrid no configurado - email de bienvenida omitido', { to });
+          logger.warn('Correo no configurado - email de bienvenida omitido', { to });
           return { success: true, messageId: 'dev-mode', devMode: true };
         }
-        throw new Error('SENDGRID_API_KEY no configurada');
+        throw new Error('Ni RESEND_API_KEY ni SENDGRID_API_KEY están configuradas');
       }
 
       const roleMessages = {
@@ -251,11 +234,6 @@ const emailService = {
       };
 
       const msg = {
-        to,
-        from: {
-          email: CONFIG.fromEmail,
-          name: CONFIG.fromName
-        },
         subject: '¡Bienvenido a CITAMED.VE!',
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
@@ -275,11 +253,12 @@ const emailService = {
         `
       };
 
-      const response = await sgMail.send(msg);
+      const result = await emailService.sendTransactional({ to, ...msg });
+      if (!result.success) throw new Error(result.error || 'No se pudo enviar el correo');
 
       return {
         success: true,
-        messageId: response[0]?.headers?.['x-message-id']
+        messageId: result.messageId
       };
     } catch (error) {
       logger.error('Error enviando email de bienvenida', {
@@ -301,22 +280,17 @@ const emailService = {
    */
   async sendPasswordResetEmail({ to, code, userName, token, expiryMinutes = 60 }) {
     try {
-      if (!process.env.SENDGRID_API_KEY) {
+      if (!hasProvider()) {
         if (CONFIG.devMode) {
-          logger.warn('SendGrid no configurado - modo desarrollo', { to, code });
+          logger.warn('Correo no configurado - modo desarrollo', { to, code });
           return { success: true, messageId: 'dev-mode', devMode: true };
         }
-        throw new Error('SENDGRID_API_KEY no configurada');
+        throw new Error('Ni RESEND_API_KEY ni SENDGRID_API_KEY están configuradas');
       }
 
       const resetUrl = `${CONFIG.baseUrl}/reset-password/${token}`;
 
       const msg = {
-        to,
-        from: {
-          email: CONFIG.fromEmail,
-          name: CONFIG.fromName
-        },
         subject: 'Recupera tu contraseña - CITAMED.VE',
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -333,11 +307,12 @@ const emailService = {
         `
       };
 
-      const response = await sgMail.send(msg);
+      const result = await emailService.sendTransactional({ to, ...msg });
+      if (!result.success) throw new Error(result.error || 'No se pudo enviar el correo');
 
       return {
         success: true,
-        messageId: response[0]?.headers?.['x-message-id']
+        messageId: result.messageId
       };
     } catch (error) {
       logger.error('Error enviando email de reset', {
@@ -359,12 +334,12 @@ const emailService = {
    */
   async sendPasswordChangedConfirmation({ to, userName, ipAddress, timestamp }) {
     try {
-      if (!process.env.SENDGRID_API_KEY) {
+      if (!hasProvider()) {
         if (CONFIG.devMode) {
-          logger.warn('SendGrid no configurado - confirmación de cambio omitida', { to });
+          logger.warn('Correo no configurado - confirmación de cambio omitida', { to });
           return { success: true, messageId: 'dev-mode', devMode: true };
         }
-        throw new Error('SENDGRID_API_KEY no configurada');
+        throw new Error('Ni RESEND_API_KEY ni SENDGRID_API_KEY están configuradas');
       }
 
       const formattedDate = new Date(timestamp).toLocaleString('es-VE', {
@@ -373,11 +348,6 @@ const emailService = {
       });
 
       const msg = {
-        to,
-        from: {
-          email: CONFIG.fromEmail,
-          name: CONFIG.fromName
-        },
         subject: 'Tu contraseña ha sido cambiada - CITAMED.VE',
         html: `
 <!DOCTYPE html>
@@ -475,16 +445,17 @@ const emailService = {
         `
       };
 
-      const response = await sgMail.send(msg);
+      const result = await emailService.sendTransactional({ to, ...msg });
+      if (!result.success) throw new Error(result.error || 'No se pudo enviar el correo');
 
       logger.info('Email de confirmación de cambio de contraseña enviado', {
         to,
-        messageId: response[0]?.headers?.['x-message-id']
+        messageId: result.messageId
       });
 
       return {
         success: true,
-        messageId: response[0]?.headers?.['x-message-id']
+        messageId: result.messageId
       };
     } catch (error) {
       logger.error('Error enviando email de confirmación de cambio', {
@@ -538,7 +509,7 @@ const emailService = {
   },
 
   isConfigured() {
-    return !!process.env.SENDGRID_API_KEY;
+    return hasProvider();
   },
 
   /**
@@ -549,7 +520,7 @@ const emailService = {
     return {
       fromEmail: CONFIG.fromEmail,
       fromName: CONFIG.fromName,
-      hasApiKey: !!process.env.SENDGRID_API_KEY,
+      hasApiKey: hasProvider(),
       hasTemplateId: !!CONFIG.templateId,
       devMode: CONFIG.devMode
     };
