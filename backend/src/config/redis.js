@@ -53,11 +53,20 @@ let connectionError = null;
 // Crear cliente Redis
 let redisClient;
 
-try {
-  redisClient = new Redis(redisConfig);
-} catch (error) {
-  console.error('[Redis] Failed to create client:', error.message);
+// Redis es opcional: sin REDIS_HOST (hoy no está contratado) no se intenta conectar, y los límites
+// de uso y el caché trabajan en memoria del servidor. Así el log no se llena de reintentos fallidos.
+const redisEnabled = !!(process.env.REDIS_HOST || process.env.REDIS_URL);
+
+if (redisEnabled) {
+  try {
+    redisClient = new Redis(redisConfig);
+  } catch (error) {
+    console.error('[Redis] Failed to create client:', error.message);
+    redisClient = null;
+  }
+} else {
   redisClient = null;
+  console.log('[Redis] No configurado (REDIS_HOST vacío): se usa memoria del servidor');
 }
 
 // Event handlers

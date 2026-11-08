@@ -18,7 +18,10 @@ const getAllowedOrigins = () => {
     'https://citamed.ve',
     'https://www.citamed.ve',
     'https://citamedve.netlify.app',
-    'https://citamed-ve.pages.dev'
+    'https://citamed-ve.pages.dev',
+    // Dominio propio: presentación y sistema (así no dependen de la variable ALLOWED_ORIGINS)
+    'https://citamedve.app',
+    'https://app.citamedve.app'
   ];
 
   // En producción, solo dominios específicos

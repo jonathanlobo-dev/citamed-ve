@@ -1,65 +1,46 @@
-name: CI Tests
+name: Pruebas
 
+# Corre solo las pruebas que no necesitan base de datos ni red (rápidas y seguras): unitarias del
+# backend, unitarias del frontend y que el frontend compile. Los flujos completos contra la base de
+# Pruebas (backend/scripts/test-*.js) se corren a mano antes de liberar.
 on:
-  # Pausado: la suite de pruebas aun no esta lista para CI (requiere preparacion de BD).
-  # Se reactivara al construir los tests (Semanas 3-5). Mientras, ejecutar a mano si se necesita.
+  push:
+    branches: [dev, master]
+  pull_request:
+    branches: [dev, master]
   workflow_dispatch:
 
 jobs:
-  test:
+  pruebas:
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:14
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: citamed_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    timeout-minutes: 15
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Descargar el código
+        uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: backend/package-lock.json
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-    - name: Install dependencies
-      working-directory: ./backend
-      run: npm ci
+      # package-lock.json no se versiona en este proyecto, por eso npm install y no npm ci
+      - name: Instalar dependencias del backend
+        working-directory: ./backend
+        run: npm install --no-audit --no-fund
 
-    - name: Run tests
-      working-directory: ./backend
-      env:
-        DB_HOST: localhost
-        DB_PORT: 5432
-        DB_NAME: citamed_test
-        DB_USER: postgres
-        DB_PASSWORD: postgres
-        JWT_SECRET: test_secret_key_for_ci
-        NODE_ENV: test
-      run: npm test
+      - name: Pruebas unitarias del backend
+        working-directory: ./backend
+        run: npm run test:unit
 
-    - name: Generate coverage
-      working-directory: ./backend
-      if: always()
-      env:
-        DB_HOST: localhost
-        DB_PORT: 5432
-        DB_NAME: citamed_test
-        DB_USER: postgres
-        DB_PASSWORD: postgres
-        JWT_SECRET: test_secret_key_for_ci
-        NODE_ENV: test
-      run: npm run test:coverage || true
+      - name: Instalar dependencias del frontend
+        working-directory: ./frontend
+        run: npm install --no-audit --no-fund
+
+      - name: Pruebas unitarias del frontend
+        working-directory: ./frontend
+        run: npm run test:unit
+
+      - name: Compilar el frontend
+        working-directory: ./frontend
+        run: npm run build

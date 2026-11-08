@@ -105,5 +105,12 @@ module.exports = (sequelize) => {
     ]
   });
 
+  // El hash del enlace de invitación sirve para activar la cuenta: nunca sale en una respuesta
+  DoctorAssistant.prototype.toJSON = function toJSON() {
+    const values = { ...this.get() };
+    delete values.inviteTokenHash;
+    return values;
+  };
+
   return DoctorAssistant;
 };
