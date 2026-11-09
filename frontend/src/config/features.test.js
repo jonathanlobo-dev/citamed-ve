@@ -23,7 +23,7 @@ describe('producción (rama master)', () => {
     expect(f.assistant).toBe(false);
     expect(f.publicPage).toBe(false);
     expect(f.waConfirm).toBe(false);
-    expect(f.aiPatientInstructions).toBe(false);
+    expect(f.aiPatientInstructions).toBe(true);
     expect(f.excelImport).toBe(false);
   });
 });

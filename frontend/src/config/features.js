@@ -16,7 +16,7 @@ const RELEASED_IN_PRODUCTION = {
   ASSISTANT: false, // Asistente del médico (en construcción)
   PUBLIC_PAGE: false, // Página pública del médico con enlace propio (en construcción)
   WA_CONFIRM: false, // Confirmar o cancelar cita desde WhatsApp (en construcción)
-  AI_PATIENT_INSTRUCTIONS: false, // Indicaciones para el paciente con IA (en construcción)
+  AI_PATIENT_INSTRUCTIONS: true, // Indicaciones para el paciente con IA (liberada)
   EXCEL_IMPORT: false // Importar pacientes desde Excel (en construcción)
 };
 
