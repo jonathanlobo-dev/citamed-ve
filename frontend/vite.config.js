@@ -31,8 +31,8 @@ export default defineConfig({
         manualChunks(id) {
           const normalized = id.replace(/\\/g, '/');
           if (normalized.includes('/node_modules/')) {
-            if (normalized.includes('/xlsx/')) {
-              return 'vendor-xlsx';
+            if (normalized.includes('/exceljs/')) {
+              return 'vendor-excel';
             }
             if (
               normalized.includes('/recharts/') ||

@@ -23,8 +23,8 @@ import {
 const DAYS = [
   { id: 0, name: 'Domingo', short: 'Dom', initial: 'D' },
   { id: 1, name: 'Lunes', short: 'Lun', initial: 'L' },
-  { id: 2, name: 'Martes', short: 'Mar', initial: 'M' },
-  { id: 3, name: 'Miércoles', short: 'Mié', initial: 'M' },
+  { id: 2, name: 'Martes', short: 'Mar', initial: 'Ma' },
+  { id: 3, name: 'Miércoles', short: 'Mié', initial: 'Mi' },
   { id: 4, name: 'Jueves', short: 'Jue', initial: 'J' },
   { id: 5, name: 'Viernes', short: 'Vie', initial: 'V' },
   { id: 6, name: 'Sábado', short: 'Sáb', initial: 'S' }

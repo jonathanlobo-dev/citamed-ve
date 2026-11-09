@@ -22,8 +22,8 @@ const VENEZUELAN_STATES = [
 
 const WEEKDAYS = [
   { value: 'monday', label: 'Lunes', short: 'L' },
-  { value: 'tuesday', label: 'Martes', short: 'M' },
-  { value: 'wednesday', label: 'Miércoles', short: 'M' },
+  { value: 'tuesday', label: 'Martes', short: 'Ma' },
+  { value: 'wednesday', label: 'Miércoles', short: 'Mi' },
   { value: 'thursday', label: 'Jueves', short: 'J' },
   { value: 'friday', label: 'Viernes', short: 'V' },
   { value: 'saturday', label: 'Sábado', short: 'S' },

@@ -2,7 +2,7 @@
  * ExcelImportDrawer.jsx - CITAMED.VE
  * M03 / Semana 9 - Bloque E: Importar pacientes desde Excel / CSV
  *
- * Lee el archivo en el navegador con xlsx (SheetJS), valida cada fila
+ * Lee el archivo en el navegador (.xlsx o .csv), valida cada fila
  * (cédula, teléfono venezolano, nombres y correo), muestra vista previa
  * con filas válidas e inválidas, y envía por lotes (máx 500) al servidor.
  */
@@ -21,7 +21,7 @@ import {
   Users,
   Check
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { readSpreadsheet, downloadTemplate, MAX_ROWS } from '../../utils/spreadsheet';
 import SideDrawer from '../common/SideDrawer/SideDrawer';
 import clinicalRecordService from '../../services/clinicalRecordService';
 import toast from 'react-hot-toast';
@@ -61,68 +61,10 @@ export default function ExcelImportDrawer({
 
   // Descargar plantilla oficial
   const handleDownloadTemplate = (format = 'xlsx') => {
-    const headers = [
-      'nombre',
-      'apellido',
-      'cedula',
-      'telefono',
-      'correo',
-      'fecha_nacimiento',
-      'sexo',
-      'alergias'
-    ];
-
-    const samples = [
-      [
-        'Carlos',
-        'Mendoza',
-        'V-18234567',
-        '04141234567',
-        'carlos.mendoza@ejemplo.com',
-        '1985-04-12',
-        'Masculino',
-        'Penicilina'
-      ],
-      [
-        'Elena',
-        'Pérez',
-        'V-20111222',
-        '04249876543',
-        'elena.perez@ejemplo.com',
-        '1992-09-25',
-        'Femenino',
-        ''
-      ],
-      [
-        'Andrés',
-        'González',
-        'E-82345678',
-        '04125556677',
-        'andres.gonzalez@ejemplo.com',
-        '1988-11-03',
-        'Masculino',
-        'Ibuprofeno'
-      ]
-    ];
-
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...samples]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Pacientes');
-
-    if (format === 'xlsx') {
-      XLSX.writeFile(wb, 'plantilla_pacientes_citamed.xlsx');
-    } else {
-      const csv = XLSX.utils.sheet_to_csv(ws);
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'plantilla_pacientes_citamed.csv');
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-    }
+    downloadTemplate(format).catch((err) => {
+      console.error('Error generando la plantilla:', err);
+      toast.error('No se pudo generar la plantilla');
+    });
   };
 
   // Validación rápida del lado del cliente
@@ -209,7 +151,7 @@ export default function ExcelImportDrawer({
     };
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const selected = e.target.files?.[0];
     if (!selected) return;
 
@@ -219,42 +161,25 @@ export default function ExcelImportDrawer({
     setServerSummary(null);
     setImportError(null);
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const data = new Uint8Array(evt.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        if (!sheetName) {
-          throw new Error('El archivo no contiene ninguna hoja');
-        }
-        const sheet = workbook.Sheets[sheetName];
-        const rawJson = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    try {
+      const buffer = await selected.arrayBuffer();
+      const rawJson = await readSpreadsheet(buffer, selected.name);
 
-        if (rawJson.length === 0) {
-          throw new Error('La hoja está vacía o no tiene datos');
-        }
-        if (rawJson.length > 500) {
-          throw new Error(`El archivo tiene ${rawJson.length} filas. El máximo permitido por envío es de 500 filas.`);
-        }
-
-        const validated = rawJson.map((r, idx) => validateRowClient(r, idx));
-        setParsedRows(validated);
-      } catch (err) {
-        console.error('Error parseando archivo Excel:', err);
-        setImportError(err.message || 'Error al procesar el archivo');
-        setParsedRows([]);
-      } finally {
-        setParsing(false);
+      if (rawJson.length === 0) {
+        throw new Error('La hoja está vacía o no tiene datos');
       }
-    };
+      if (rawJson.length > MAX_ROWS) {
+        throw new Error(`El archivo tiene ${rawJson.length} filas. El máximo permitido por envío es de ${MAX_ROWS} filas.`);
+      }
 
-    reader.onerror = () => {
-      setImportError('Error al leer el archivo en el navegador');
+      setParsedRows(rawJson.map((r, idx) => validateRowClient(r, idx)));
+    } catch (err) {
+      console.error('Error parseando archivo Excel:', err);
+      setImportError(err.message || 'Error al procesar el archivo');
+      setParsedRows([]);
+    } finally {
       setParsing(false);
-    };
-
-    reader.readAsArrayBuffer(selected);
+    }
   };
 
   const validRows = parsedRows.filter((r) => r._isValid);
@@ -318,7 +243,7 @@ export default function ExcelImportDrawer({
             <span>Carga rápida y vinculación automática</span>
           </div>
           <p className="text-emerald-800 text-[11px] leading-relaxed">
-            Sube un archivo Excel (.xlsx, .xls) o CSV con el listado de tus pacientes.
+            Sube un archivo Excel (.xlsx) o CSV con el listado de tus pacientes.
             Si el paciente ya está registrado en CitaMed (por cédula), se vinculará a tu directorio médico;
             si es nuevo, se creará su ficha médica para que puedas atenderlo de inmediato.
           </p>
@@ -427,13 +352,13 @@ export default function ExcelImportDrawer({
                     {fileName ? fileName : 'Haz clic para seleccionar tu archivo Excel o CSV'}
                   </span>
                   <span className="text-[11px] text-slate-400 block">
-                    Formatos admitidos: .xlsx, .xls, .csv (máximo 500 filas)
+                    Formatos admitidos: .xlsx y .csv (máximo 500 filas)
                   </span>
                 </div>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".xlsx, .xls, .csv"
+                  accept=".xlsx,.csv"
                   onChange={handleFileChange}
                   className="hidden"
                 />
