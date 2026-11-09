@@ -30,6 +30,7 @@ const {
 // Session Cleanup Job
 const { setupSessionCleanup } = require('./jobs/sessionCleanup');
 const { setupExchangeRateSync } = require('./jobs/exchangeRateSync');
+const { setupAppointmentReminders } = require('./jobs/appointmentReminders');
 
 // Setup process error handlers
 setupProcessErrorHandlers();
@@ -438,6 +439,7 @@ async function startServer() {
       // Initialize scheduled jobs
       setupSessionCleanup();
       setupExchangeRateSync();
+      setupAppointmentReminders();
       logger.info('Scheduled jobs initialized');
 
       // Console output for development visibility

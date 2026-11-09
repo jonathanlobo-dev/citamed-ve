@@ -113,7 +113,7 @@ class AppointmentController {
       });
 
       // Enviar confirmacion
-      await reminderService.sendAppointmentConfirmation(appointment);
+      reminderService.sendAppointmentConfirmation(appointment);
 
       res.status(201).json({
         success: true,
@@ -191,7 +191,7 @@ class AppointmentController {
       const appointment = await appointmentService.cancelAppointment(id, cancelledBy, reason);
 
       // Notificar
-      await reminderService.sendCancellationNotification(appointment, cancelledBy);
+      reminderService.sendCancellationNotification(appointment, cancelledBy);
 
       res.json({
         success: true,
@@ -231,7 +231,7 @@ class AppointmentController {
       );
 
       // Enviar confirmacion de la nueva cita
-      await reminderService.sendAppointmentConfirmation(newAppointment);
+      reminderService.sendAppointmentConfirmation(newAppointment);
 
       res.json({
         success: true,
