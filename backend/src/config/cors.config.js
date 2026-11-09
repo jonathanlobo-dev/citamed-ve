@@ -95,7 +95,8 @@ const corsOptions = {
     'Origin',
     'X-Auth-Token',
     'X-API-Key',
-    'X-Acting-Doctor' // Asistente que actúa en nombre de un médico (Semana 9)
+    'X-Acting-Doctor', // Asistente que actúa en nombre de un médico (Semana 9)
+    'X-Turnstile-Token' // Resultado de la verificación anti robots
   ],
 
   // Headers expuestos en responses

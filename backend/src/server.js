@@ -10,6 +10,7 @@ const PORT = process.env.PORT || 5000;
 // Logging & Monitoring
 const { logger, logServerStart, logDatabaseConnection } = require('./config/logger');
 const { morganLogger } = require('./middleware/morganLogger');
+const { serverErrorAlerts } = require('./middleware/errorAlerts');
 const { performanceMiddleware, memoryTracker } = require('./middleware/performanceMetrics');
 const { errorLoggerMiddleware, uncaughtErrorLogger, setupProcessErrorHandlers } = require('./middleware/errorLogger');
 
@@ -59,6 +60,7 @@ sanitizerStack.forEach(middleware => app.use(middleware));
 // ==================== LOGGING & MONITORING MIDDLEWARE ====================
 // 6. HTTP Request logging (Morgan + Winston)
 app.use(morganLogger);
+app.use(serverErrorAlerts);
 
 // 7. Performance metrics tracking
 app.use(performanceMiddleware);

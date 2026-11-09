@@ -11,6 +11,7 @@
 import { useState } from 'react';
 import { SCHEDULE_PARTS } from '../../../config/scheduleBlocks';
 import { motion } from 'framer-motion';
+import TurnstileWidget from '../../common/TurnstileWidget';
 import {
   Mail, User, CreditCard, Calendar, Phone, Award, GraduationCap,
   Building, MapPin, Clock, DollarSign, Shield, Check, Edit2,
@@ -229,6 +230,8 @@ function DoctorStep6Confirmation({
           </p>
         </div>
       )}
+
+      <TurnstileWidget />
 
       {/* Navigation */}
       <div className="pt-4 flex gap-4">

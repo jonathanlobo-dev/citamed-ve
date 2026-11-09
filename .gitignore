@@ -70,3 +70,6 @@ capturas_bloque_c*
 backend/.env.staging
 .env.*
 !.env.example
+
+# Copias de seguridad de la base de datos (datos de salud: nunca al repositorio)
+backend/backups/

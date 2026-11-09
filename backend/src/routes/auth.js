@@ -14,6 +14,7 @@
  */
 
 const express = require("express");
+const { requireTurnstile } = require('../middleware/turnstile');
 const router = express.Router();
 const authController = require("../controllers/authController");
 const { authMiddleware } = require("../middleware/auth");
@@ -55,6 +56,7 @@ const {
  *         description: Credenciales inválidas
  */
 router.post("/login",
+  requireTurnstile,
   loginValidator,
   validationErrorHandler,
   auditLog({ action: 'auth.login.attempt', resource: 'auth', severity: 'info' }),
@@ -125,6 +127,7 @@ router.post("/login/2fa",
  *         description: Error de validación
  */
 router.post("/register",
+  requireTurnstile,
   registerValidator,
   validationErrorHandler,
   auditLog({ action: 'user.created', resource: 'user', severity: 'info' }),
@@ -237,6 +240,7 @@ router.post("/register",
  *         description: Error de validación
  */
 router.post("/register/patient",
+  requireTurnstile,
   patientRegisterValidator,
   auditLog({ action: 'user.created', resource: 'user', severity: 'info', includeBody: false }),
   authController.registerPatient
@@ -317,6 +321,7 @@ router.post("/register/patient",
  *         description: Error de validación
  */
 router.post("/register/doctor",
+  requireTurnstile,
   doctorRegisterValidator,
   auditLog({ action: 'user.created', resource: 'user', severity: 'info', includeBody: false }),
   authController.registerDoctor
@@ -389,6 +394,7 @@ router.post("/register/doctor",
  *         description: Error de validación
  */
 router.post("/register/provider",
+  requireTurnstile,
   providerRegisterValidator,
   auditLog({ action: 'user.created', resource: 'user', severity: 'info', includeBody: false }),
   authController.registerProvider

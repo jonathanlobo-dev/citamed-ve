@@ -10,6 +10,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import TurnstileWidget from '../../common/TurnstileWidget';
 import {
   Mail, Building2, FileText, User, Phone, Tag, Package,
   MapPin, Globe, Store, Check, Edit2, Loader2, AlertCircle
@@ -173,6 +174,8 @@ function ProviderStep5Confirmation({
           </p>
         </div>
       )}
+
+      <TurnstileWidget />
 
       {/* Navigation */}
       <div className="pt-4 flex gap-4">

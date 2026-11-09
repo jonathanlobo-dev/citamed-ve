@@ -146,6 +146,7 @@ async function getLocationFromIP(ipAddress) {
       countryCode: null,
       formatted: null
     };
+  // eslint-disable-next-line no-unreachable -- el bloque try es un marcador de posición sin llamada externa por ahora
   } catch (error) {
     console.error('Error obteniendo ubicación:', error.message);
     return {

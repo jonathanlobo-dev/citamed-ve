@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { FEATURES } from '../config/features';
+import { withTurnstileHeader, afterProtectedRequest } from '../utils/turnstile';
 
 const AuthContext = createContext(null);
 
@@ -14,13 +15,17 @@ axios.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  return config;
+  return withTurnstileHeader(config);
 });
 
 // Un médico sin verificar no puede atender, emitir ni cobrar: el servidor lo rechaza y aquí se explica
 axios.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    afterProtectedRequest(response.config);
+    return response;
+  },
   (error) => {
+    afterProtectedRequest(error.config);
     if (error.response?.status === 403 && error.response?.data?.code === 'DOCTOR_NOT_VERIFIED') {
       toast.error(error.response.data.message, { id: 'doctor-not-verified', duration: 7000 });
     }

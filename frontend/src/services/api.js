@@ -5,6 +5,7 @@
 
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { withTurnstileHeader, afterProtectedRequest } from '../utils/turnstile';
 
 // URL del backend (configurable por entorno, puerto 5000 en desarrollo)
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -49,6 +50,7 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    withTurnstileHeader(config);
 
     // Cabecera X-Acting-Doctor solo si el usuario es assistant y hay un médico activo guardado
     const savedUser = localStorage.getItem('citamed_user');
@@ -78,8 +80,12 @@ api.interceptors.request.use(
 
 // Interceptor para manejar errores de respuesta
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    afterProtectedRequest(response.config);
+    return response;
+  },
   (error) => {
+    afterProtectedRequest(error.config);
     if (error.response?.status === 401) {
       // Token expirado o inválido
       localStorage.removeItem('citamed_token');

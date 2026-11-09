@@ -11,6 +11,7 @@
  */
 
 const express = require('express');
+const { requireTurnstile } = require('../middleware/turnstile');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
 const passwordRecoveryController = require('../controllers/passwordRecoveryController');
@@ -104,6 +105,7 @@ const resetLimiter = rateLimit({
  *         description: Rate limit excedido
  */
 router.post('/request',
+  requireTurnstile,
   requestLimiter,
   validateRequestReset,
   passwordRecoveryController.requestReset

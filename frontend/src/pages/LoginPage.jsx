@@ -8,6 +8,7 @@ import { Mail, Lock, ArrowLeft, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import Button from '../components/common/Button/button';
 import TwoFactorLoginModal from '../components/auth/TwoFactorLoginModal';
 import toast from 'react-hot-toast';
+import TurnstileWidget from '../components/common/TurnstileWidget';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -293,6 +294,8 @@ function LoginPage() {
                 </Link>
               </div>
             </div>
+
+            <TurnstileWidget />
 
             <Button
               type="submit"

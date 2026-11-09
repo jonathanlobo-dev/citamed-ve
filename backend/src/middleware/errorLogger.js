@@ -9,6 +9,7 @@
 
 const { logger, logError } = require('../config/logger');
 const metricsStore = require('../utils/metricsStore');
+const { notifyProcessError } = require('./errorAlerts');
 
 /**
  * Sanitizar datos sensibles del request
@@ -160,6 +161,7 @@ const setupProcessErrorHandlers = () => {
       type: 'uncaughtException',
       critical: true
     });
+    notifyProcessError('uncaughtException', error);
 
     // En producción, dar tiempo para flush de logs
     if (process.env.NODE_ENV === 'production') {
@@ -177,6 +179,7 @@ const setupProcessErrorHandlers = () => {
       type: 'unhandledRejection',
       critical: true
     });
+    notifyProcessError('unhandledRejection', reason);
   });
 
   // SIGTERM handling

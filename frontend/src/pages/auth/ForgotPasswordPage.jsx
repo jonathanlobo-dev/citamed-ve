@@ -12,6 +12,7 @@ import { Mail, ArrowLeft, CheckCircle, AlertCircle, Loader2, RefreshCw } from 'l
 import Button from '../../components/common/Button/button';
 import { usePasswordRecovery, RECOVERY_STEPS } from '../../hooks/usePasswordRecovery';
 import toast from 'react-hot-toast';
+import TurnstileWidget from '../../components/common/TurnstileWidget';
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -216,6 +217,8 @@ function ForgotPasswordPage() {
               </motion.p>
             )}
           </div>
+
+          <TurnstileWidget />
 
           <Button
             type="submit"

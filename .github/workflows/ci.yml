@@ -1,8 +1,8 @@
 name: Pruebas
 
-# Corre solo las pruebas que no necesitan base de datos ni red (rápidas y seguras): unitarias del
-# backend, unitarias del frontend y que el frontend compile. Los flujos completos contra la base de
-# Pruebas (backend/scripts/test-*.js) se corren a mano antes de liberar.
+# Corre solo las pruebas que no necesitan base de datos ni red (rápidas y seguras): revisión estática y
+# pruebas unitarias del backend, pruebas unitarias del frontend y que el frontend compile. Los recorridos
+# completos contra la base de Pruebas (npm run test:flows) se corren a mano antes de liberar.
 on:
   push:
     branches: [dev, master]
@@ -28,6 +28,10 @@ jobs:
       - name: Instalar dependencias del backend
         working-directory: ./backend
         run: npm install --no-audit --no-fund
+
+      - name: Revisión estática del backend
+        working-directory: ./backend
+        run: npm run lint
 
       - name: Pruebas unitarias del backend
         working-directory: ./backend
