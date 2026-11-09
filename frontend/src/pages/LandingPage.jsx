@@ -459,7 +459,12 @@ function LandingPage() {
             </div>
           </div>
           <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
-            <p>© 2025 CITAMED.VE - Todos los derechos reservados</p>
+            <nav aria-label="Documentos legales" className="mb-3 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
+              <a href="/terminos" className="hover:text-white">Términos y Condiciones</a>
+              <a href="/privacidad" className="hover:text-white">Política de Privacidad</a>
+              <a href="/codigo-etica" className="hover:text-white">Código de Ética Médica</a>
+            </nav>
+            <p>© 2026 CITAMED.VE - Todos los derechos reservados</p>
           </div>
         </div>
       </footer>

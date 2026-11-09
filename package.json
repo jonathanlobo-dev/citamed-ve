@@ -2,7 +2,8 @@
   "private": true,
   "scripts": {
     "test:unit": "npm --prefix backend run test:unit && npm --prefix frontend run test:unit",
-    "verify": "npm run test:unit && npm --prefix frontend run build"
+    "verify": "npm run test:unit && npm --prefix frontend run build",
+    "test:flows": "npm --prefix backend run test:flows"
   },
   "dependencies": {
     "axios": "^1.12.2"

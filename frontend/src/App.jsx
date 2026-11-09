@@ -59,6 +59,9 @@ const DoctorPublicSlugPage = lazy(() => import('./pages/public/DoctorPublicSlugP
 const CitaConfirmacionPage = lazy(() => import('./pages/public/CitaConfirmacionPage'));
 const ActivarAsistentePage = lazy(() => import('./pages/assistant/ActivarAsistentePage'));
 const MiCuentaPage = lazy(() => import('./pages/account/MiCuentaPage'));
+const TerminosPage = lazy(() => import('./pages/public/legal/TerminosPage'));
+const PrivacidadPage = lazy(() => import('./pages/public/legal/PrivacidadPage'));
+const CodigoEticaPage = lazy(() => import('./pages/public/legal/CodigoEticaPage'));
 
 function PageLoader() {
   return (
@@ -89,6 +92,9 @@ function AppRoutes() {
       <Route path="/clinicas" element={<ClinicasPage />} />
       <Route path="/clinicas/:clinicId" element={<ClinicProfilePage />} />
       <Route path="/seguros" element={<SegurosPage />} />
+      <Route path="/terminos" element={<TerminosPage />} />
+      <Route path="/privacidad" element={<PrivacidadPage />} />
+      <Route path="/codigo-etica" element={<CodigoEticaPage />} />
       <Route path="/verificar-recipe/:code" element={<VerificarRecipeRedirect />} />
       <Route
         path="/verificar/:code"

@@ -10,7 +10,8 @@
     "test:unit": "jest -c jest.unit.config.js",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:verbose": "jest --verbose"
+    "test:verbose": "jest --verbose",
+    "test:flows": "node scripts/run-all-flows.js"
   },
   "keywords": [
     "salud",
