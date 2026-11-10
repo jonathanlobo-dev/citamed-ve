@@ -28,7 +28,8 @@ function ForgotPasswordPage() {
     resendEmail,
     verifyCode,
     resetPassword,
-    validatePasswordStrength
+    validatePasswordStrength,
+    reset
   } = usePasswordRecovery();
 
   const [code, setCode] = useState('');
@@ -91,7 +92,7 @@ function ForgotPasswordPage() {
     const result = await requestReset(inputEmail);
 
     if (result.success) {
-      toast.success('Te enviamos instrucciones a tu email');
+      toast.success('Solicitud enviada. Revisa tu correo');
 
       // En modo desarrollo, mostrar código
       if (result.devCode) {
@@ -199,8 +200,15 @@ function ForgotPasswordPage() {
           </h2>
 
           <p className="text-gray-600 mb-6">
-            Enviamos un código de 6 dígitos a <strong className="break-all">{email}</strong>. Escríbelo aquí o abre el enlace del correo.
+            Si hay una cuenta con <strong className="break-all">{email}</strong>, te llegará un código de 6 dígitos. Escríbelo aquí o abre el enlace del correo.
           </p>
+          <button
+            type="button"
+            onClick={() => { reset(); setCode(''); }}
+            className="text-primary hover:underline text-sm -mt-4 mb-6"
+          >
+            ¿Escribiste mal el correo? Corrígelo
+          </button>
 
           <form onSubmit={handleVerifyCode} className="space-y-4 mb-6 text-left">
             <label htmlFor="recovery-code" className="block text-sm font-medium text-gray-700">
