@@ -8,7 +8,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, ArrowLeft, CheckCircle, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import { Mail, ArrowLeft, CheckCircle, AlertCircle, Loader2, RefreshCw, KeyRound, Lock, Eye, EyeOff } from 'lucide-react';
+import PasswordStrengthIndicator from '../../components/auth/PasswordStrengthIndicator';
 import Button from '../../components/common/Button/button';
 import { usePasswordRecovery, RECOVERY_STEPS } from '../../hooks/usePasswordRecovery';
 import toast from 'react-hot-toast';
@@ -25,9 +26,42 @@ function ForgotPasswordPage() {
     canResend,
     requestReset,
     resendEmail,
-    goToCodeVerification,
-    reset
+    verifyCode,
+    resetPassword,
+    validatePasswordStrength
   } = usePasswordRecovery();
+
+  const [code, setCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+
+  const handleVerifyCode = async (e) => {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(code)) {
+      toast.error('El código tiene 6 dígitos');
+      return;
+    }
+    const result = await verifyCode(code);
+    if (!result.valid) toast.error(result.message || 'Código incorrecto');
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (!validatePasswordStrength(newPassword).valid) {
+      setPasswordError('La contraseña no cumple los requisitos');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Las contraseñas no coinciden');
+      return;
+    }
+    setPasswordError('');
+    const result = await resetPassword(newPassword, confirmPassword);
+    if (result.success) toast.success('Contraseña actualizada');
+    else toast.error(result.message || 'Error al cambiar contraseña');
+  };
 
   const [inputEmail, setInputEmail] = useState('');
   const [emailError, setEmailError] = useState('');
@@ -78,7 +112,78 @@ function ForgotPasswordPage() {
 
   // Renderizar según paso
   const renderContent = () => {
-    if (step === RECOVERY_STEPS.SENT) {
+    if (step === RECOVERY_STEPS.SUCCESS) {
+      return (
+        <div className="text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="w-8 h-8 text-green-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Listo!</h2>
+          <p className="text-gray-600 mb-6">Tu contraseña se cambió. Ya puedes iniciar sesión con la nueva.</p>
+          <Button variant="primary" className="w-full" onClick={() => navigate('/login')}>
+            Iniciar sesión
+          </Button>
+        </div>
+      );
+    }
+
+    if (step === RECOVERY_STEPS.RESET) {
+      return (
+        <form onSubmit={handleResetPassword} className="space-y-5">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Nueva contraseña</h2>
+            <p className="text-gray-600 text-sm">Para <strong className="break-all">{email}</strong></p>
+          </div>
+          <div>
+            <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-2">Nueva contraseña</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                id="new-password"
+                type={showPassword ? 'text' : 'password'}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+            <PasswordStrengthIndicator password={newPassword} showRequirements={true} />
+          </div>
+          <div>
+            <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-2">Repite la contraseña</label>
+            <input
+              id="confirm-password"
+              type={showPassword ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              disabled={loading}
+            />
+          </div>
+          {(passwordError || error) && (
+            <p className="text-sm text-red-600 flex items-center gap-1">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {passwordError || error}
+            </p>
+          )}
+          <Button type="submit" variant="primary" className="w-full" disabled={loading}>
+            {loading ? 'Guardando...' : 'Cambiar contraseña'}
+          </Button>
+        </form>
+      );
+    }
+
+    if (step === RECOVERY_STEPS.SENT || step === RECOVERY_STEPS.VERIFY) {
       return (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -86,7 +191,7 @@ function ForgotPasswordPage() {
           className="text-center"
         >
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="w-8 h-8 text-green-600" />
+            <Mail className="w-8 h-8 text-green-600" />
           </div>
 
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
@@ -94,12 +199,43 @@ function ForgotPasswordPage() {
           </h2>
 
           <p className="text-gray-600 mb-6">
-            Enviamos instrucciones a <strong>{email}</strong> para restablecer tu contraseña.
+            Enviamos un código de 6 dígitos a <strong className="break-all">{email}</strong>. Escríbelo aquí o abre el enlace del correo.
           </p>
+
+          <form onSubmit={handleVerifyCode} className="space-y-4 mb-6 text-left">
+            <label htmlFor="recovery-code" className="block text-sm font-medium text-gray-700">
+              Código de verificación
+            </label>
+            <div className="relative">
+              <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                id="recovery-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg text-center text-2xl tracking-[0.4em] font-semibold focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="000000"
+                disabled={loading}
+              />
+            </div>
+            {error && (
+              <p className="text-sm text-red-600 flex items-center gap-1">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {error}
+              </p>
+            )}
+            <Button type="submit" variant="primary" className="w-full" disabled={loading || code.length !== 6}>
+              {loading ? 'Verificando...' : 'Verificar código'}
+            </Button>
+          </form>
 
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
             <p className="text-amber-800 text-sm">
-              <strong>Nota:</strong> El enlace expira en 1 hora. Revisa tu carpeta de spam si no lo encuentras.
+              El código vence en 1 hora. Si no lo ves, revisa la carpeta de spam.
             </p>
           </div>
 
@@ -133,12 +269,6 @@ function ForgotPasswordPage() {
               )}
             </Button>
 
-            <button
-              onClick={goToCodeVerification}
-              className="text-primary hover:underline text-sm"
-            >
-              Ingresar código manualmente
-            </button>
           </div>
 
           {/* Volver */}
@@ -251,13 +381,13 @@ function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary via-primary-light to-secondary flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary via-primary-light to-secondary flex items-center justify-center px-4 py-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
+        <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8">
           {renderContent()}
         </div>
       </motion.div>
