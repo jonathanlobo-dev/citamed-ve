@@ -63,8 +63,9 @@ function fail(msg, err) {
 }
 
 function makeToken(user) {
+  // Misma carga que emite el servidor (incluye la huella de la clave)
   return jwt.sign(
-    { id: user.id, email: user.email, role: user.role },
+    require('../src/utils/tokenFingerprint').tokenPayload(user),
     process.env.JWT_SECRET || 'test_secret',
     { expiresIn: '1h' }
   );
