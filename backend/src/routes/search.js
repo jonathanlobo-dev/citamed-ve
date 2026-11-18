@@ -8,7 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const searchController = require('../controllers/searchController');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireRole } = require('../middleware/auth');
 
 /**
  * @route   GET /api/search/doctors
@@ -72,13 +72,13 @@ router.get('/stats', searchController.getSearchStats);
  * @desc    Actualizar cache de un médico específico
  * @access  Private (Admin)
  */
-router.post('/cache/:doctorId', authenticateToken, searchController.updateDoctorCache);
+router.post('/cache/:doctorId', authenticateToken, requireRole(['admin']), searchController.updateDoctorCache);
 
 /**
  * @route   POST /api/search/cache/rebuild
  * @desc    Reconstruir todo el cache de búsqueda
  * @access  Private (Admin)
  */
-router.post('/cache/rebuild', authenticateToken, searchController.rebuildCache);
+router.post('/cache/rebuild', authenticateToken, requireRole(['admin']), searchController.rebuildCache);
 
 module.exports = router;

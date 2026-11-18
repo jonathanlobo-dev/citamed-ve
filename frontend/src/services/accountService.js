@@ -23,6 +23,10 @@ const accountService = {
 
   async changePassword({ currentPassword, newPassword }) {
     const res = await api.post('/account/password', { currentPassword, newPassword });
+    // Las demás sesiones quedan cerradas; esta sigue con el token nuevo
+    if (res.data?.data?.token) {
+      try { localStorage.setItem('citamed_token', res.data.data.token); } catch { /* sin almacenamiento */ }
+    }
     return res.data.data;
   },
 

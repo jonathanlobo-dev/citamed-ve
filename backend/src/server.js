@@ -40,6 +40,10 @@ setupProcessErrorHandlers();
 // 1. Deshabilitar X-Powered-By
 app.disable('x-powered-by');
 
+// Render pone un proxy delante: sin esto todas las peticiones parecen venir de la misma IP
+// y los límites de intentos se comparten entre todos los usuarios
+app.set('trust proxy', 1);
+
 // 2. Security Headers (Helmet)
 securityHeaders.forEach(middleware => app.use(middleware));
 
@@ -212,8 +216,7 @@ app.get("/api/db-test", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "? Error en base de datos",
-      error: error.message
+      message: "Error en base de datos"
     });
   }
 });

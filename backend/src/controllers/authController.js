@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { tokenPayload } = require('../utils/tokenFingerprint');
 const { validationResult } = require('express-validator');
 const { User, DoctorProfile, PatientProfile, ProviderProfile, sequelize } = require('../models/index');
 const authService = require('../services/authService');
@@ -20,10 +21,11 @@ const authController = {
         });
       }
 
-      if (!['doctor', 'patient', 'provider', 'admin', 'clinic', 'insurer'].includes(role)) {
+      // Nunca se permite crear administradores desde el registro público
+      if (!['doctor', 'patient', 'provider'].includes(role)) {
         return res.status(400).json({
           success: false,
-          message: 'Rol inválido. Debe ser: doctor, patient, provider, admin, clinic o insurer'
+          message: 'Rol inválido. Debe ser: doctor, patient o provider'
         });
       }
 
@@ -81,9 +83,9 @@ const authController = {
       await transaction.commit();
 
       const token = jwt.sign(
-        { id: user.id, email: user.email, role: user.role },
+        tokenPayload(user),
         process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+        { expiresIn: process.env.JWT_EXPIRES_IN || '7d', algorithm: 'HS256' }
       );
 
       // Construir nombre completo para la respuesta
@@ -221,9 +223,9 @@ const authController = {
 
       // 2FA no activo - login normal
       const token = jwt.sign(
-        { id: user.id, email: user.email, role: user.role },
+        tokenPayload(user),
         process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+        { expiresIn: process.env.JWT_EXPIRES_IN || '7d', algorithm: 'HS256' }
       );
 
       // Crear sesión y registrar login exitoso
@@ -346,9 +348,9 @@ const authController = {
 
       // 2FA verificado - generar token JWT
       const jwtToken = jwt.sign(
-        { id: user.id, email: user.email, role: user.role },
+        tokenPayload(user),
         process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+        { expiresIn: process.env.JWT_EXPIRES_IN || '7d', algorithm: 'HS256' }
       );
 
       // Crear sesión y registrar login exitoso

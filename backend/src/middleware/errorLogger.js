@@ -24,14 +24,8 @@ const sanitizeRequestData = (req) => {
   delete headers.cookie;
   delete headers['x-api-key'];
 
-  // Sanitizar body (no incluir passwords)
-  const body = req.body ? { ...req.body } : {};
-  const sensitiveFields = ['password', 'confirmPassword', 'token', 'secret', 'apiKey'];
-  sensitiveFields.forEach(field => {
-    if (body[field]) {
-      body[field] = '[REDACTED]';
-    }
-  });
+  // Del body solo se registran los nombres de los campos: puede traer claves, códigos o datos clínicos
+  const body = req.body && typeof req.body === 'object' ? { fields: Object.keys(req.body) } : {};
 
   return {
     method: req.method,

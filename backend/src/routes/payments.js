@@ -124,19 +124,19 @@ router.post(
 
 // Validación: Aprobar pago reportado (PUT o POST)
 router.route('/:id/approve')
-  .all(authenticateToken, allowAssistant('payments'), requireRoles(['doctor', 'admin']))
+  .all(authenticateToken, allowAssistant('payments'), requireRoles(['doctor', 'admin']), requireVerifiedDoctor)
   .put(paymentController.approve.bind(paymentController))
   .post(paymentController.approve.bind(paymentController));
 
 // Validación: Rechazar pago reportado (PUT o POST)
 router.route('/:id/reject')
-  .all(authenticateToken, allowAssistant('payments'), requireRoles(['doctor', 'admin']))
+  .all(authenticateToken, allowAssistant('payments'), requireRoles(['doctor', 'admin']), requireVerifiedDoctor)
   .put(paymentController.reject.bind(paymentController))
   .post(paymentController.reject.bind(paymentController));
 
 // Anulación de cobro aprobado (PUT o POST) - REQUIERE PERMISO voidReceipts
 router.route('/:id/void')
-  .all(authenticateToken, allowAssistant('voidReceipts'), requireRoles(['doctor', 'admin']))
+  .all(authenticateToken, allowAssistant('voidReceipts'), requireRoles(['doctor', 'admin']), requireVerifiedDoctor)
   .put(paymentController.voidPayment.bind(paymentController))
   .post(paymentController.voidPayment.bind(paymentController));
 

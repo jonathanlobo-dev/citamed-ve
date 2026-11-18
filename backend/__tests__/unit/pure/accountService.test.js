@@ -147,10 +147,13 @@ describe('cambio de clave', () => {
     expect(await code(accountService.changePassword(1, { currentPassword: 'ClaveActual1!', newPassword: 'ClaveActual1!' }))).toBe('SAME_PASSWORD');
   });
   test('cambio correcto: se guarda en claro para que el modelo la cifre una sola vez y se avisa por correo', async () => {
+    process.env.JWT_SECRET = process.env.JWT_SECRET || 'secreto-de-prueba';
     const user = fakeUser();
     models.User.findByPk.mockResolvedValue(user);
-    await accountService.changePassword(1, { currentPassword: 'ClaveActual1!', newPassword: 'NuevaClave1!' });
+    const out = await accountService.changePassword(1, { currentPassword: 'ClaveActual1!', newPassword: 'NuevaClave1!' });
     expect(user.update).toHaveBeenCalledWith({ password: 'NuevaClave1!' });
+    // Este dispositivo recibe un token nuevo (los anteriores quedan vencidos)
+    expect(typeof out.token).toBe('string');
     expect(emailService.sendPasswordChangedConfirmation).toHaveBeenCalledWith(expect.objectContaining({ to: 'yo@mail.com' }));
   });
 });

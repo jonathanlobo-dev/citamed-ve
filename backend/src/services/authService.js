@@ -9,6 +9,7 @@
  */
 
 const jwt = require('jsonwebtoken');
+const { tokenPayload } = require('../utils/tokenFingerprint');
 const {
   User,
   PatientProfile,
@@ -28,9 +29,9 @@ const {
  */
 const generateToken = (user) => {
   return jwt.sign(
-    { id: user.id, email: user.email, role: user.role },
+    tokenPayload(user),
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    { expiresIn: process.env.JWT_EXPIRES_IN || '7d', algorithm: 'HS256' }
   );
 };
 

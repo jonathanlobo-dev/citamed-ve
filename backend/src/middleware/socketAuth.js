@@ -30,7 +30,7 @@ const socketAuthMiddleware = async (socket, next) => {
     }
 
     // Verificar token JWT
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
 
     // Validar payload del token
     if (!decoded.id || !decoded.role) {

@@ -13,6 +13,12 @@ const isProduction = process.env.NODE_ENV === 'production';
 /**
  * Orígenes permitidos según entorno
  */
+/**
+ * Vistas previas de Cloudflare Pages del propio proyecto (dev.citamed-ve.pages.dev, <hash>.citamed-ve.pages.dev).
+ * Antes se aceptaba cualquier *.pages.dev o *.netlify.app, es decir, sitios de cualquier persona.
+ */
+const isOwnPreviewOrigin = (origin) => /^https:\/\/([a-z0-9-]+\.)?citamed-ve\.pages\.dev$/.test(origin);
+
 const getAllowedOrigins = () => {
   const baseOrigins = [
     'https://citamed.ve',
@@ -58,7 +64,7 @@ const originVerifier = (origin, callback) => {
   }
 
   // Permitir cualquier subdominio de Cloudflare Pages o Netlify
-  if (origin.endsWith('.pages.dev') || origin.endsWith('.netlify.app')) {
+  if (isOwnPreviewOrigin(origin)) {
     return callback(null, true);
   }
 
@@ -131,7 +137,7 @@ const strictCorsOptions = {
       return callback(new Error('Origin required for this endpoint'));
     }
 
-    if (allowedOrigins.includes(origin) || origin.endsWith('.pages.dev') || origin.endsWith('.netlify.app')) {
+    if (allowedOrigins.includes(origin) || isOwnPreviewOrigin(origin)) {
       return callback(null, true);
     }
 
@@ -151,5 +157,6 @@ module.exports = {
   corsOptions,
   strictCorsOptions,
   getAllowedOrigins,
-  getOriginsList
+  getOriginsList,
+  isOwnPreviewOrigin
 };

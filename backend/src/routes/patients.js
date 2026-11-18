@@ -9,6 +9,8 @@ const express = require('express');
 const router = express.Router();
 const patientProfileController = require('../controllers/patientProfileController');
 const { verifyToken, requireRole } = require('../middleware/auth');
+const { requireDoctorPatientRelationship } = require('../middleware/ownership');
+
 const {
   validateUpdateProfile,
   validateEmergencyContact,
@@ -62,6 +64,7 @@ router.get(
   verifyToken,
   requireRole(['doctor', 'admin']),
   validatePatientId,
+  requireDoctorPatientRelationship,
   patientProfileController.getProfile
 );
 
@@ -71,6 +74,7 @@ router.get(
   verifyToken,
   requireRole(['doctor', 'admin']),
   validatePatientId,
+  requireDoctorPatientRelationship,
   patientProfileController.getMedicalSummary
 );
 

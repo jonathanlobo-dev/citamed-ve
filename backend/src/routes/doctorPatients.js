@@ -8,6 +8,7 @@ const router = express.Router();
 const doctorPatientsController = require('../controllers/doctorPatientsController');
 const { authenticateToken } = require('../middleware/auth');
 const { requireRoles } = require('../middleware/rbacMiddleware');
+const { requireVerifiedDoctor } = require('../middleware/doctorVerification');
 
 // Lista de pacientes con los que el médico tiene o tuvo citas
 router.get(
@@ -22,6 +23,7 @@ router.post(
   '/import',
   authenticateToken,
   requireRoles(['doctor', 'admin']),
+  requireVerifiedDoctor,
   doctorPatientsController.importPatients.bind(doctorPatientsController)
 );
 
@@ -38,6 +40,7 @@ router.post(
   '/:patientId/allergies',
   authenticateToken,
   requireRoles(['doctor', 'admin']),
+  requireVerifiedDoctor,
   doctorPatientsController.addPatientAllergy.bind(doctorPatientsController)
 );
 
@@ -46,6 +49,7 @@ router.post(
   '/:patientId/conditions',
   authenticateToken,
   requireRoles(['doctor', 'admin']),
+  requireVerifiedDoctor,
   doctorPatientsController.addPatientCondition.bind(doctorPatientsController)
 );
 

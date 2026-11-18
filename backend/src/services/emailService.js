@@ -2,6 +2,9 @@
 // CITAMED.VE - M01 Sub-Partida 2.3 Verificación Identidad
 // Servicio de envío de emails con SendGrid
 
+// Escapa texto del usuario antes de meterlo en el HTML de un correo
+const escapeHtml = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 const sgMail = require('@sendgrid/mail');
 const { logger } = require('../config/logger');
 
@@ -66,7 +69,7 @@ function generateVerificationEmailHTML({ code, userName, token, expiryHours }) {
           <tr>
             <td style="padding: 40px;">
               <h2 style="margin: 0 0 20px; color: #1e293b; font-size: 24px; font-weight: 600;">
-                ¡Hola${userName ? `, ${userName}` : ''}!
+                ¡Hola${userName ? `, ${escapeHtml(userName)}` : ''}!
               </h2>
 
               <p style="margin: 0 0 24px; color: #475569; font-size: 16px; line-height: 1.6;">
@@ -238,7 +241,7 @@ const emailService = {
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
             <h1 style="color: #0ea5e9;">¡Bienvenido a CITAMED.VE!</h1>
-            <p>Hola ${userName},</p>
+            <p>Hola ${escapeHtml(userName)},</p>
             <p>Tu cuenta ha sido verificada exitosamente.</p>
             <p>${roleMessages[role] || 'Ya puedes comenzar a usar nuestra plataforma.'}</p>
             <p>

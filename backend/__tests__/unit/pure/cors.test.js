@@ -35,7 +35,7 @@ describe('producción (sin ALLOWED_ORIGINS: los dominios propios deben funcionar
     'https://app.citamedve.app',
     'https://citamed-ve.pages.dev',
     'https://dev.citamed-ve.pages.dev',
-    'https://cualquier-rama.pages.dev'
+    'https://a1b2c3d4.citamed-ve.pages.dev'
   ])('permite %s', async (origin) => {
     expect(await verify(cors, origin)).toBe('permitido');
   });
@@ -45,7 +45,11 @@ describe('producción (sin ALLOWED_ORIGINS: los dominios propios deben funcionar
     'https://citamedve.app.evil.com',
     'http://citamedve.app',
     'https://evilcitamedve.app',
-    'http://localhost:5173'
+    'http://localhost:5173',
+    'https://cualquier-rama.pages.dev',
+    'https://otro-proyecto.netlify.app',
+    'https://citamed-ve.pages.dev.evil.com',
+    'https://evil-citamed-ve.pages.dev'
   ])('bloquea %s', async (origin) => {
     expect(await verify(cors, origin)).toBe('bloqueado');
   });

@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { User } = require('../models/index');
+const { passwordFingerprint } = require('../utils/tokenFingerprint');
+const { stripForPatient } = require('../utils/stripPrivateFields');
 
 const authMiddleware = async (req, res, next) => {
   try {
@@ -12,7 +14,7 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
     const user = await User.findByPk(decoded.id);
 
     if (!user) {
@@ -20,6 +22,22 @@ const authMiddleware = async (req, res, next) => {
         success: false,
         message: 'Usuario no encontrado'
       });
+    }
+
+    // La clave cambió después de emitir este token (o es un token antiguo sin huella): sesión vencida
+    if (!decoded.pwv || decoded.pwv !== passwordFingerprint(user)) {
+      return res.status(401).json({
+        success: false,
+        code: 'SESSION_EXPIRED',
+        message: 'Tu sesión venció. Inicia sesión de nuevo.'
+      });
+    }
+
+    // Notas privadas del médico: nunca en una respuesta a un paciente
+    if (user.role === 'patient' && !res.__patientStrip) {
+      const originalJson = res.json.bind(res);
+      res.json = (body) => originalJson(stripForPatient(body));
+      res.__patientStrip = true;
     }
 
     if (user.isActive === false) {

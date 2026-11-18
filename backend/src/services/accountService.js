@@ -4,6 +4,9 @@
  * solicitudes de cambio de datos protegidos (nombre, cédula, MPPS) que decide un administrador.
  */
 
+const jwt = require('jsonwebtoken');
+const { tokenPayload } = require('../utils/tokenFingerprint');
+const escapeHtml = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const { Op } = require('sequelize');
 const { sequelize, User, DoctorProfile, PatientProfile, VerificationToken, ProfileChangeRequest } = require('../models');
 const emailService = require('./emailService');
@@ -151,7 +154,7 @@ const accountService = {
       await emailService.sendTransactional({
         to: oldEmail,
         subject: 'El correo de tu cuenta CitaMed fue cambiado',
-        html: `<p>Hola ${user.firstName || ''},</p><p>El correo de tu cuenta CitaMed cambió a <strong>${newEmail}</strong>.</p><p>Si no fuiste tú, escríbenos de inmediato para proteger tu cuenta.</p>`
+        html: `<p>Hola ${escapeHtml(user.firstName)},</p><p>El correo de tu cuenta CitaMed cambió a <strong>${escapeHtml(newEmail)}</strong>.</p><p>Si no fuiste tú, escríbenos de inmediato para proteger tu cuenta.</p>`
       });
     } catch (error) {
       logger.error('No se pudo avisar al correo anterior', { userId, error: error.message });
@@ -198,7 +201,12 @@ const accountService = {
       entityType: 'user',
       entityId: userId
     });
-    return { changed: true };
+    // Los tokens anteriores quedan vencidos (cambió la huella de la clave); este dispositivo recibe uno nuevo
+    const token = jwt.sign(tokenPayload(user), process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+      algorithm: 'HS256'
+    });
+    return { changed: true, token };
   },
 
   // ============================================================

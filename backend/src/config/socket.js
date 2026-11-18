@@ -34,12 +34,16 @@ const notificationsHandler = require('../socket/handlers/notifications');
 // Configuración desde variables de entorno
 const isProduction = process.env.NODE_ENV === 'production';
 
+const { isOwnPreviewOrigin } = require('./cors.config');
+
 const getCorsOrigin = () => {
   const allowed = [
     'https://citamed.ve',
     'https://www.citamed.ve',
     'https://citamedve.netlify.app',
-    'https://citamed-ve.pages.dev'
+    'https://citamed-ve.pages.dev',
+    'https://citamedve.app',
+    'https://app.citamedve.app'
   ];
   if (process.env.SOCKET_CORS_ORIGIN) {
     allowed.push(...process.env.SOCKET_CORS_ORIGIN.split(',').map(s => s.trim()));
@@ -47,7 +51,7 @@ const getCorsOrigin = () => {
 
   return (origin, callback) => {
     if (!origin) return callback(null, true);
-    if (allowed.includes(origin) || origin.endsWith('.pages.dev') || origin.endsWith('.netlify.app')) {
+    if (allowed.includes(origin) || isOwnPreviewOrigin(origin)) {
       return callback(null, true);
     }
     if (!isProduction && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {

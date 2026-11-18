@@ -8,7 +8,9 @@
 const express = require('express');
 const router = express.Router();
 const clinicsController = require('../controllers/clinicsController');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireRole } = require('../middleware/auth');
+const { requireClinicOwner } = require('../middleware/ownership');
+
 
 // ═══════════════════════════════════════════════════════════════
 // RUTAS PUBLICAS
@@ -53,43 +55,43 @@ router.put('/:id', authenticateToken, clinicsController.updateClinic);
 // ═══════════════════════════════════════════════════════════════
 
 // Agregar sede a clinica
-router.post('/:clinicId/locations', authenticateToken, clinicsController.addLocation);
+router.post('/:clinicId/locations', authenticateToken, requireClinicOwner, clinicsController.addLocation);
 
 // Actualizar sede
-router.put('/:clinicId/locations/:locationId', authenticateToken, clinicsController.updateLocation);
+router.put('/:clinicId/locations/:locationId', authenticateToken, requireClinicOwner, clinicsController.updateLocation);
 
 // ═══════════════════════════════════════════════════════════════
 // MEDICOS - PROTEGIDAS
 // ═══════════════════════════════════════════════════════════════
 
 // Asignar medico a clinica/sede
-router.post('/:clinicId/doctors', authenticateToken, clinicsController.assignDoctor);
+router.post('/:clinicId/doctors', authenticateToken, requireClinicOwner, clinicsController.assignDoctor);
 
 // Remover medico de clinica/sede
-router.delete('/:clinicId/doctors/:doctorId', authenticateToken, clinicsController.removeDoctor);
+router.delete('/:clinicId/doctors/:doctorId', authenticateToken, requireClinicOwner, clinicsController.removeDoctor);
 
 // ═══════════════════════════════════════════════════════════════
 // SERVICIOS - PROTEGIDAS
 // ═══════════════════════════════════════════════════════════════
 
 // Agregar servicio a clinica
-router.post('/:clinicId/services', authenticateToken, clinicsController.addService);
+router.post('/:clinicId/services', authenticateToken, requireClinicOwner, clinicsController.addService);
 
 // ═══════════════════════════════════════════════════════════════
 // IMAGENES - PROTEGIDAS
 // ═══════════════════════════════════════════════════════════════
 
 // Agregar imagen a clinica
-router.post('/:clinicId/images', authenticateToken, clinicsController.addImage);
+router.post('/:clinicId/images', authenticateToken, requireClinicOwner, clinicsController.addImage);
 
 // Eliminar imagen
-router.delete('/:clinicId/images/:imageId', authenticateToken, clinicsController.deleteImage);
+router.delete('/:clinicId/images/:imageId', authenticateToken, requireClinicOwner, clinicsController.deleteImage);
 
 // ═══════════════════════════════════════════════════════════════
 // VERIFICACION (ADMIN) - PROTEGIDAS
 // ═══════════════════════════════════════════════════════════════
 
 // Verificar clinica (solo admin)
-router.post('/:id/verify', authenticateToken, clinicsController.verifyClinic);
+router.post('/:id/verify', authenticateToken, requireRole(['admin']), clinicsController.verifyClinic);
 
 module.exports = router;
