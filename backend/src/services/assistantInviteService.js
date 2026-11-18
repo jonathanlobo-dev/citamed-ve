@@ -14,7 +14,7 @@ const auditService = require('./auditService');
 const passwordRecoveryService = require('./passwordRecoveryService');
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const FRONTEND = () => (process.env.FRONTEND_URL || 'https://citamed-ve.pages.dev').replace(/\/$/, '');
+const FRONTEND = () => (process.env.FRONTEND_URL || 'https://app.citamedve.app').replace(/\/$/, '');
 const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
 const escapeHtml = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

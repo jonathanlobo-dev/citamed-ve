@@ -20,11 +20,11 @@ describe('producción (rama master)', () => {
     expect(f.ai).toBe(true);
     expect(f.superadmin).toBe(true);
     expect(f.pwa).toBe(false);
-    expect(f.assistant).toBe(false);
-    expect(f.publicPage).toBe(false);
-    expect(f.waConfirm).toBe(false);
+    expect(f.assistant).toBe(true);
+    expect(f.publicPage).toBe(true);
+    expect(f.waConfirm).toBe(true);
     expect(f.aiPatientInstructions).toBe(false);
-    expect(f.excelImport).toBe(false);
+    expect(f.excelImport).toBe(true);
   });
 });
 

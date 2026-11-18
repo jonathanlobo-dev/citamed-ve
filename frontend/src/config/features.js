@@ -13,11 +13,11 @@ const RELEASED_IN_PRODUCTION = {
   AI: true, // IA en el Espacio Clínico (liberada)
   SUPERADMIN: true, // Panel de superadministración (liberado)
   PWA: false, // App instalable (en construcción)
-  ASSISTANT: false, // Asistente del médico (en construcción)
-  PUBLIC_PAGE: false, // Página pública del médico con enlace propio (en construcción)
-  WA_CONFIRM: false, // Confirmar o cancelar cita desde WhatsApp (en construcción)
+  ASSISTANT: true, // Asistente del médico (liberada)
+  PUBLIC_PAGE: true, // Página pública del médico con enlace propio (liberada)
+  WA_CONFIRM: true, // Confirmar o cancelar cita desde WhatsApp (liberada)
   AI_PATIENT_INSTRUCTIONS: false, // Indicaciones para el paciente con IA (mejora futura)
-  EXCEL_IMPORT: false // Importar pacientes desde Excel (en construcción)
+  EXCEL_IMPORT: true // Importar pacientes desde Excel (liberada)
 };
 
 const branch = typeof __BUILD_BRANCH__ !== 'undefined' ? __BUILD_BRANCH__ : 'local';

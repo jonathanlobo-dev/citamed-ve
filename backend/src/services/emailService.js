@@ -20,7 +20,7 @@ const CONFIG = {
   fromEmail: process.env.SENDGRID_FROM_EMAIL || 'noreply@citamed.ve',
   fromName: process.env.SENDGRID_FROM_NAME || 'CITAMED.VE',
   templateId: process.env.SENDGRID_TEMPLATE_ID_VERIFICATION || null,
-  baseUrl: process.env.FRONTEND_URL || 'https://citamed.ve',
+  baseUrl: process.env.FRONTEND_URL || 'https://app.citamedve.app',
   devMode: process.env.VERIFICATION_DEV_MODE === 'true'
 };
 
