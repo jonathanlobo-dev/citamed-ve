@@ -110,11 +110,11 @@ const AuditLogsPage = () => {
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 {/* Botón estadísticas */}
                 <Link
                   to="/admin/audit/stats"
-                  className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   <BarChart2 className="w-4 h-4" />
                   Estadísticas
@@ -193,7 +193,7 @@ const AuditLogsPage = () => {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Acciones únicas</span>
-                    <span className="font-semibold text-gray-900">{availableActions.length}</span>
+                    <span className="font-semibold text-gray-900">{availableActions?.length ?? 0}</span>
                   </div>
                 </div>
               </div>

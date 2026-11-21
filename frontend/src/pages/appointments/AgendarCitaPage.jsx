@@ -306,7 +306,7 @@ const AgendarCitaPage = () => {
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
   ];
 
-  const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+  const dayNames = ['D', 'L', 'Ma', 'Mi', 'J', 'V', 'S'];
 
   if (loading) {
     return (
@@ -462,16 +462,16 @@ const AgendarCitaPage = () => {
           </button>
 
           <div className="flex items-center gap-4">
-            <div className="w-20 h-20 bg-gradient-to-br from-primary to-primary-dark rounded-full flex items-center justify-center text-white text-2xl font-bold">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 bg-gradient-to-br from-primary to-primary-dark rounded-full flex items-center justify-center text-white text-2xl font-bold">
               {doctor?.user?.firstName?.[0]}{doctor?.user?.lastName?.[0]}
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
                 Solicitar Cita con Dr(a). {doctor?.user?.firstName} {doctor?.user?.lastName}
               </h1>
               <p className="text-gray-600">{doctor?.specialty?.name || 'Medicina General'}</p>
               <div className="flex items-center gap-4 mt-2">
-                {doctor?.averageRating && (
+                {Number(doctor?.averageRating) > 0 && (
                   <div className="flex items-center text-yellow-500">
                     <Star className="w-4 h-4 fill-current" />
                     <span className="ml-1 text-gray-600">{doctor.averageRating}</span>
@@ -648,7 +648,7 @@ const AgendarCitaPage = () => {
                       ) : (
                         <>
                           <Check className="w-5 h-5" />
-                          Enviar Solicitud de Cita
+                          {rescheduleId ? 'Solicitar reprogramación' : 'Enviar Solicitud de Cita'}
                         </>
                       )}
                     </button>

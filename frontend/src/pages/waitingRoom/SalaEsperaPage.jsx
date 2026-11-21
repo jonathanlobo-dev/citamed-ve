@@ -148,7 +148,7 @@ const SalaEsperaPage = () => {
                 No tienes citas para hoy
               </h2>
               <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                Cuando tengas una cita programada para hoy, podras entrar a la sala de espera virtual y ver tu posicion en tiempo real.
+                Cuando tengas una cita programada para hoy, podrás entrar a la sala de espera virtual y ver tu posición en tiempo real.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">

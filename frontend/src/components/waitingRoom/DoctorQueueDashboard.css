@@ -698,3 +698,25 @@
   background: #0f766e;
 }
 
+
+/* Celular: el título arriba y los botones en su propia fila, sin scroll horizontal (QA MED-UX-003) */
+.dashboard-header {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 640px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: 20px;
+  }
+  .header-actions > * {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}

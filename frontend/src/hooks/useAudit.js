@@ -198,7 +198,9 @@ const useAudit = (options = {}) => {
     try {
       const response = await auditService.getAvailableActions();
       if (response.success) {
-        setAvailableActions(response.data.actions || []);
+        // El servidor las agrupa por tipo ({ auth: [...], user: [...] }); el filtro usa una lista simple
+        const raw = response.data?.actions;
+        setAvailableActions(Array.isArray(raw) ? raw : Object.values(raw || {}).flat());
       }
       return response;
     } catch (err) {

@@ -383,7 +383,7 @@ function DirectorioMedicoPage() {
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Buscar por nombre, especialidad o ciudad..."
+                      placeholder="Nombre, especialidad o ciudad"
                       className="w-full pl-14 pr-4 py-5 text-lg rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 bg-transparent"
                     />
                   </div>

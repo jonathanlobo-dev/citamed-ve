@@ -40,6 +40,12 @@ import { shareRecipe, prefetchRecipePdf } from '../../utils/shareRecipe';
 import toast from 'react-hot-toast';
 import './MisCitasPage.css';
 
+// La posición en la cola solo tiene sentido el día de la cita (QA PAC-UX-005)
+const isTodayCaracas = (ymd) => {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Caracas' }).format(new Date());
+  return String(ymd || '').split('T')[0] === today;
+};
+
 const MisCitasPage = () => {
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
@@ -408,7 +414,7 @@ const MisCitasPage = () => {
             Mis Citas
           </h1>
           <p className="text-gray-600 text-lg">
-            Gestiona y visualiza tus citas medicas
+            Gestiona y visualiza tus citas médicas
           </p>
         </motion.div>
 
@@ -416,7 +422,7 @@ const MisCitasPage = () => {
         <div className="flex flex-wrap gap-2 mb-6">
           {[
             { key: 'all', label: 'Todas', count: appointments.length },
-            { key: 'upcoming', label: 'Proximas', count: filterAppointments(appointments, 'upcoming').length },
+            { key: 'upcoming', label: 'Próximas', count: filterAppointments(appointments, 'upcoming').length },
             { key: 'past', label: 'Pasadas', count: filterAppointments(appointments, 'past').length },
             { key: 'cancelled', label: 'Canceladas', count: filterAppointments(appointments, 'cancelled').length }
           ].map(({ key, label, count }) => (
@@ -559,7 +565,7 @@ const MisCitasPage = () => {
                     </div>
                     <div className="flex items-center gap-2 text-gray-600">
                       <Clock className="w-5 h-5 text-gray-400" />
-                      <span>{appointment.appointmentTime}</span>
+                      <span>{String(appointment.appointmentTime || '').slice(0, 5)}</span>
                     </div>
                     {(appointment.clinic || appointment.clinicLocation || appointment.locationAddress) && (
                       <div className="flex items-center gap-2 text-gray-600">
@@ -574,12 +580,12 @@ const MisCitasPage = () => {
                   </div>
 
                   {/* Queue Position Info */}
-                  {appointment.queuePosition && !['cancelled', 'cancelled_patient', 'cancelled_doctor', 'rescheduled', 'completed', 'no_show'].includes(appointment.status) && (
+                  {appointment.queuePosition && isTodayCaracas(appointment.appointmentDate) && !['cancelled', 'cancelled_patient', 'cancelled_doctor', 'rescheduled', 'completed', 'no_show'].includes(appointment.status) && (
                     <div className="mt-4 flex items-center gap-4 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg px-4 py-3 border border-indigo-100">
                       <div className="flex items-center gap-2">
                         <Users className="w-5 h-5 text-indigo-600" />
                         <span className="text-sm text-indigo-800">
-                          <strong>Posicion #{appointment.queuePosition}</strong>
+                          <strong>Posición #{appointment.queuePosition}</strong>
                           {appointment.queuePosition === 1 && ' - Primero en la cola'}
                         </span>
                       </div>

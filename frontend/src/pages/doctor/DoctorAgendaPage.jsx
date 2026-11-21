@@ -27,6 +27,7 @@ import { shareRecipe, prefetchRecipePdf } from '../../utils/shareRecipe';
 import SideDrawer from '../../components/common/SideDrawer/SideDrawer';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
+import { appointmentStatusLabel, shortTime, ymdToDmy } from '../../utils/appointmentLabels';
 
 // Orden de display: Lunes → Domingo (dayOfWeek: 0=Domingo, 1=Lunes, ..., 6=Sábado)
 const DISPLAY_DAYS = [1, 2, 3, 4, 5, 6, 0];
@@ -1568,11 +1569,11 @@ function DoctorAgendaPage() {
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
                   <span className="text-gray-500 block">Fecha:</span>
-                  <span className="font-medium text-gray-900">{drawerAppointment.appointmentDate}</span>
+                  <span className="font-medium text-gray-900">{ymdToDmy(drawerAppointment.appointmentDate)}</span>
                 </div>
                 <div>
                   <span className="text-gray-500 block">Hora:</span>
-                  <span className="font-medium text-gray-900">{drawerAppointment.appointmentTime} ({drawerAppointment.duration || 30} min)</span>
+                  <span className="font-medium text-gray-900">{shortTime(drawerAppointment.appointmentTime)} ({drawerAppointment.duration || 30} min)</span>
                 </div>
                 <div>
                   <span className="text-gray-500 block">Modalidad:</span>
@@ -1580,8 +1581,8 @@ function DoctorAgendaPage() {
                 </div>
                 <div>
                   <span className="text-gray-500 block">Estado:</span>
-                  <span className="font-medium text-gray-900 capitalize flex items-center gap-1">
-                    {drawerAppointment.status}
+                  <span className="font-medium text-gray-900 flex items-center gap-1">
+                    {appointmentStatusLabel(drawerAppointment.status)}
                     {drawerAppointment.confirmedVia === 'whatsapp' && (
                       <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-[10px] font-bold">
                         Vía WhatsApp
