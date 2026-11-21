@@ -6,7 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 import { FEATURES } from './config/features';
 import LandingPage from './pages/LandingPage';
-import { isAppHost, systemRedirectFor } from './config/appUrl';
+import { isAppHost, isLandingHost, systemRedirectFor } from './config/appUrl';
 import AccountBanners from './components/common/AccountBanners';
 import LoginPage from './pages/LoginPage';
 import RegistroPage from './pages/RegistroPage';
@@ -578,13 +578,25 @@ function AppRoutes() {
   );
 }
 
+// La presentación (citamedve.app) no maneja sesiones: el sistema vive en app.citamedve.app.
+// Antes del 21/11 citamedve.app era el sistema completo, así que se borra cualquier sesión vieja
+// guardada en ese dominio (si no, la portada seguía mostrando avisos de una cuenta ya cerrada).
+if (typeof window !== 'undefined' && isLandingHost()) {
+  try {
+    ['citamed_token', 'citamed_user', 'citamed_acting_doctor_id', 'citamed_acting_doctor_permissions']
+      .forEach((k) => window.localStorage.removeItem(k));
+  } catch {
+    // Navegador sin acceso a localStorage: no hay nada que limpiar
+  }
+}
+
 function App() {
   return (
     <AuthProvider>
       <PermissionsProvider>
         <Router>
           <div className="app">
-            <AccountBanners />
+            {!isLandingHost() && <AccountBanners />}
             <AppRoutes />
 
           </div>
