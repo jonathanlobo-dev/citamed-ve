@@ -12,10 +12,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { goToHome } from '../config/appUrl';
 import { motion } from 'framer-motion';
-import { User, Stethoscope, Building2, ArrowLeft } from 'lucide-react';
+import { User, Stethoscope, ArrowLeft } from 'lucide-react';
 import { PatientWizard } from '../components/auth/PatientWizard';
 import { DoctorWizard } from '../components/auth/DoctorWizard';
-import { ProviderWizard } from '../components/auth/ProviderWizard';
 
 const ROLES = [
   {
@@ -47,23 +46,7 @@ const ROLES = [
       'Perfil profesional verificado',
       'Gestión de agenda',
       'Historial de pacientes',
-      'Teleconsultas'
-    ]
-  },
-  {
-    id: 'provider',
-    name: 'Proveedor',
-    icon: Building2,
-    color: 'text-orange-600',
-    bgColor: 'bg-orange-50',
-    borderColor: 'border-orange-200',
-    hoverBorder: 'hover:border-orange-400',
-    description: 'Ofrece servicios y productos médicos',
-    features: [
-      'Catálogo de servicios',
-      'Múltiples sucursales',
-      'Gestión de pedidos',
-      'Reportes y estadísticas'
+      'Récipes y documentos con QR'
     ]
   }
 ];
@@ -84,7 +67,7 @@ function RoleSelector({ onSelect }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 max-w-3xl mx-auto gap-6">
         {ROLES.map((role, index) => {
           const IconComponent = role.icon;
           return (
@@ -160,7 +143,7 @@ function RegistroPage() {
   // Verificar si viene con rol predefinido en URL
   useEffect(() => {
     const roleFromURL = searchParams.get('role');
-    if (roleFromURL && ['patient', 'doctor', 'provider'].includes(roleFromURL)) {
+    if (roleFromURL && ['patient', 'doctor'].includes(roleFromURL)) {
       setSelectedRole(roleFromURL);
     }
   }, [searchParams]);
@@ -185,8 +168,6 @@ function RegistroPage() {
         return <PatientWizard />;
       case 'doctor':
         return <DoctorWizard />;
-      case 'provider':
-        return <ProviderWizard />;
       default:
         return null;
     }

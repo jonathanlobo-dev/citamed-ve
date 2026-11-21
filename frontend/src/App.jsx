@@ -1,12 +1,12 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { PermissionsProvider } from './hooks/usePermissions';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import { FEATURES } from './config/features';
 import LandingPage from './pages/LandingPage';
-import { isAppHost } from './config/appUrl';
+import { isAppHost, systemRedirectFor } from './config/appUrl';
 import AccountBanners from './components/common/AccountBanners';
 import LoginPage from './pages/LoginPage';
 import RegistroPage from './pages/RegistroPage';
@@ -76,6 +76,13 @@ function VerificarRecipeRedirect() {
 }
 
 function AppRoutes() {
+  const location = useLocation();
+  // citamedve.app es solo la presentación: cualquier ruta del sistema se abre en app.citamedve.app
+  const redirect = systemRedirectFor(location.pathname, location.search, location.hash);
+  if (redirect) {
+    window.location.replace(redirect);
+    return <PageLoader />;
+  }
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>

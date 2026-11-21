@@ -393,8 +393,19 @@ router.post("/register/doctor",
  *       400:
  *         description: Error de validación
  */
+// El registro de proveedores está cerrado por ahora; se reabre con PROVIDER_REGISTRATION_ENABLED=true
+function providerRegistrationOpen(req, res, next) {
+  if (process.env.PROVIDER_REGISTRATION_ENABLED === 'true') return next();
+  return res.status(403).json({
+    success: false,
+    code: 'PROVIDER_REGISTRATION_CLOSED',
+    message: 'El registro de proveedores no está disponible por ahora.'
+  });
+}
+
 router.post("/register/provider",
   requireTurnstile,
+  providerRegistrationOpen,
   providerRegisterValidator,
   auditLog({ action: 'user.created', resource: 'user', severity: 'info', includeBody: false }),
   authController.registerProvider

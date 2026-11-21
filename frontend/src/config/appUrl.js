@@ -67,3 +67,28 @@ export function goToApp(navigate, path) {
   }
   navigate(path);
 }
+
+/** Dirección completa de una ruta del sistema (para enlaces <a> desde la presentación) */
+export function appHref(path) {
+  const origin = appOrigin();
+  return origin && window.location.origin !== origin ? `${origin}${path}` : path;
+}
+
+/** true si el sitio se abre desde la página de presentación (citamedve.app) */
+export function isLandingHost() {
+  const landing = landingOrigin();
+  return !!landing && window.location.origin === landing;
+}
+
+// Rutas que viven en la presentación. Todo lo demás pertenece al sistema (app.)
+const LANDING_PATHS = ['/', '/terminos', '/privacidad', '/codigo-etica'];
+
+/**
+ * Si estamos en la presentación y la ruta es del sistema, devuelve la dirección en app.
+ * Los enlaces viejos (QR de récipes, /dr/, /cita/) siguen funcionando: solo cambian de dominio.
+ */
+export function systemRedirectFor(pathname, search = '', hash = '') {
+  if (!isLandingHost() || LANDING_PATHS.includes(pathname)) return null;
+  const origin = appOrigin();
+  return origin ? `${origin}${pathname}${search}${hash}` : null;
+}

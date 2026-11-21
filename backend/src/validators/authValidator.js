@@ -13,7 +13,8 @@ const { body } = require('express-validator');
  * Roles permitidos en el sistema
  */
 // Roles que se pueden elegir al registrarse. 'admin' nunca: los administradores se crean a mano.
-const ALLOWED_ROLES = ['patient', 'doctor', 'provider'];
+// Proveedores fuera del registro público por ahora (21/11): solo médicos y pacientes
+const ALLOWED_ROLES = ['patient', 'doctor'];
 
 /**
  * Regex para validaciones

@@ -99,3 +99,30 @@ describe('VITE_LANDING_URL explícita', () => {
     expect(mod.landingOrigin()).toBe('');
   });
 });
+
+describe('citamedve.app es solo la presentación', () => {
+  test('las rutas del sistema se mandan a app., conservando la búsqueda', async () => {
+    const { mod } = await load({ href: 'https://citamedve.app/login', env: APP });
+    expect(mod.isLandingHost()).toBe(true);
+    expect(mod.systemRedirectFor('/login')).toBe('https://app.citamedve.app/login');
+    expect(mod.systemRedirectFor('/registro', '?role=doctor')).toBe('https://app.citamedve.app/registro?role=doctor');
+    expect(mod.systemRedirectFor('/dr/maria-gonzalez')).toBe('https://app.citamedve.app/dr/maria-gonzalez');
+    expect(mod.systemRedirectFor('/verificar/ABC123')).toBe('https://app.citamedve.app/verificar/ABC123');
+  });
+  test('la portada y las páginas legales se quedan en la presentación', async () => {
+    const { mod } = await load({ href: 'https://citamedve.app/', env: APP });
+    ['/', '/terminos', '/privacidad', '/codigo-etica'].forEach((p) => expect(mod.systemRedirectFor(p)).toBeNull());
+  });
+  test('los enlaces de la presentación apuntan a app.', async () => {
+    const { mod } = await load({ href: 'https://citamedve.app/', env: APP });
+    expect(mod.appHref('/login')).toBe('https://app.citamedve.app/login');
+  });
+  test('dentro de app. y en pruebas no se redirige nada', async () => {
+    let { mod } = await load({ href: 'https://app.citamedve.app/login', env: APP });
+    expect(mod.systemRedirectFor('/login')).toBeNull();
+    expect(mod.appHref('/login')).toBe('/login');
+    ({ mod } = await load({ href: 'https://dev.citamed-ve.pages.dev/login' }));
+    expect(mod.systemRedirectFor('/login')).toBeNull();
+    expect(mod.appHref('/login')).toBe('/login');
+  });
+});

@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
-import { FEATURES } from '../../../config/features';
+import { FEATURES, SHOW_UNBUILT_SECTIONS } from '../../../config/features';
 import Button from '../Button/button';
 import { LogOut, User, Calendar, Menu, X, Home, Grid, Stethoscope, Building2, Shield, HelpCircle, Search, MapPin, Star, Download, UserCog } from 'lucide-react';
 import usePwaInstall from '../../../hooks/usePwaInstall';
@@ -93,13 +93,13 @@ function Navbar() {
 
   const navItems = [
     { label: 'Inicio', action: () => goToHome(navigate), icon: <Home className="w-4 h-4" />, type: 'navigate' },
-    { label: 'Módulos', action: () => scrollToSection('modulos'), icon: <Grid className="w-4 h-4" />, type: 'scroll' },
+    { label: 'Módulos', action: () => scrollToSection('modulos'), icon: <Grid className="w-4 h-4" />, type: 'scroll', unbuilt: true },
     { label: 'Directorio Médico', action: () => navigate('/directorio'), icon: <Stethoscope className="w-4 h-4" />, type: 'navigate' },
-    { label: 'Clínicas', action: () => navigate('/clinicas'), icon: <Building2 className="w-4 h-4" />, type: 'navigate' },
-    { label: 'Seguros', action: () => navigate('/seguros'), icon: <Shield className="w-4 h-4" />, type: 'navigate' },
-    { label: 'Beneficios', action: () => scrollToSection('beneficios'), icon: null, type: 'scroll' },
-    { label: 'FAQ', action: () => scrollToSection('faq'), icon: <HelpCircle className="w-4 h-4" />, type: 'scroll' },
-  ];
+    { label: 'Clínicas', action: () => navigate('/clinicas'), icon: <Building2 className="w-4 h-4" />, type: 'navigate', unbuilt: true },
+    { label: 'Seguros', action: () => navigate('/seguros'), icon: <Shield className="w-4 h-4" />, type: 'navigate', unbuilt: true },
+    { label: 'Beneficios', action: () => scrollToSection('beneficios'), icon: null, type: 'scroll', unbuilt: true },
+    { label: 'FAQ', action: () => scrollToSection('faq'), icon: <HelpCircle className="w-4 h-4" />, type: 'scroll', unbuilt: true },
+  ].filter((item) => SHOW_UNBUILT_SECTIONS || !item.unbuilt);
 
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">

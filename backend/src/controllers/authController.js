@@ -22,10 +22,11 @@ const authController = {
       }
 
       // Nunca se permite crear administradores desde el registro público
-      if (!['doctor', 'patient', 'provider'].includes(role)) {
+      // Proveedores fuera del registro público por ahora: solo médicos y pacientes
+      if (!['doctor', 'patient'].includes(role)) {
         return res.status(400).json({
           success: false,
-          message: 'Rol inválido. Debe ser: doctor, patient o provider'
+          message: 'Rol inválido. Debe ser: doctor o patient'
         });
       }
 

@@ -1,472 +1,322 @@
 /**
- * LANDING PAGE - CITAMED.VE
- * Página principal profesional con explicación clara del ecosistema
+ * LandingPage - CITAMED.VE
+ * Página de presentación (citamedve.app). Solo cuenta qué es CitaMed y lleva al sistema
+ * (app.citamedve.app) para iniciar sesión, crear cuenta o buscar médico.
+ * Solo se muestra lo que ya existe en la plataforma.
  */
 
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import Navbar from '../components/common/Navbar/Navbar';
-import ModuleCard from '../components/common/ModuleCard/ModuleCard';
-import Button, { Icons } from '../components/common/Button/button';
-import { Calendar, Video, ShoppingCart, DollarSign, Users, Shield, TrendingUp, Heart, Search, Stethoscope } from 'lucide-react';
-import axios from 'axios';
-import { goToApp } from '../config/appUrl';
+import { useState } from 'react';
+import {
+  CalendarDays, Armchair, Stethoscope, FileCheck2, Wallet, Globe, UserCog,
+  MessageCircle, FileSpreadsheet, Search, HeartPulse, QrCode, ShieldCheck,
+  Lock, BadgeCheck, Smartphone, ChevronDown, ArrowRight, Menu, X, Mic, Sparkles
+} from 'lucide-react';
+import { appHref } from '../config/appUrl';
+
+const DOCTOR_FEATURES = [
+  { icon: CalendarDays, title: 'Agenda en orden', text: 'Vista por día, semana y mes, con varios consultorios y horarios que tú defines.' },
+  { icon: Armchair, title: 'Sala de espera en vivo', text: 'Ves quién llegó y en qué orden, y tus pacientes ven su turno desde el teléfono.' },
+  { icon: Stethoscope, title: 'Espacio Clínico', text: 'Nota SOAP, signos vitales, examen físico por sistemas y alertas de alergia en una sola pantalla.' },
+  { icon: Sparkles, title: 'Dicta y la IA redacta', text: 'Dicta por voz y la IA ordena la nota o el récipe. Tú revisas antes de guardar.' },
+  { icon: FileCheck2, title: 'Documentos con QR', text: 'Récipes, órdenes de exámenes, reposos, constancias e informes en PDF que cualquiera puede verificar.' },
+  { icon: Wallet, title: 'Cobros a tasa BCV', text: 'Registra pagos en dólares o bolívares con la tasa del día y entrega recibos verificables.' },
+  { icon: Globe, title: 'Tu página propia', text: 'Un enlace con tu perfil y botón para agendar, listo para compartir por WhatsApp o redes.' },
+  { icon: UserCog, title: 'Tu asistente incluida', text: 'Tu secretaria maneja agenda, sala de espera y cobros con su propia cuenta, sin ver la información clínica.' },
+  { icon: MessageCircle, title: 'Confirmación por WhatsApp', text: 'Envías un enlace y el paciente confirma o cancela sin iniciar sesión.' },
+  { icon: FileSpreadsheet, title: 'Trae tus pacientes', text: 'Importa tu lista desde Excel o CSV con vista previa antes de confirmar.' }
+];
+
+const PATIENT_FEATURES = [
+  { icon: Search, title: 'Encuentra a tu médico', text: 'Busca por especialidad y ciudad, y mira su perfil antes de agendar.' },
+  { icon: CalendarDays, title: 'Agenda en línea', text: 'Elige día y hora disponibles, sin llamadas ni esperas.' },
+  { icon: Armchair, title: 'Tu turno en el teléfono', text: 'Sigue la sala de espera en vivo y llega cuando te toca.' },
+  { icon: HeartPulse, title: 'Tu historia contigo', text: 'Consultas, récipes y documentos de tus médicos en un solo lugar.' },
+  { icon: QrCode, title: 'Récipes verificables', text: 'Cada récipe trae un código QR que la farmacia puede comprobar.' }
+];
+
+const STEPS = [
+  { n: '1', title: 'Crea tu cuenta', text: 'Nombre, correo y tu número MPPS. Toma menos de un minuto.' },
+  { n: '2', title: 'Prepara tu consultorio', text: 'Dirección, horarios, precio y foto, paso a paso desde tu panel.' },
+  { n: '3', title: 'Verificamos tu MPPS', text: 'Revisamos tus documentos para que tus pacientes sepan que eres médico.' },
+  { n: '4', title: 'Empieza a atender', text: 'Comparte tu enlace, recibe citas y atiende desde la computadora o el teléfono.' }
+];
+
+const TRUST = [
+  { icon: BadgeCheck, title: 'Médicos verificados', text: 'Cada médico pasa por la revisión de su número MPPS antes de atender.' },
+  { icon: Lock, title: 'Tu información es tuya', text: 'Cada médico ve solo las consultas que hizo contigo. Sus notas privadas nunca se comparten.' },
+  { icon: ShieldCheck, title: 'Documentos que no se alteran', text: 'Los documentos emitidos no se borran: solo se anulan, y el QR muestra su estado real.' }
+];
+
+const FAQ = [
+  { q: '¿Necesito instalar algo?', a: 'No. CitaMed funciona en el navegador de tu teléfono, tablet o computadora.' },
+  { q: '¿Cómo verifican a los médicos?', a: 'Al registrarse, el médico envía su número MPPS y sus documentos. Nuestro equipo los revisa antes de habilitar las consultas, los documentos y los cobros.' },
+  { q: '¿Quién puede ver mi historia médica?', a: 'Tú ves toda tu historia. Cada médico ve solo las consultas y documentos que hizo contigo, más los datos que tú compartas en tu perfil.' },
+  { q: '¿Puedo cobrar en bolívares?', a: 'Sí. Registras el pago en dólares o en bolívares y CitaMed calcula el monto con la tasa BCV del día.' },
+  { q: '¿Mi secretaria puede usarlo?', a: 'Sí. La invitas desde tu panel y tú decides qué puede hacer: agenda, sala de espera o cobros. Nunca ve la información clínica.' },
+  { q: '¿Cómo se comprueba un récipe?', a: 'Escaneando su código QR. Se abre una página de CitaMed que muestra si el récipe es válido o fue anulado.' }
+];
+
+function SectionTitle({ eyebrow, title, text }) {
+  return (
+    <div className="max-w-2xl mx-auto text-center mb-10">
+      {eyebrow && <p className="text-sm font-semibold text-teal-600 uppercase tracking-wider mb-2">{eyebrow}</p>}
+      <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900">{title}</h2>
+      {text && <p className="mt-3 text-slate-600 text-lg">{text}</p>}
+    </div>
+  );
+}
+
+function FeatureCard({ icon: Icon, title, text }) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-5 hover:border-teal-300 hover:shadow-md transition">
+      <span className="inline-flex p-2.5 rounded-xl bg-teal-50 text-teal-600 mb-3">
+        <Icon className="w-5 h-5" />
+      </span>
+      <h3 className="font-bold text-slate-900">{title}</h3>
+      <p className="text-sm text-slate-600 mt-1 leading-relaxed">{text}</p>
+    </div>
+  );
+}
+
+function HeroMockup() {
+  const rows = [
+    { time: '08:30', name: 'María G.', state: 'Atendida', cls: 'bg-slate-100 text-slate-500' },
+    { time: '09:00', name: 'Luis P.', state: 'En consulta', cls: 'bg-teal-100 text-teal-700' },
+    { time: '09:30', name: 'Ana R.', state: 'En sala', cls: 'bg-amber-100 text-amber-700' },
+    { time: '10:00', name: 'José M.', state: 'Confirmada', cls: 'bg-sky-100 text-sky-700' }
+  ];
+  return (
+    <div className="relative w-full max-w-md mx-auto" aria-hidden="true">
+      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-xs text-slate-500">Hoy</p>
+            <p className="font-bold text-slate-900">Tu agenda</p>
+          </div>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-teal-50 text-teal-700">4 citas</span>
+        </div>
+        <ul className="space-y-2">
+          {rows.map((r) => (
+            <li key={r.time} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+              <span className="text-sm font-mono text-slate-500 w-12">{r.time}</span>
+              <span className="flex-1 font-medium text-slate-800">{r.name}</span>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${r.cls}`}>{r.state}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="absolute -bottom-6 -left-4 sm:-left-10 bg-white rounded-2xl shadow-xl border border-slate-200 p-3 flex items-center gap-3">
+        <span className="p-2 rounded-xl bg-teal-600 text-white"><Mic className="w-4 h-4" /></span>
+        <div>
+          <p className="text-xs text-slate-500">Dictado</p>
+          <p className="text-sm font-semibold text-slate-800">Nota SOAP lista</p>
+        </div>
+      </div>
+      <div className="absolute -top-5 -right-3 sm:-right-8 bg-white rounded-2xl shadow-xl border border-slate-200 p-3 flex items-center gap-3">
+        <span className="p-2 rounded-xl bg-orange-500 text-white"><QrCode className="w-4 h-4" /></span>
+        <div>
+          <p className="text-xs text-slate-500">Récipe</p>
+          <p className="text-sm font-semibold text-slate-800">Verificable</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function LandingPage() {
-  const navigate = useNavigate();
-  const [specialties, setSpecialties] = useState([]);
-  const [selectedSpecialty, setSelectedSpecialty] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [openFaq, setOpenFaq] = useState(0);
 
-  useEffect(() => {
-    // Fetch specialties for the search
-    axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/specialties`)
-      .then(response => {
-        if (response.data.success) {
-          setSpecialties(response.data.data);
-        }
-      })
-      .catch(err => console.error('Error loading specialties:', err));
-  }, []);
+  const loginHref = appHref('/login');
+  const registerHref = appHref('/registro');
+  const doctorRegisterHref = appHref('/registro?role=doctor');
+  const patientRegisterHref = appHref('/registro?role=patient');
+  const directoryHref = appHref('/directorio');
 
-  const handleSearchDoctor = () => {
-    if (selectedSpecialty) {
-      navigate(`/directorio?specialty=${encodeURIComponent(selectedSpecialty)}`);
-    } else {
-      navigate('/directorio');
-    }
-  };
-
-  const modules = [
-    {
-      id: 'agendamiento',
-      icon: '📅',
-      title: 'Agendamiento Inteligente',
-      description: 'Sistema inteligente de turnos que elimina las esperas.',
-      gradient: 'linear-gradient(135deg, #0B2D4A 0%, #1565C0 100%)',
-      components: ['Turnos virtuales', 'Notificaciones', 'Historial', 'Recordatorios'],
-      status: 'active',
-      route: '/modulo/agendamiento'
-    },
-    {
-      id: 'telemedicina',
-      icon: '💻',
-      title: 'Telemedicina',
-      description: 'Consultas médicas desde cualquier lugar con videollamadas HD.',
-      gradient: 'linear-gradient(135deg, #00BFA6 0%, #00796B 100%)',
-      components: ['Videollamadas HD', 'Chat seguro', 'Archivos médicos', 'Cobro automático'],
-      status: 'soon',
-      route: '/modulo/telemedicina'
-    },
-    {
-      id: 'marketmed',
-      icon: '🛒',
-      title: 'MarketMed',
-      description: 'Marketplace médico. Médicos ganan 3% por referido.',
-      gradient: 'linear-gradient(135deg, #00BFA6 0%, #0B2D4A 100%)',
-      components: ['Recetas digitales', 'Laboratorios', 'Farmacias', 'Referidos 3%'],
-      status: 'soon',
-      route: '/modulo/marketmed'
-    },
-    {
-      id: 'citamed-paga',
-      icon: '💰',
-      title: 'Citamed Paga',
-      description: 'Escrow y financiamiento. Pago garantizado 100%.',
-      gradient: 'linear-gradient(135deg, #FB8C00 0%, #E65100 100%)',
-      components: ['Escrow seguro', 'Múltiples pagos', 'Financiamiento 0%', 'Pago garantizado'],
-      status: 'soon',
-      route: '/modulo/citamed-paga'
-    }
-  ];
-
-  const benefits = [
-    {
-      title: 'Para Pacientes',
-      icon: <Users className="w-12 h-12" />,
-      color: 'text-secondary',
-      items: [
-        'Agenda citas sin esperas',
-        'Consultas por videollamada',
-        'Compra medicamentos con descuento',
-        'Financia tratamientos sin interés'
-      ]
-    },
-    {
-      title: 'Para Médicos',
-      icon: <Heart className="w-12 h-12" />,
-      color: 'text-primary',
-      items: [
-        'Gestiona tu agenda inteligentemente',
-        'Cobra automáticamente',
-        'Genera ingresos pasivos (3%)',
-        'Pago garantizado 100%'
-      ]
-    },
-    {
-      title: 'Para Proveedores',
-      icon: <TrendingUp className="w-12 h-12" />,
-      color: 'text-accent',
-      items: [
-        'Accede a red de médicos',
-        'Recibe órdenes directas',
-        'Visibilidad en marketplace',
-        'Comisión competitiva'
-      ]
-    }
+  const nav = [
+    { href: '#medicos', label: 'Para médicos' },
+    { href: '#pacientes', label: 'Para pacientes' },
+    { href: '#como-funciona', label: 'Cómo funciona' },
+    { href: '#preguntas', label: 'Preguntas' }
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-
-      {/* HERO SECTION */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary via-primary-light to-secondary pt-20">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-white rounded-full blur-3xl animate-pulse-slow"></div>
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent rounded-full blur-3xl animate-pulse-slow"></div>
+    <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden">
+      {/* Cabecera */}
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-slate-200">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+          <a href="#inicio" className="text-2xl font-extrabold text-primary">
+            CITAMED<span className="text-accent">.VE</span>
+          </a>
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
+            {nav.map((n) => <a key={n.href} href={n.href} className="hover:text-teal-600">{n.label}</a>)}
+          </nav>
+          <div className="hidden md:flex items-center gap-2">
+            <a href={loginHref} className="text-sm font-semibold px-4 py-2 rounded-xl border border-slate-300 hover:border-teal-500">Iniciar sesión</a>
+            <a href={registerHref} className="text-sm font-semibold px-4 py-2 rounded-xl bg-primary text-white hover:opacity-90">Crear cuenta</a>
+          </div>
+          <button type="button" className="md:hidden p-2" onClick={() => setMenuOpen(!menuOpen)} aria-label="Abrir menú">
+            {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
-
-        <div className="container mx-auto px-4 lg:px-8 relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center max-w-5xl mx-auto"
-          >
-            <h1 className="text-6xl lg:text-8xl font-extrabold mb-6 text-white">
-              CITAMED<span className="text-accent">.VE</span>
-            </h1>
-            <p className="text-3xl lg:text-4xl mb-4 text-white font-bold">
-              El Ecosistema de Salud Digital para Venezuela
-            </p>
-            <p className="text-xl lg:text-2xl mb-12 text-white/80 max-w-3xl mx-auto leading-relaxed">
-              Plataforma integral que conecta pacientes, médicos y proveedores.
-              <span className="font-bold text-white"> Agendamiento inteligente, telemedicina, marketplace médico y sistema de pagos</span> todo en un solo lugar.
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-12">
-              <Button
-                variant="secondary"
-                size="xl"
-                icon={<Icons.User />}
-                onClick={() => goToApp(navigate, '/registro?role=patient')}
-              >
-                Soy Paciente
-              </Button>
-              <Button
-                variant="outline"
-                size="xl"
-                icon={<Icons.Doctor />}
-                onClick={() => goToApp(navigate, '/registro?role=doctor')}
-                className="bg-white hover:bg-gray-50 text-primary border-white"
-              >
-                Soy Médico
-              </Button>
-              <Button
-                variant="primary"
-                size="xl"
-                icon={<Icons.Store />}
-                onClick={() => goToApp(navigate, '/registro?role=provider')}
-                className="bg-accent hover:bg-accent-dark"
-              >
-                Soy Proveedor
-              </Button>
+        {menuOpen && (
+          <div className="md:hidden border-t border-slate-200 bg-white px-4 py-4 space-y-3">
+            {nav.map((n) => (
+              <a key={n.href} href={n.href} onClick={() => setMenuOpen(false)} className="block font-medium text-slate-700">{n.label}</a>
+            ))}
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <a href={loginHref} className="text-center text-sm font-semibold px-4 py-2.5 rounded-xl border border-slate-300">Iniciar sesión</a>
+              <a href={registerHref} className="text-center text-sm font-semibold px-4 py-2.5 rounded-xl bg-primary text-white">Crear cuenta</a>
             </div>
-          </motion.div>
-        </div>
-      </section>
+          </div>
+        )}
+      </header>
 
-      {/* DOCTOR SEARCH SECTION */}
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-4xl mx-auto"
-          >
-            <div className="text-center mb-8">
-              <Stethoscope className="w-16 h-16 text-primary mx-auto mb-4" />
-              <h2 className="text-4xl font-extrabold mb-4 text-gray-900">
-                Encuentra tu <span className="gradient-text">Médico Ideal</span>
-              </h2>
-              <p className="text-lg text-gray-600">
-                Busca especialistas verificados en toda Venezuela
+      <main id="contenido">
+        {/* Hero */}
+        <section id="inicio" className="overflow-hidden bg-gradient-to-br from-teal-50 via-white to-orange-50">
+          <div className="max-w-6xl mx-auto px-4 py-14 md:py-24 grid md:grid-cols-2 gap-14 items-center">
+            <div>
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-teal-700 bg-teal-100/70 px-3 py-1 rounded-full mb-5">
+                <HeartPulse className="w-4 h-4" /> Hecho en Venezuela para médicos venezolanos
+              </p>
+              <h1 className="text-4xl md:text-5xl font-extrabold leading-tight text-slate-900">
+                Tu consultorio en orden. <span className="text-teal-600">Tus pacientes, más cerca.</span>
+              </h1>
+              <p className="mt-5 text-lg text-slate-600 leading-relaxed">
+                CitaMed reúne tu agenda, la sala de espera, la consulta con IA, los récipes con QR y los cobros
+                a tasa BCV en un solo lugar. Y a tus pacientes les da una forma fácil de encontrarte y agendar.
+              </p>
+              <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                <a href={doctorRegisterHref} className="inline-flex items-center justify-center gap-2 font-bold px-6 py-3.5 rounded-xl bg-primary text-white hover:opacity-90">
+                  Soy médico, crear cuenta <ArrowRight className="w-4 h-4" />
+                </a>
+                <a href={directoryHref} className="inline-flex items-center justify-center gap-2 font-semibold px-6 py-3.5 rounded-xl bg-white border border-slate-300 hover:border-teal-500">
+                  <Search className="w-4 h-4" /> Buscar médico
+                </a>
+              </div>
+              <p className="mt-4 text-sm text-slate-500 flex items-center gap-2">
+                <Smartphone className="w-4 h-4" /> Sin instalar nada: funciona en el teléfono y en la computadora.
               </p>
             </div>
+            <HeroMockup />
+          </div>
+        </section>
 
-            <div className="bg-gradient-to-br from-primary/5 to-secondary/5 rounded-2xl p-8 shadow-xl border border-primary/10">
-              <div className="flex flex-col md:flex-row gap-4">
-                {/* Specialty Selector */}
-                <div className="flex-1 relative">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-                  <select
-                    value={selectedSpecialty}
-                    onChange={(e) => setSelectedSpecialty(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-200 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-gray-900 font-medium appearance-none cursor-pointer bg-white"
-                    style={{
-                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23666'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-                      backgroundRepeat: 'no-repeat',
-                      backgroundPosition: 'right 1rem center',
-                      backgroundSize: '1.5rem'
-                    }}
-                  >
-                    <option value="">Todas las especialidades</option>
-                    {specialties.map((spec) => (
-                      <option key={spec.id} value={spec.name}>
-                        {spec.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+        {/* Médicos */}
+        <section id="medicos" className="max-w-6xl mx-auto px-4 py-16 md:py-20 scroll-mt-16">
+          <SectionTitle
+            eyebrow="Para médicos"
+            title="Todo tu consultorio en una sola herramienta"
+            text="Menos papel y menos mensajes sueltos. Más tiempo para tus pacientes."
+          />
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {DOCTOR_FEATURES.map((f) => <FeatureCard key={f.title} {...f} />)}
+          </div>
+          <div className="text-center mt-10">
+            <a href={doctorRegisterHref} className="inline-flex items-center gap-2 font-bold px-6 py-3 rounded-xl bg-primary text-white hover:opacity-90">
+              Crear mi cuenta de médico <ArrowRight className="w-4 h-4" />
+            </a>
+          </div>
+        </section>
 
-                {/* Search Button */}
-                <Button
-                  variant="primary"
-                  size="lg"
-                  icon={<Search className="w-5 h-5" />}
-                  onClick={handleSearchDoctor}
-                  className="md:w-auto w-full px-8 shadow-lg hover:shadow-xl"
+        {/* Pacientes */}
+        <section id="pacientes" className="bg-white border-y border-slate-200 scroll-mt-16">
+          <div className="max-w-6xl mx-auto px-4 py-16 md:py-20">
+            <SectionTitle
+              eyebrow="Para pacientes"
+              title="Tu salud, sin vueltas"
+              text="Encuentra a tu médico, agenda en minutos y ten tu información siempre a mano."
+            />
+            <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              {PATIENT_FEATURES.map((f) => <FeatureCard key={f.title} {...f} />)}
+            </div>
+            <div className="text-center mt-10 flex flex-col sm:flex-row gap-3 justify-center">
+              <a href={directoryHref} className="inline-flex items-center justify-center gap-2 font-bold px-6 py-3 rounded-xl bg-teal-600 text-white hover:bg-teal-700">
+                <Search className="w-4 h-4" /> Buscar médico
+              </a>
+              <a href={patientRegisterHref} className="inline-flex items-center justify-center gap-2 font-semibold px-6 py-3 rounded-xl border border-slate-300 hover:border-teal-500">
+                Crear cuenta de paciente
+              </a>
+            </div>
+          </div>
+        </section>
+
+        {/* Cómo funciona */}
+        <section id="como-funciona" className="max-w-6xl mx-auto px-4 py-16 md:py-20 scroll-mt-16">
+          <SectionTitle eyebrow="Cómo funciona" title="Empieza en cuatro pasos" />
+          <ol className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {STEPS.map((s) => (
+              <li key={s.n} className="bg-white rounded-2xl border border-slate-200 p-5">
+                <span className="inline-flex w-9 h-9 items-center justify-center rounded-full bg-primary text-white font-bold mb-3">{s.n}</span>
+                <h3 className="font-bold text-slate-900">{s.title}</h3>
+                <p className="text-sm text-slate-600 mt-1 leading-relaxed">{s.text}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* Confianza */}
+        <section className="bg-primary text-white">
+          <div className="max-w-6xl mx-auto px-4 py-16 grid md:grid-cols-3 gap-8">
+            {TRUST.map(({ icon: Icon, title, text }) => (
+              <div key={title}>
+                <Icon className="w-8 h-8 text-teal-300 mb-3" />
+                <h3 className="font-bold text-lg">{title}</h3>
+                <p className="text-white/80 mt-1 leading-relaxed">{text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Preguntas */}
+        <section id="preguntas" className="max-w-3xl mx-auto px-4 py-16 md:py-20 scroll-mt-16">
+          <SectionTitle eyebrow="Preguntas frecuentes" title="Lo que más nos preguntan" />
+          <div className="space-y-3">
+            {FAQ.map((f, i) => (
+              <div key={f.q} className="bg-white rounded-2xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setOpenFaq(openFaq === i ? -1 : i)}
+                  className="w-full flex items-center justify-between gap-4 text-left p-5 font-semibold text-slate-900"
+                  aria-expanded={openFaq === i}
                 >
-                  Buscar Médico
-                </Button>
-              </div>
-
-              {/* Quick Specialty Links */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <p className="text-sm text-gray-600 mb-3 font-medium">Especialidades populares:</p>
-                <div className="flex flex-wrap gap-2">
-                  {specialties.slice(0, 6).map((spec) => (
-                    <button
-                      key={spec.id}
-                      onClick={() => {
-                        setSelectedSpecialty(spec.name);
-                        setTimeout(() => handleSearchDoctor(), 100);
-                      }}
-                      className="px-4 py-2 bg-white border border-primary/20 rounded-full text-sm font-medium text-gray-700 hover:bg-primary hover:text-white hover:border-primary transition-all duration-200 shadow-sm hover:shadow-md"
-                    >
-                      {spec.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* BENEFITS SECTION */}
-      <section id="beneficios" className="py-24 bg-gray-50">
-        <div className="container mx-auto px-4 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-5xl font-extrabold mb-4">
-              <span className="gradient-text">Una Plataforma, Múltiples Beneficios</span>
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              CITAMED.VE es más que una aplicación médica. Es un ecosistema completo diseñado para mejorar la experiencia de todos.
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {benefits.map((benefit, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="glass rounded-2xl p-8 hover:shadow-2xl transition-all duration-300"
-              >
-                <div className={`${benefit.color} mb-6 flex justify-center`}>
-                  {benefit.icon}
-                </div>
-                <h3 className="text-2xl font-bold mb-6 text-center text-gray-900">
-                  {benefit.title}
-                </h3>
-                <ul className="space-y-3">
-                  {benefit.items.map((item, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <span className="text-accent mt-1">✓</span>
-                      <span className="text-gray-700">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* MODULES SECTION */}
-      <section id="modulos" className="relative py-24 bg-gray-50">
-        <div className="container mx-auto px-4 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-5xl font-extrabold mb-4">
-              <span className="gradient-text">Los 4 Módulos</span> de CITAMED.VE
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Cada módulo está diseñado para resolver un problema específico del sector salud en Venezuela.
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {modules.map((module, index) => (
-              <div
-                key={module.id}
-                onClick={() => navigate(module.route)}
-                className="cursor-pointer"
-              >
-                <ModuleCard
-                  icon={module.icon}
-                  title={module.title}
-                  description={module.description}
-                  gradient={module.gradient}
-                  components={module.components}
-                  status={module.status}
-                  index={index}
-                />
+                  {f.q}
+                  <ChevronDown className={`w-5 h-5 flex-shrink-0 text-slate-400 transition-transform ${openFaq === i ? 'rotate-180' : ''}`} />
+                </button>
+                {openFaq === i && <p className="px-5 pb-5 -mt-2 text-slate-600 leading-relaxed">{f.a}</p>}
               </div>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* FAQ SECTION */}
-      <section id="faq" className="py-24 bg-white">
-        <div className="container mx-auto px-4 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-5xl font-extrabold mb-4">
-              <span className="gradient-text">Preguntas Frecuentes</span>
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Todo lo que necesitas saber sobre CITAMED.VE
-            </p>
-          </motion.div>
-
-          <div className="max-w-4xl mx-auto space-y-4">
-            {[
-              {
-                q: '¿Qué es CITAMED.VE?',
-                a: 'CITAMED.VE es el ecosistema de salud digital más completo de Venezuela. Conectamos pacientes, médicos y proveedores en una sola plataforma con agendamiento, telemedicina, marketplace médico y sistema de pagos.'
-              },
-              {
-                q: '¿Cómo me registro como médico?',
-                a: 'Click en "Soy Médico", completa tus datos profesionales incluyendo tu número de matrícula y especialidad. Una vez verificada tu información, tu perfil estará activo en el directorio médico.'
-              },
-              {
-                q: '¿Los pagos son seguros?',
-                a: 'Sí. Utilizamos Citamed Paga, nuestro sistema de escrow que garantiza el 100% de tus pagos. Los fondos se liberan solo cuando se completa la consulta o servicio.'
-              },
-              {
-                q: '¿Puedo agendar citas sin esperar en cola?',
-                a: 'Exacto. Nuestro sistema de turnos virtuales elimina las esperas. Recibes notificaciones cuando te toca tu cita y puedes gestionar todo desde tu celular.'
-              },
-              {
-                q: '¿Cómo funciona la telemedicina?',
-                a: 'Agendas una videoconsulta con tu médico, pagas de forma segura, y te conectas por videollamada HD desde cualquier lugar. El médico puede compartir archivos médicos y recetas digitales.'
-              },
-              {
-                q: '¿Qué es el MarketMed?',
-                a: 'Es nuestro marketplace médico donde encuentras farmacias, laboratorios y servicios de salud con descuentos. Los médicos ganan 3% por cada referido.'
-              }
-            ].map((faq, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.05 }}
-                className="glass rounded-xl p-6 hover:shadow-lg transition-shadow"
-              >
-                <h3 className="text-lg font-bold text-gray-900 mb-3">{faq.q}</h3>
-                <p className="text-gray-700 leading-relaxed">{faq.a}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA SECTION */}
-      <section className="py-24 bg-gradient-to-r from-primary to-secondary">
-        <div className="container mx-auto px-4 lg:px-8 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-4xl lg:text-5xl font-extrabold mb-6 text-white">
-              ¿Listo para transformar la salud digital en Venezuela?
-            </h2>
-            <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-              Únete a CITAMED.VE y forma parte del futuro de la atención médica
-            </p>
-            <Button
-              variant="secondary"
-              size="xl"
-              onClick={() => goToApp(navigate, '/registro')}
-              className="bg-white text-primary hover:bg-gray-100"
-            >
-              Crear Cuenta Gratis
-            </Button>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* FOOTER */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="container mx-auto px-4 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-            <div>
-              <h3 className="text-2xl font-bold mb-4">
-                CITAMED<span className="text-accent">.VE</span>
-              </h3>
-              <p className="text-gray-400">
-                El ecosistema de salud digital más completo de Venezuela
-              </p>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4">Módulos</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li className="hover:text-white cursor-pointer" onClick={() => navigate('/modulo/agendamiento')}>Agendamiento</li>
-                <li className="hover:text-white cursor-pointer" onClick={() => navigate('/modulo/telemedicina')}>Telemedicina</li>
-                <li className="hover:text-white cursor-pointer" onClick={() => navigate('/modulo/marketmed')}>MarketMed</li>
-                <li className="hover:text-white cursor-pointer" onClick={() => navigate('/modulo/citamed-paga')}>Citamed Paga</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4">Acceso</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li className="hover:text-white cursor-pointer" onClick={() => goToApp(navigate, '/login')}>Iniciar Sesión</li>
-                <li className="hover:text-white cursor-pointer" onClick={() => goToApp(navigate, '/registro')}>Registrarse</li>
-                <li className="hover:text-white cursor-pointer" onClick={() => navigate('/directorio')}>Directorio Médico</li>
-              </ul>
+        {/* Llamado final */}
+        <section className="max-w-6xl mx-auto px-4 pb-20">
+          <div className="rounded-3xl bg-gradient-to-br from-teal-600 to-primary text-white p-8 md:p-12 text-center">
+            <h2 className="text-3xl md:text-4xl font-extrabold">Lleva tu consultorio a CitaMed</h2>
+            <p className="mt-3 text-white/85 text-lg">Crea tu cuenta hoy y prepara tu consultorio a tu ritmo.</p>
+            <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center">
+              <a href={doctorRegisterHref} className="font-bold px-6 py-3.5 rounded-xl bg-white text-primary hover:bg-slate-100">Soy médico, crear cuenta</a>
+              <a href={loginHref} className="font-semibold px-6 py-3.5 rounded-xl border border-white/40 hover:bg-white/10">Ya tengo cuenta</a>
             </div>
           </div>
-          <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
-            <nav aria-label="Documentos legales" className="mb-3 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
-              <a href="/terminos" className="hover:text-white">Términos y Condiciones</a>
-              <a href="/privacidad" className="hover:text-white">Política de Privacidad</a>
-              <a href="/codigo-etica" className="hover:text-white">Código de Ética Médica</a>
-            </nav>
-            <p>© 2026 CITAMED.VE - Todos los derechos reservados</p>
+        </section>
+      </main>
+
+      <footer className="bg-slate-900 text-slate-400">
+        <div className="max-w-6xl mx-auto px-4 py-10 flex flex-col md:flex-row gap-6 md:items-center md:justify-between">
+          <div>
+            <p className="text-xl font-extrabold text-white">CITAMED<span className="text-accent">.VE</span></p>
+            <p className="text-sm mt-1">Plataforma de salud que conecta médicos y pacientes en Venezuela.</p>
           </div>
+          <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            <a href="/terminos" className="hover:text-white">Términos y Condiciones</a>
+            <a href="/privacidad" className="hover:text-white">Política de Privacidad</a>
+            <a href="/codigo-etica" className="hover:text-white">Código de Ética Médica</a>
+            <a href={loginHref} className="hover:text-white">Iniciar sesión</a>
+          </nav>
         </div>
+        <p className="text-center text-xs pb-6">© {new Date().getFullYear()} CitaMed. Todos los derechos reservados.</p>
       </footer>
     </div>
   );

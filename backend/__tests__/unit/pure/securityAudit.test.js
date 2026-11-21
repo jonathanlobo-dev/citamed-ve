@@ -38,14 +38,22 @@ async function run(mw, req) {
 
 beforeAll(() => { process.env.JWT_SECRET = process.env.JWT_SECRET || 'secreto-de-prueba'; });
 
+describe('Registro de proveedores cerrado por ahora', () => {
+  test('la ruta de proveedor pasa por el interruptor PROVIDER_REGISTRATION_ENABLED', () => {
+    const src = read('routes/auth.js');
+    expect(src).toMatch(/router\.post\("\/register\/provider",\s*requireTurnstile,\s*providerRegistrationOpen,/);
+    expect(src).toMatch(/PROVIDER_REGISTRATION_ENABLED === 'true'/);
+  });
+});
+
 describe('S-01: nadie se registra como administrador', () => {
   test('el validador no acepta admin', () => {
     expect(ALLOWED_ROLES).not.toContain('admin');
-    expect(ALLOWED_ROLES).toEqual(['patient', 'doctor', 'provider']);
+    expect(ALLOWED_ROLES).toEqual(['patient', 'doctor']);
   });
   test('el controlador de registro tampoco', () => {
     const src = read('controllers/authController.js');
-    expect(src).toMatch(/\['doctor', 'patient', 'provider'\]\.includes\(role\)/);
+    expect(src).toMatch(/\['doctor', 'patient'\]\.includes\(role\)/);
     expect(src).not.toMatch(/'provider', 'admin', 'clinic', 'insurer'/);
   });
 });

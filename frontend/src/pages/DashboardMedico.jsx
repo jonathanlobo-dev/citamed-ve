@@ -30,8 +30,11 @@ import {
 import toast from 'react-hot-toast';
 import Navbar from '../components/common/Navbar/Navbar';
 import useDoctorProfile from '../hooks/useDoctorProfile';
-import { FEATURES } from '../config/features';
+import { FEATURES, SHOW_UNBUILT_SECTIONS } from '../config/features';
 import SetupChecklist from '../components/doctor/SetupChecklist';
+
+// Módulos que todavía no existen (llevan a páginas de "próximamente"): se ocultan hasta que estén hechos
+const UNBUILT_PATHS = ['/modulo/telemedicina', '/modulo/marketmed', '/modulo/citamed-paga', '/medico/estado-actual', '/medico/fidelizacion', '/medico/estadisticas', '/medico/mensajeria', '/medico/reportes', '/medico/configuracion'];
 
 function DashboardMedico() {
   const navigate = useNavigate();
@@ -345,7 +348,7 @@ function DashboardMedico() {
 
         {/* Modules Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {modules.map((module, index) => {
+          {modules.filter((m) => SHOW_UNBUILT_SECTIONS || !UNBUILT_PATHS.includes(m.path)).map((module, index) => {
             const Icon = module.icon;
             return (
               <motion.div

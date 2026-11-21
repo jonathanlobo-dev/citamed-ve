@@ -40,3 +40,7 @@ export const FEATURES = {
   aiPatientInstructions: flag('AI_PATIENT_INSTRUCTIONS'),
   excelImport: flag('EXCEL_IMPORT')
 };
+
+// Secciones que todavía no existen de verdad (módulos MarketMed, Telemedicina y Citamed Paga,
+// clínicas y seguros). Se ocultan en todos los entornos hasta que estén hechas.
+export const SHOW_UNBUILT_SECTIONS = import.meta.env.VITE_SHOW_UNBUILT_SECTIONS === 'true';

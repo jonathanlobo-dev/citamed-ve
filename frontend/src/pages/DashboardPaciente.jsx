@@ -14,7 +14,11 @@ import {
   User,
   Search
 } from 'lucide-react';
+import { SHOW_UNBUILT_SECTIONS } from '../config/features';
 import Navbar from '../components/common/Navbar/Navbar';
+
+// Módulos que todavía no existen (llevan a páginas de "próximamente"): se ocultan hasta que estén hechos
+const UNBUILT_PATHS = ['/modulo/telemedicina', '/modulo/marketmed', '/modulo/citamed-paga', '/medico/estado-actual', '/medico/fidelizacion', '/medico/estadisticas', '/medico/mensajeria', '/medico/reportes', '/medico/configuracion'];
 
 function DashboardPaciente() {
   const navigate = useNavigate();
@@ -32,7 +36,7 @@ function DashboardPaciente() {
       title: 'Agendar Nueva Cita',
       icon: Calendar,
       description: 'Reserva tu próxima consulta médica',
-      path: '/modulo/agendamiento',
+      path: '/directorio',
       color: 'from-blue-500 to-blue-600'
     },
     {
@@ -116,7 +120,7 @@ function DashboardPaciente() {
 
         {/* Modules Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {modules.map((module, index) => {
+          {modules.filter((m) => SHOW_UNBUILT_SECTIONS || !UNBUILT_PATHS.includes(m.path)).map((module, index) => {
             const Icon = module.icon;
             return (
               <motion.div
