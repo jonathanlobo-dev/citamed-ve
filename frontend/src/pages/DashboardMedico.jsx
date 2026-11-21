@@ -9,7 +9,6 @@ import {
   Calendar,
   Users,
   Heart,
-  FileText,
   TrendingUp,
   DollarSign,
   Video,
@@ -107,13 +106,6 @@ function DashboardMedico() {
       path: '/medico/fidelizacion',
       color: 'from-pink-500 to-pink-600',
       badge: 'Nuevo'
-    },
-    {
-      title: 'Historias Clínicas',
-      icon: FileText,
-      description: 'Acceso a historiales médicos completos',
-      path: '/medico/historias-clinicas',
-      color: 'from-cyan-500 to-cyan-600'
     },
     {
       title: 'Estadísticas',
@@ -246,43 +238,38 @@ function DashboardMedico() {
             </div>
           </motion.div>
 
-          {/* Citas - Próximamente */}
+          {/* Agenda: lleva a la pantalla real en vez de una cifra "Próximamente" (QA MED-UX-005) */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.3 }}
-            className="bg-gradient-to-br from-gray-400 to-gray-500 rounded-xl p-6 text-white shadow-lg relative overflow-hidden"
+            className="bg-gradient-to-br from-slate-600 to-slate-700 rounded-xl p-6 text-white shadow-lg cursor-pointer hover:shadow-xl transition-shadow"
+            onClick={() => navigate('/medico/agenda')}
           >
-            <div className="absolute top-2 right-2 bg-white/20 text-xs px-2 py-0.5 rounded-full">
-              Próximamente
-            </div>
-            <div className="flex items-center justify-between opacity-70">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-100 text-sm font-medium">Citas Hoy</p>
-                <p className="text-3xl font-bold">—</p>
-                <p className="text-gray-100 text-xs">Pacientes</p>
+                <p className="text-slate-200 text-sm font-medium">Citas de hoy</p>
+                <p className="text-xl font-bold mt-1">Ver agenda</p>
+                <p className="text-slate-300 text-xs">Abre tu agenda del día</p>
               </div>
-              <Calendar className="w-12 h-12 text-gray-200 opacity-50" />
+              <Calendar className="w-12 h-12 text-slate-300" />
             </div>
           </motion.div>
-
-          {/* Ingresos - Próximamente */}
+          {/* Cobros: lleva a la pantalla real en vez de una cifra "Próximamente" (QA MED-UX-005) */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.4 }}
-            className="bg-gradient-to-br from-gray-400 to-gray-500 rounded-xl p-6 text-white shadow-lg relative overflow-hidden"
+            className="bg-gradient-to-br from-slate-600 to-slate-700 rounded-xl p-6 text-white shadow-lg cursor-pointer hover:shadow-xl transition-shadow"
+            onClick={() => navigate('/medico/cobros')}
           >
-            <div className="absolute top-2 right-2 bg-white/20 text-xs px-2 py-0.5 rounded-full">
-              Próximamente
-            </div>
-            <div className="flex items-center justify-between opacity-70">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-100 text-sm font-medium">Ingresos</p>
-                <p className="text-3xl font-bold">—</p>
-                <p className="text-gray-100 text-xs">Este mes</p>
+                <p className="text-slate-200 text-sm font-medium">Ingresos</p>
+                <p className="text-xl font-bold mt-1">Ver cobros</p>
+                <p className="text-slate-300 text-xs">Consultas cobradas y por cobrar</p>
               </div>
-              <DollarSign className="w-12 h-12 text-gray-200 opacity-50" />
+              <DollarSign className="w-12 h-12 text-slate-300" />
             </div>
           </motion.div>
         </div>

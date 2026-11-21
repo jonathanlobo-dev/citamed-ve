@@ -39,6 +39,7 @@ import SideDrawer from '../../components/common/SideDrawer/SideDrawer';
 import { shareRecipe, prefetchRecipePdf } from '../../utils/shareRecipe';
 import toast from 'react-hot-toast';
 import './MisCitasPage.css';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 // La posición en la cola solo tiene sentido el día de la cita (QA PAC-UX-005)
 const isTodayCaracas = (ymd) => {
@@ -55,6 +56,8 @@ const MisCitasPage = () => {
   const [recipeLoadingId, setRecipeLoadingId] = useState(null);
   const [recipesByAppointment, setRecipesByAppointment] = useState({});
   const [paymentsByAppointment, setPaymentsByAppointment] = useState({});
+  const [cancelTargetId, setCancelTargetId] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
   const [selectedAppointmentForPay, setSelectedAppointmentForPay] = useState(null);
   const [payDrawerOpen, setPayDrawerOpen] = useState(false);
   const [instructionsDrawerDoc, setInstructionsDrawerDoc] = useState(null);
@@ -271,12 +274,13 @@ const MisCitasPage = () => {
         );
       case 'past':
         return appointments.filter(apt =>
-          apt.status === 'completed' ||
+          // Una cita reprogramada fue reemplazada por otra: va al historial, no a canceladas (QA PAC-UX-006)
+          apt.status === 'completed' || apt.status === 'rescheduled' ||
           (parseAppointmentDateTime(apt) < now && !['cancelled', 'cancelled_patient', 'cancelled_doctor', 'rescheduled'].includes(apt.status))
         );
       case 'cancelled':
         return appointments.filter(apt =>
-          ['cancelled', 'cancelled_patient', 'cancelled_doctor', 'rescheduled'].includes(apt.status)
+          ['cancelled', 'cancelled_patient', 'cancelled_doctor'].includes(apt.status)
         );
       default:
         return appointments;
@@ -287,16 +291,23 @@ const MisCitasPage = () => {
     navigate(`/sala-espera/${appointmentId}`);
   };
 
-  const handleCancelAppointment = async (appointmentId) => {
-    if (!confirm('¿Estás seguro de cancelar esta cita?')) return;
+  // Se pide confirmar con un diálogo corto de la app, no con el confirm() del navegador (QA PAC-UX-006)
+  const handleCancelAppointment = (appointmentId) => setCancelTargetId(appointmentId);
 
+  const confirmCancelAppointment = async () => {
+    const appointmentId = cancelTargetId;
+    if (!appointmentId) return;
+    setCancelling(true);
     try {
       await appointmentService.cancel(appointmentId, 'Cancelada por el paciente');
       toast.success('Cita cancelada');
+      setCancelTargetId(null);
       fetchAppointments();
     } catch (err) {
       console.error('Error cancelling appointment:', err);
       toast.error('No pudimos cancelar la cita. Por favor intenta de nuevo.');
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -771,6 +782,18 @@ const MisCitasPage = () => {
       </div>
 
       {/* Panel lateral para pagar consulta y reportar pago (C2 y C3) */}
+      <ConfirmDialog
+        open={!!cancelTargetId}
+        title="¿Cancelar esta cita?"
+        message="El médico verá la cita como cancelada por ti. Si quieres otra fecha, puedes agendar de nuevo."
+        confirmLabel="Sí, cancelar"
+        cancelLabel="No, volver"
+        danger
+        busy={cancelling}
+        onConfirm={confirmCancelAppointment}
+        onCancel={() => setCancelTargetId(null)}
+      />
+
       <PayConsultationDrawer
         open={payDrawerOpen}
         onClose={() => {

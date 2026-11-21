@@ -1,4 +1,13 @@
 /**
+
+// WhatsApp se abre en otra pestaña para no sacar al médico del Espacio Clínico (QA MED-UX-008).
+// Si el navegador bloquea la pestaña nueva, se usa la misma como antes.
+function openWhatsApp(url) {
+  // Sin 'noopener' en el tercer parámetro: con él, window.open devuelve null aunque abra la pestaña
+  const win = window.open(url, '_blank');
+  if (win) win.opener = null;
+  else window.location.href = url;
+}
  * Share Document Utility - CITAMED.VE
  * M03 / Semana 6 - Compartir documentos médicos verificables por Web Share API o WhatsApp
  */
@@ -62,7 +71,7 @@ function openWhatsApp(waUrl) {
   if (win) {
     win.opener = null;
   } else {
-    window.location.href = waUrl;
+    openWhatsApp(waUrl);
   }
 }
 
@@ -156,7 +165,7 @@ export function shareDocument({
         .then(() => ({ success: true, method: 'web-share' }))
         .catch((err) => {
           if (err.name === 'AbortError') return { success: false, aborted: true };
-          window.location.href = waUrl;
+          openWhatsApp(waUrl);
           return { success: true, method: 'whatsapp' };
         });
     }

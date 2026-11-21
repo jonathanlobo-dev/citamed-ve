@@ -12,6 +12,8 @@
 
   html {
     scroll-behavior: smooth;
+    /* La app solo tiene diseño claro: sin esto, el modo oscuro del navegador oscurece los campos (QA PUB-UX-002) */
+    color-scheme: light;
   }
 
   body {

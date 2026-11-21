@@ -744,14 +744,14 @@ const PatientProfilePage = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-5 py-4 font-medium border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-2 px-3 sm:px-5 py-4 text-sm sm:text-base font-medium border-b-2 transition-all whitespace-nowrap ${
                   activeTab === tab.id
                     ? 'border-teal-500 text-teal-600 bg-teal-50/50'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                 }`}
               >
                 <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-teal-500' : ''}`} />
-                <span className="hidden sm:inline">{tab.label}</span>
+                <span>{tab.label}</span>
               </button>
             ))}
           </nav>

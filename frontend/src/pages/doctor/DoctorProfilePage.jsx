@@ -370,7 +370,7 @@ const DoctorProfilePage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="flex-1 text-center lg:text-left"
+              className="flex-1 w-full min-w-0 text-center lg:text-left"
             >
               {/* Verificación */}
               <div className="mb-3">
@@ -424,7 +424,7 @@ const DoctorProfilePage = () => {
               className="w-full lg:w-auto"
             >
               {/* Card de reserva */}
-              <div className="bg-white rounded-2xl shadow-2xl p-6 min-w-[280px]">
+              <div className="bg-white rounded-2xl shadow-2xl p-6 w-full sm:min-w-[280px]">
                 <div className="text-center mb-4">
                   <p className="text-gray-500 text-sm mb-1">Consulta desde</p>
                   {Number(profile.consultationFee) > 0 || Number(profile.priceTeleconsultation) > 0 ? (

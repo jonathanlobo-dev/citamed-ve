@@ -17,6 +17,9 @@ import DocumentInput from '../../common/DocumentInput/DocumentInput';
 import { debounce } from 'lodash';
 import authService from '../../../services/authService';
 
+// Igual que el servidor (authValidator nameOnly): letras con acentos y espacios
+const NAME_PATTERN = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
+
 const GENDERS = [
   { value: 'male', label: 'Masculino' },
   { value: 'female', label: 'Femenino' },
@@ -79,6 +82,8 @@ function PatientStep2Personal({ formData, updateField, errors, setFieldErrors, o
       newErrors.firstName = 'Nombre es requerido';
     } else if (formData.firstName.trim().length < 2) {
       newErrors.firstName = 'Nombre debe tener al menos 2 caracteres';
+    } else if (!NAME_PATTERN.test(formData.firstName.trim())) {
+      newErrors.firstName = 'Nombre solo puede contener letras';
     }
 
     // Apellido
@@ -86,6 +91,8 @@ function PatientStep2Personal({ formData, updateField, errors, setFieldErrors, o
       newErrors.lastName = 'Apellido es requerido';
     } else if (formData.lastName.trim().length < 2) {
       newErrors.lastName = 'Apellido debe tener al menos 2 caracteres';
+    } else if (!NAME_PATTERN.test(formData.lastName.trim())) {
+      newErrors.lastName = 'Apellido solo puede contener letras';
     }
 
     // Cédula
