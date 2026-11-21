@@ -303,3 +303,14 @@
 }
 
 
+
+/* La etiqueta de conexión en una sola línea (en celular se partía en tres) */
+.connection-status .status-text {
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .connection-status {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+}
