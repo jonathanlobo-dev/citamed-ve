@@ -1113,13 +1113,7 @@ const DoctorProfileEditPage = () => {
 
   const [searchParams] = useSearchParams();
   // Si se llega con ?tab= (por ejemplo desde Prepara tu consultorio), bajar directo a las pestañas
-  const scrolledToTabs = useRef(false);
-  const tabsRef = (node) => {
-    if (node && searchParams.get('tab') && !scrolledToTabs.current) {
-      scrolledToTabs.current = true;
-      setTimeout(() => node.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
-    }
-  };
+  const tabsRef = useRef(null);
   const [activeTab, setActiveTab] = useState(
     ['info', 'services', 'schedule', 'location'].includes(searchParams.get('tab')) ? searchParams.get('tab') : 'info'
   );
@@ -1177,6 +1171,14 @@ const DoctorProfileEditPage = () => {
       fetchCompleteness();
     }
   };
+
+  useEffect(() => {
+    if (loading || !searchParams.get('tab')) return undefined;
+    // Se espera a que termine de pintarse la cabecera (fotos y animaciones) antes de bajar
+    const timer = setTimeout(() => tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 700);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   if (loading) {
     return (
