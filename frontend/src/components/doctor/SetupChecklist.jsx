@@ -52,10 +52,13 @@ export function buildSetupTasks(profile, { onSharePublicPage } = {}) {
     {
       id: 'share',
       label: 'Comparte tu página pública',
-      hint: 'Envía tu enlace por WhatsApp para recibir citas.',
+      // El enlace se crea al guardar el perfil por primera vez: antes de eso no hay nada que compartir
+      hint: profile.publicSlug
+        ? 'Envía tu enlace por WhatsApp para recibir citas.'
+        : 'Tu enlace se crea al guardar tu perfil por primera vez.',
       done: false,
       optional: true,
-      onClick: onSharePublicPage
+      ...(profile.publicSlug ? { onClick: onSharePublicPage } : { to: '/medico/perfil/editar?tab=info' })
     }
   ];
 }

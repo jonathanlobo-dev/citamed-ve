@@ -25,6 +25,13 @@ describe('Prepara tu consultorio', () => {
     expect(t.schedule).toBe(false);
   });
 
+  test('sin enlace público todavía, compartir lleva a guardar el perfil', () => {
+    const share = buildSetupTasks({}, { onSharePublicPage: () => {} }).find((t) => t.id === 'share');
+    expect(share.to).toBe('/medico/perfil/editar?tab=info');
+    const lista = buildSetupTasks({ publicSlug: 'dra-ana' }, { onSharePublicPage: () => {} }).find((t) => t.id === 'share');
+    expect(typeof lista.onClick).toBe('function');
+  });
+
   test('cada tarea pendiente lleva a una ruta existente o a una acción', () => {
     const rutas = ['/medico/verificacion', '/medico/perfil/editar', '/medico/agenda'];
     buildSetupTasks({}, { onSharePublicPage: () => {} }).forEach((task) => {
