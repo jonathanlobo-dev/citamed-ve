@@ -177,9 +177,6 @@ function LandingPage() {
         <section id="inicio" className="overflow-hidden bg-gradient-to-br from-teal-50 via-white to-orange-50">
           <div className="max-w-6xl mx-auto px-4 py-14 md:py-24 grid md:grid-cols-2 gap-14 items-center">
             <div>
-              <p className="inline-flex items-center gap-2 text-sm font-semibold text-teal-700 bg-teal-100/70 px-3 py-1 rounded-full mb-5">
-                <HeartPulse className="w-4 h-4" /> Hecho en Venezuela para médicos venezolanos
-              </p>
               <h1 className="text-4xl md:text-5xl font-extrabold leading-tight text-slate-900">
                 Tu consultorio en orden. <span className="text-teal-600">Tus pacientes, más cerca.</span>
               </h1>
