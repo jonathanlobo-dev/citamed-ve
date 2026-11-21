@@ -1236,7 +1236,7 @@ const DoctorProfileEditPage = () => {
             </motion.div>
 
             <Link
-              to={`/doctor/${profile?.id}`}
+              to={profile?.publicSlug ? `/dr/${profile.publicSlug}` : `/doctor/${profile?.id}`}
               target="_blank"
               className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl font-medium transition-colors backdrop-blur-sm"
             >

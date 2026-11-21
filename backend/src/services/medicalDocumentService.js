@@ -426,8 +426,8 @@ async function verifyDocument(code) {
         summary = {
           days: content.days,
           startDate: content.startDate,
-          endDate: content.endDate,
-          diagnosis: content.includeDiagnosis ? content.diagnosis : null
+          endDate: content.endDate
+          // El diagnóstico nunca se muestra en la página pública: solo va impreso en el PDF si el médico lo autorizó
         };
         break;
       case 'certificate':

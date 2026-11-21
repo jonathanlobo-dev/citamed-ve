@@ -13,6 +13,7 @@ const {
   Prescription,
   MedicalDocument,
   AiUsage,
+  VerificationRequest,
   sequelize
 } = require('../models');
 const crypto = require('crypto');
@@ -70,15 +71,18 @@ class AdminService {
     };
 
     // 2. Médicos (activos, suspendidos, en directorio, verificación)
-    const [activeDoctors, suspendedDoctors, directoryResult, verificationCounts] = await Promise.all([
+    const [activeDoctors, suspendedDoctors, directoryResult, verificationCounts, pendingRequests] = await Promise.all([
       User.count({ where: { role: 'doctor', isActive: true } }),
       User.count({ where: { role: 'doctor', isActive: false } }),
-      sequelize.query('SELECT COUNT(*)::int AS count FROM doctor_search_cache', { type: QueryTypes.SELECT }),
+      // El directorio público solo muestra médicos verificados
+      sequelize.query('SELECT COUNT(*)::int AS count FROM doctor_search_cache WHERE is_verified = true', { type: QueryTypes.SELECT }),
       DoctorProfile.findAll({
         attributes: ['verificationStatus', [sequelize.fn('COUNT', sequelize.col('id')), 'count']],
         group: ['verificationStatus'],
         raw: true
-      })
+      }),
+      // Mismo criterio que la cola de verificación (/admin/verificacion)
+      VerificationRequest.count({ where: { status: { [Op.in]: ['submitted', 'in_review', 'on_hold'] } } })
     ]);
 
     const verification = {
@@ -93,6 +97,7 @@ class AdminService {
         verification[r.verificationStatus] = parseInt(r.count, 10);
       }
     });
+    verification.pending = pendingRequests;
 
     const doctors = {
       active: activeDoctors,
@@ -533,7 +538,7 @@ class AdminService {
 
     if (doctorIds.length > 0) {
       const dirRows = await sequelize.query(
-        'SELECT doctor_id FROM doctor_search_cache WHERE doctor_id IN (:doctorIds)',
+        'SELECT doctor_id FROM doctor_search_cache WHERE is_verified = true AND doctor_id IN (:doctorIds)',
         { replacements: { doctorIds }, type: QueryTypes.SELECT }
       );
       directorySet = new Set(dirRows.map(r => r.doctor_id));

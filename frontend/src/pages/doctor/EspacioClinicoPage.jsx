@@ -220,7 +220,7 @@ export default function EspacioClinicoPage() {
   // Formulario Reposo
   const [restDays, setRestDays] = useState(3);
   const [restStartDate, setRestStartDate] = useState('');
-  const [restIncludeDiag, setRestIncludeDiag] = useState(true);
+  const [restIncludeDiag, setRestIncludeDiag] = useState(false);
   const [restObservations, setRestObservations] = useState('');
 
   // Formulario Constancia
@@ -559,6 +559,12 @@ export default function EspacioClinicoPage() {
             // El borrador de IA solo vive en este equipo: se recupera siempre, sin preguntar
             const savedAiDraft = localStorage.getItem(`citamed_ai_draft_${apt.id}`);
             if (savedAiDraft) setAiDraftText((prev) => prev || savedAiDraft);
+            // El récipe en borrador tampoco va al servidor hasta finalizar: se recupera de este equipo
+            const savedRecipe = JSON.parse(localStorage.getItem(`citamed_recipe_draft_${apt.id}`) || 'null');
+            if (savedRecipe && Array.isArray(savedRecipe.items) && savedRecipe.items.some((it) => String(it?.medication || '').trim())) {
+              setRecipeItems(savedRecipe.items);
+              if (savedRecipe.indications) setRecipeIndications(savedRecipe.indications);
+            }
 
             const draftKey = `citamed_draft_apt_${apt.id}`;
             const rawDraft = localStorage.getItem(draftKey);
@@ -798,6 +804,10 @@ export default function EspacioClinicoPage() {
       // disparar el aviso de "borrador local más reciente" de los campos clínicos
       try {
         localStorage.setItem(`citamed_ai_draft_${appointment.id}`, aiDraftText || '');
+        localStorage.setItem(
+          `citamed_recipe_draft_${appointment.id}`,
+          JSON.stringify({ items: recipeItems, indications: recipeIndications })
+        );
       } catch {
         // Ignorar
       }
@@ -1038,6 +1048,7 @@ export default function EspacioClinicoPage() {
       if (appointment?.id) {
         localStorage.removeItem(`citamed_draft_apt_${appointment.id}`);
         localStorage.removeItem(`citamed_ai_draft_${appointment.id}`);
+        localStorage.removeItem(`citamed_recipe_draft_${appointment.id}`);
       }
       localStorage.removeItem('citamed_draft_new');
     } catch {
@@ -1781,6 +1792,7 @@ export default function EspacioClinicoPage() {
       try {
         localStorage.removeItem(`citamed_draft_apt_${appointment.id}`);
         localStorage.removeItem(`citamed_ai_draft_${appointment.id}`);
+        localStorage.removeItem(`citamed_recipe_draft_${appointment.id}`);
       } catch {
         // Ignorar error al limpiar storage
       }
@@ -4027,6 +4039,7 @@ export default function EspacioClinicoPage() {
             />
             Incluir diagnóstico médico en el documento
           </label>
+          <p className="text-xs text-slate-500 -mt-1">Solo se imprime en el PDF. La página de verificación nunca muestra el diagnóstico.</p>
           <div>
             <label className="font-semibold text-slate-700 block mb-1">Observaciones o recomendaciones:</label>
             <textarea

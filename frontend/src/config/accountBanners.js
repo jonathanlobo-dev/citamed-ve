@@ -25,7 +25,7 @@ export function getAccountBanners(user, pathname = '/') {
       tone: 'warning',
       text: `Verifica tu correo (${user.email}) para poder recuperar tu clave y recibir avisos.`,
       actionLabel: 'Verificar ahora',
-      to: `/verificar/email?userId=${user.id}&email=${encodeURIComponent(user.email)}&returnTo=${encodeURIComponent(pathname)}`
+      to: `/verificar/email?returnTo=${encodeURIComponent(pathname)}`
     });
   }
 

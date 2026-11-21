@@ -20,7 +20,7 @@ describe('aviso de correo sin verificar', () => {
   });
   test('el botón lleva a verificar y vuelve a la pantalla donde estaba', () => {
     const [b] = getAccountBanners(user({ emailVerified: false }), '/paciente/mis-citas');
-    expect(b.to).toBe('/verificar/email?userId=7&email=a%40b.com&returnTo=%2Fpaciente%2Fmis-citas');
+    expect(b.to).toBe('/verificar/email?returnTo=%2Fpaciente%2Fmis-citas');
   });
 });
 

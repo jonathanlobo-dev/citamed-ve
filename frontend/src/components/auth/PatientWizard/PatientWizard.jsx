@@ -135,14 +135,16 @@ function PatientWizard() {
         // Si el API devuelve token, hacer login automático
         if (response.data?.token) {
           startSession(response.data.token, response.data.user, response.data.profile);
-          const userId = response.data.user?.id;
-          const userEmail = response.data.user?.email || formData.email;
           const hasPhone = !!formData.phone;
 
           // Redirigir a verificación de email preservando el retorno
           setTimeout(() => {
-            const returnParam = returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : '';
-            const verifyUrl = `/verificar/email?userId=${userId}&email=${encodeURIComponent(userEmail)}${hasPhone ? '&verifyPhone=true' : ''}${returnParam}`;
+            // Sin correo ni id en la URL: la página de verificación los toma de la sesión recién iniciada
+            const params = new URLSearchParams();
+            if (hasPhone) params.set('verifyPhone', 'true');
+            if (returnTo) params.set('returnTo', returnTo);
+            const query = params.toString();
+            const verifyUrl = `/verificar/email${query ? `?${query}` : ''}`;
             navigate(verifyUrl);
           }, 2000);
         } else {

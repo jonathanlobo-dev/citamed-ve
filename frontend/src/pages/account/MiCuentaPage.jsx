@@ -300,7 +300,7 @@ export default function MiCuentaPage() {
                 <div className="flex gap-2">
                   {!summary.emailVerified && (
                     <Link
-                      to={`/verificar/email?userId=${user.id}&email=${encodeURIComponent(summary.email)}&returnTo=${encodeURIComponent('/cuenta')}`}
+                      to={`/verificar/email?returnTo=${encodeURIComponent('/cuenta')}`}
                       className={primaryBtn}
                     >
                       Verificar

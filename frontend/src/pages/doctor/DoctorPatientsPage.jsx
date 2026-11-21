@@ -243,7 +243,7 @@ export default function DoctorPatientsPage() {
                           <span className="doctor-patient-age">
                             {patient.age || 'Edad no reg.'}
                           </span>
-                          {patient.bloodType && (
+                          {patient.bloodType && patient.bloodType !== 'unknown' && (
                             <span className="doctor-patient-blood">
                               GS: {patient.bloodType}
                             </span>

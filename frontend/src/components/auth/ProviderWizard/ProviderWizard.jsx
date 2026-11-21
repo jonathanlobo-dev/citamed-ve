@@ -125,7 +125,7 @@ function ProviderWizard() {
         if (response.data?.token) {
           const sessionUser = startSession(response.data.token, response.data.user, response.data.profile);
           setTimeout(() => {
-            navigate(`/verificar/email?userId=${sessionUser.id}&email=${encodeURIComponent(sessionUser.email)}&returnTo=${encodeURIComponent('/proveedor/dashboard')}`);
+            navigate(`/verificar/email?returnTo=${encodeURIComponent('/proveedor/dashboard')}`);
           }, 3000);
         } else {
           setTimeout(() => {

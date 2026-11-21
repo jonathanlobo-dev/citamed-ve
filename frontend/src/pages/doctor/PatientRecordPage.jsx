@@ -41,6 +41,9 @@ import {
 } from '../../utils/physicalExamLabels';
 import './PatientRecordPage.css';
 
+// Solo se muestra la etiqueta cuando el sexo está indicado
+const GENDER_LABELS = { masculino: 'Masculino', femenino: 'Femenino', otro: 'Otro' };
+
 // Lazy loading de Recharts
 const EvolutionCharts = lazy(() => import('../../components/clinical/EvolutionCharts'));
 
@@ -520,12 +523,12 @@ export default function PatientRecordPage() {
                 <span className="patient-record-id-chip">
                   C.I. {patient.identificationNumber || 'No registrada'}
                 </span>
-                {patient.gender && (
+                {GENDER_LABELS[patient.gender] && (
                   <span className="patient-record-gender-chip">
-                    {patient.gender === 'femenino' ? 'Femenino' : 'Masculino'}
+                    {GENDER_LABELS[patient.gender]}
                   </span>
                 )}
-                {patient.bloodType && (
+                {patient.bloodType && patient.bloodType !== 'unknown' && (
                   <span className="patient-record-blood-chip">
                     Grupo: {patient.bloodType}
                   </span>

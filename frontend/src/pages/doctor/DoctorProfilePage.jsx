@@ -427,12 +427,13 @@ const DoctorProfilePage = () => {
               <div className="bg-white rounded-2xl shadow-2xl p-6 min-w-[280px]">
                 <div className="text-center mb-4">
                   <p className="text-gray-500 text-sm mb-1">Consulta desde</p>
-                  {profile.consultationFee > 0 || profile.priceTeleconsultation > 0 ? (
+                  {Number(profile.consultationFee) > 0 || Number(profile.priceTeleconsultation) > 0 ? (
                     <div className="flex items-baseline justify-center gap-1">
                       <span className="text-4xl font-bold text-teal-600">
                         ${Math.min(
-                          profile.consultationFee || 999,
-                          profile.priceTeleconsultation || 999
+                          ...[profile.consultationFee, profile.priceTeleconsultation]
+                            .map(Number)
+                            .filter((n) => n > 0)
                         ).toFixed(2)}
                       </span>
                       <span className="text-gray-400">USD</span>
