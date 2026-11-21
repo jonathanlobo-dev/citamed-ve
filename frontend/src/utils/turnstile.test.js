@@ -113,7 +113,7 @@ describe('conexión en las pantallas', () => {
   test.each([
     'pages/LoginPage.jsx',
     'pages/auth/ForgotPasswordPage.jsx',
-    'components/auth/DoctorWizard/DoctorStep6Confirmation.jsx',
+    'components/auth/DoctorWizard/DoctorStep2Professional.jsx',
     'components/auth/PatientWizard/PatientStep4Confirmation.jsx',
     'components/auth/ProviderWizard/ProviderStep5Confirmation.jsx'
   ])('%s muestra el desafío', (f) => {

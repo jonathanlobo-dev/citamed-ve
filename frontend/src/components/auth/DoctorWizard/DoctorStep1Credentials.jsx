@@ -2,7 +2,7 @@
  * DoctorStep1Credentials - CITAMED.VE
  * M01.3 Registro Multi-Paso
  *
- * Paso 1: Credenciales de acceso
+ * Paso 1: Cuenta (nombre, apellido, teléfono, correo, clave y términos)
  * - Email (con verificación de disponibilidad)
  * - Password (con indicador de fortaleza)
  * - Confirmar password
@@ -11,7 +11,7 @@
 
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, Check, X, AlertCircle, Loader2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Check, X, AlertCircle, Loader2, User, Phone } from 'lucide-react';
 import { debounce } from 'lodash';
 import authService from '../../../services/authService';
 
@@ -69,8 +69,25 @@ function DoctorStep1Credentials({ formData, updateField, errors, setFieldErrors,
     checkEmailAvailability(email);
   };
 
+  const handlePhoneChange = (e) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 11);
+    updateField('phone', value);
+  };
+
   const validateStep = () => {
     const newErrors = {};
+
+    if (!formData.firstName?.trim() || formData.firstName.trim().length < 2) {
+      newErrors.firstName = 'Escribe tu nombre';
+    }
+    if (!formData.lastName?.trim() || formData.lastName.trim().length < 2) {
+      newErrors.lastName = 'Escribe tu apellido';
+    }
+    if (!formData.phone?.trim()) {
+      newErrors.phone = 'Teléfono es requerido';
+    } else if (!/^(0412|0414|0416|0422|0424|0426)\d{7}$/.test(formData.phone)) {
+      newErrors.phone = 'Teléfono venezolano válido (04XX-XXXXXXX)';
+    }
 
     if (!formData.email) {
       newErrors.email = 'Email es requerido';
@@ -120,8 +137,35 @@ function DoctorStep1Credentials({ formData, updateField, errors, setFieldErrors,
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Crea tu cuenta de médico</h2>
         <p className="text-gray-600 mt-2">
-          Ingresa tus credenciales de acceso
+          Toma menos de un minuto. El resto lo completas después.
         </p>
+      </div>
+
+      {/* Nombre y apellido */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {[['firstName', 'Nombre', 'María'], ['lastName', 'Apellido', 'Pérez']].map(([field, label, ph]) => (
+          <div key={field}>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                autoComplete={field === 'firstName' ? 'given-name' : 'family-name'}
+                value={formData[field] || ''}
+                onChange={(e) => updateField(field, e.target.value)}
+                className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2
+                  ${errors[field] ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-primary/20 focus:border-primary'}`}
+                placeholder={ph}
+              />
+            </div>
+            {errors[field] && (
+              <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                <AlertCircle className="h-4 w-4" />
+                {errors[field]}
+              </p>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* Email */}
@@ -156,6 +200,30 @@ function DoctorStep1Credentials({ formData, updateField, errors, setFieldErrors,
           <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
             <AlertCircle className="h-4 w-4" />
             {errors.email}
+          </p>
+        )}
+      </div>
+
+      {/* Teléfono */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono celular</label>
+        <div className="relative">
+          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <input
+            type="tel"
+            inputMode="numeric"
+            autoComplete="tel"
+            value={formData.phone || ''}
+            onChange={handlePhoneChange}
+            className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2
+              ${errors.phone ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-primary/20 focus:border-primary'}`}
+            placeholder="04141234567"
+          />
+        </div>
+        {errors.phone && (
+          <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+            <AlertCircle className="h-4 w-4" />
+            {errors.phone}
           </p>
         )}
       </div>
@@ -295,8 +363,8 @@ function DoctorStep1Credentials({ formData, updateField, errors, setFieldErrors,
       {/* Info box */}
       <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
         <p className="text-sm text-teal-700">
-          <strong>Nota:</strong> Su cuenta quedará en estado de revisión hasta que nuestro
-          equipo verifique sus credenciales profesionales (MPPS).
+          <strong>Nota:</strong> podrás preparar tu consultorio de inmediato. Para atender
+          consultas, nuestro equipo debe verificar tu número MPPS.
         </p>
       </div>
 

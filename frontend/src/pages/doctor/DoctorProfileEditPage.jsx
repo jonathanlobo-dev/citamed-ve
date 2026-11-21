@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useState, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User,
@@ -1111,7 +1111,10 @@ const DoctorProfileEditPage = () => {
     addExperience, updateExperience, deleteExperience
   } = useDoctorProfile({ autoFetch: true });
 
-  const [activeTab, setActiveTab] = useState('info');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(
+    ['info', 'services', 'schedule', 'location'].includes(searchParams.get('tab')) ? searchParams.get('tab') : 'info'
+  );
   const [editingSection, setEditingSection] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
@@ -1740,7 +1743,7 @@ const DoctorProfileEditPage = () => {
           {/* Tab: Horarios */}
           {activeTab === 'schedule' && (
             <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-              <SectionHeader icon={Calendar} title="Horarios de Atención" color="green" onEdit={() => navigate('/medico/disponibilidad')} />
+              <SectionHeader icon={Calendar} title="Horarios de Atención" color="green" onEdit={() => navigate('/medico/agenda?tab=availability')} />
               <div className="text-center py-12">
                 <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gray-100 flex items-center justify-center">
                   <Calendar className="w-10 h-10 text-gray-400" />
@@ -1750,7 +1753,7 @@ const DoctorProfileEditPage = () => {
                   Define los días y horarios en que estás disponible para atender consultas.
                 </p>
                 <button
-                  onClick={() => navigate('/medico/disponibilidad')}
+                  onClick={() => navigate('/medico/agenda?tab=availability')}
                   className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-xl font-medium"
                 >
                   <Calendar className="w-5 h-5" />

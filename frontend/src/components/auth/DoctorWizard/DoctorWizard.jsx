@@ -1,77 +1,43 @@
 /**
  * DoctorWizard - CITAMED.VE
- * M01.3 Registro Multi-Paso
- *
- * Wizard de registro de médicos en 6 pasos:
- * 1. Credenciales de acceso
- * 2. Datos personales
- * 3. Información profesional
- * 4. Ubicación y horarios
- * 5. Tarifas y servicios
- * 6. Confirmación
+ * Registro corto del médico en 2 pasos:
+ * 1. Cuenta: nombre, apellido, teléfono, correo, clave y términos
+ * 2. Datos profesionales: MPPS y especialidad
+ * Consultorio, horarios, precios, foto y documentos se completan después en el panel
+ * (tarjeta "Prepara tu consultorio").
  */
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Stethoscope, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { Stethoscope, AlertCircle, CheckCircle } from 'lucide-react';
 import { useWizard } from '../../../hooks/useWizard';
 import StepIndicator from '../StepIndicator';
 import DoctorStep1Credentials from './DoctorStep1Credentials';
-import DoctorStep2Personal from './DoctorStep2Personal';
-import DoctorStep3Professional from './DoctorStep3Professional';
-import DoctorStep4Location from './DoctorStep4Location';
-import DoctorStep5Pricing from './DoctorStep5Pricing';
-import DoctorStep6Confirmation from './DoctorStep6Confirmation';
+import DoctorStep2Professional from './DoctorStep2Professional';
 import authService from '../../../services/authService';
 import api from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
 
-const TOTAL_STEPS = 6;
-const STEP_LABELS = [
-  'Credenciales',
-  'Personal',
-  'Profesional',
-  'Ubicación',
-  'Tarifas',
-  'Confirmación'
-];
+const TOTAL_STEPS = 2;
+const STEP_LABELS = ['Tu cuenta', 'Profesional'];
+
+// Si el servidor rechaza un campo, se vuelve al paso donde está
+const FIELD_STEP = {
+  firstName: 1, lastName: 1, phone: 1, email: 1, password: 1, confirmPassword: 1, acceptTerms: 1,
+  mppsNumber: 2, specialtyId: 2
+};
 
 const INITIAL_DATA = {
-  // Step 1
+  firstName: '',
+  lastName: '',
+  phone: '',
   email: '',
   password: '',
   confirmPassword: '',
   acceptTerms: false,
-  // Step 2
-  firstName: '',
-  lastName: '',
-  identificationNumber: '',
-  dateOfBirth: '',
-  gender: '',
-  phone: '',
-  // Step 3
   mppsNumber: '',
-  specialtyId: '',
-  university: '',
-  graduationYear: '',
-  subspecialties: '',
-  // Step 4
-  consultationAddress: '',
-  city: '',
-  state: '',
-  availableDays: [],
-  scheduleBlocks: [],
-  startTime: '',
-  endTime: '',
-  acceptsHomeVisits: false,
-  // Step 5
-  priceConsultation: '',
-  priceTeleconsultation: '',
-  priceHomeVisit: '',
-  acceptsInsurance: false,
-  acceptedInsurances: '',
-  paymentMethods: ''
+  specialtyId: ''
 };
 
 function DoctorWizard() {
@@ -79,7 +45,7 @@ function DoctorWizard() {
   const { startSession } = useAuth();
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [registrationError, setRegistrationError] = useState(null);
-  const [specialties, setSpecialties] = useState([]);
+  const [specialties, setSpecialties] = useState(null);
 
   const {
     currentStep,
@@ -95,7 +61,7 @@ function DoctorWizard() {
     setIsSubmitting,
     clearWizard
   } = useWizard({
-    wizardId: 'doctor',
+    wizardId: 'doctor-corto',
     totalSteps: TOTAL_STEPS,
     initialData: INITIAL_DATA,
     persistData: true
@@ -106,11 +72,10 @@ function DoctorWizard() {
     const fetchSpecialties = async () => {
       try {
         const response = await api.get('/specialties');
-        if (response.data.success) {
-          setSpecialties(response.data.data);
-        }
+        setSpecialties(response.data.success ? (response.data.data || []) : []);
       } catch (error) {
         console.error('Error cargando especialidades:', error);
+        setSpecialties([]);
       }
     };
     fetchSpecialties();
@@ -122,38 +87,15 @@ function DoctorWizard() {
 
     try {
       const registrationData = {
-        // Paso 1
-        email: formData.email,
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        phone: formData.phone,
+        email: formData.email.trim(),
         password: formData.password,
         confirmPassword: formData.confirmPassword,
         acceptTerms: formData.acceptTerms,
-        // Paso 2
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        identificationNumber: formData.identificationNumber,
-        dateOfBirth: formData.dateOfBirth,
-        gender: formData.gender,
-        phone: formData.phone,
-        // Paso 3
-        mppsNumber: formData.mppsNumber,
-        specialtyId: parseInt(formData.specialtyId),
-        university: formData.university,
-        graduationYear: parseInt(formData.graduationYear),
-        subspecialties: formData.subspecialties || null,
-        // Paso 4
-        consultationAddress: formData.consultationAddress,
-        city: formData.city,
-        state: formData.state,
-        availableDays: formData.availableDays,
-        startTime: formData.startTime,
-        endTime: formData.endTime,
-        acceptsHomeVisits: formData.acceptsHomeVisits || false,
-        // Paso 5
-        priceConsultation: formData.priceConsultation ? parseFloat(formData.priceConsultation) : null,
-        priceTeleconsultation: formData.priceTeleconsultation ? parseFloat(formData.priceTeleconsultation) : null,
-        priceHomeVisit: formData.priceHomeVisit ? parseFloat(formData.priceHomeVisit) : null,
-        acceptsInsurance: formData.acceptsInsurance || false,
-        acceptedInsurances: formData.acceptedInsurances || null
+        mppsNumber: formData.mppsNumber.trim(),
+        specialtyId: parseInt(formData.specialtyId, 10)
       };
 
       const response = await authService.registerDoctor(registrationData);
@@ -167,7 +109,7 @@ function DoctorWizard() {
           const sessionUser = startSession(response.data.token, response.data.user, response.data.profile);
           setTimeout(() => {
             navigate(`/verificar/email?userId=${sessionUser.id}&email=${encodeURIComponent(sessionUser.email)}&returnTo=${encodeURIComponent('/medico/dashboard')}`);
-          }, 3000);
+          }, 1500);
         } else {
           setTimeout(() => {
             navigate('/login', {
@@ -190,13 +132,6 @@ function DoctorWizard() {
         setFieldErrors(serverErrors);
 
         // Llevar al usuario al primer paso que tenga un error, para que lo corrija en contexto
-        const FIELD_STEP = {
-          email: 1, password: 1, confirmPassword: 1, acceptTerms: 1,
-          firstName: 2, lastName: 2, identificationNumber: 2, dateOfBirth: 2, gender: 2, phone: 2,
-          mppsNumber: 3, specialtyId: 3, university: 3, graduationYear: 3,
-          consultationAddress: 4, city: 4, state: 4, availableDays: 4, startTime: 4, endTime: 4,
-          priceConsultation: 5, priceTeleconsultation: 5, priceHomeVisit: 5
-        };
         const errorSteps = Object.keys(serverErrors)
           .map((field) => FIELD_STEP[field])
           .filter(Boolean);
@@ -233,16 +168,11 @@ function DoctorWizard() {
           <CheckCircle className="w-12 h-12 text-teal-500" />
         </div>
         <h2 className="text-2xl font-bold text-gray-800 mb-2">
-          ¡Registro enviado!
+          ¡Cuenta creada!
         </h2>
         <p className="text-gray-600 mb-4 max-w-md">
-          Su solicitud de registro ha sido recibida. Nuestro equipo verificará
-          sus credenciales profesionales.
+          Ahora confirma tu correo con el código que te enviamos.
         </p>
-        <div className="flex items-center gap-2 text-amber-600 bg-amber-50 px-4 py-2 rounded-lg">
-          <Clock className="w-5 h-5" />
-          <span className="text-sm font-medium">Estado: En revisión</span>
-        </div>
         <p className="text-sm text-gray-500 mt-4">
           Serás redirigido automáticamente...
         </p>
@@ -262,26 +192,17 @@ function DoctorWizard() {
       case 1:
         return <DoctorStep1Credentials {...commonProps} onNext={nextStep} />;
       case 2:
-        return <DoctorStep2Personal {...commonProps} onNext={nextStep} onPrev={prevStep} />;
-      case 3:
-        return <DoctorStep3Professional {...commonProps} onNext={nextStep} onPrev={prevStep} />;
-      case 4:
-        return <DoctorStep4Location {...commonProps} onNext={nextStep} onPrev={prevStep} />;
-      case 5:
-        return <DoctorStep5Pricing {...commonProps} onNext={nextStep} onPrev={prevStep} />;
-      case 6:
         return (
-          <DoctorStep6Confirmation
+          <DoctorStep2Professional
             {...commonProps}
             onPrev={prevStep}
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
-            goToStep={goToStep}
             specialties={specialties}
           />
         );
       default:
-        return null;
+        return <DoctorStep1Credentials {...commonProps} onNext={nextStep} />;
     }
   };
 
@@ -294,7 +215,7 @@ function DoctorWizard() {
         </div>
         <h1 className="text-3xl font-bold text-gray-800">Registro de Médico</h1>
         <p className="text-gray-600 mt-2">
-          Completa tu perfil profesional para atender pacientes
+          Dos pasos y entras a tu panel
         </p>
       </div>
 

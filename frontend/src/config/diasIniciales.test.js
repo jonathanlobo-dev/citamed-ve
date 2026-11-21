@@ -13,7 +13,6 @@ function iniciales(texto, clave) {
 }
 
 describe.each([
-  ['registro del médico (paso de ubicación)', 'components/auth/DoctorWizard/DoctorStep4Location.jsx', 'short', /value: '(\w+)', label: '([^']+)', short: '([^']+)'/g],
   ['calendario de disponibilidad', 'components/common/media/ScheduleCalendar.jsx', 'initial', /name: '([^']+)', short: '[^']+', initial: '([^']+)'/g]
 ])('%s', (_nombre, archivo, clave) => {
   const texto = leer(archivo);

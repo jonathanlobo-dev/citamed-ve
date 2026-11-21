@@ -31,6 +31,7 @@ import toast from 'react-hot-toast';
 import Navbar from '../components/common/Navbar/Navbar';
 import useDoctorProfile from '../hooks/useDoctorProfile';
 import { FEATURES } from '../config/features';
+import SetupChecklist from '../components/doctor/SetupChecklist';
 
 function DashboardMedico() {
   const navigate = useNavigate();
@@ -194,6 +195,8 @@ function DashboardMedico() {
             {specialty} • Panel Médico Profesional
           </p>
         </motion.div>
+
+        <SetupChecklist profile={profile} onSharePublicPage={handleShareWhatsApp} />
 
         {/* Stats Cards - Quick Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">

@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 import {
@@ -235,7 +235,8 @@ function DoctorAgendaPage() {
   };
 
   // Pestaña activa: 'appointments' (citas) o 'availability' (horarios)
-  const [activeTab, setActiveTab] = useState('appointments');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') === 'availability' ? 'availability' : 'appointments');
 
   // Estado de Disponibilidad
   const [days, setDays] = useState(buildInitialDays);
