@@ -227,7 +227,8 @@ async function updateLocation(doctorProfileId, locationData) {
 
   for (const field of locationFields) {
     if (locationData[field] !== undefined) {
-      updateData[field] = locationData[field];
+      // Un campo vacío en el formulario se guarda como "sin dato" (evita errores en columnas numéricas)
+      updateData[field] = locationData[field] === '' ? null : locationData[field];
     }
   }
 

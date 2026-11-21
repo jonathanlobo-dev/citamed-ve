@@ -139,35 +139,35 @@ const validateUpdateProfile = [
 
 const validateUpdateLocation = [
   body('clinicName')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 200 })
     .withMessage('El nombre del consultorio no puede exceder 200 caracteres'),
   body('clinicAddress')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 300 })
     .withMessage('La dirección no puede exceder 300 caracteres'),
   body('city')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 100 })
     .withMessage('La ciudad no puede exceder 100 caracteres'),
   body('state')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 100 })
     .withMessage('El estado no puede exceder 100 caracteres'),
   body('latitude')
-    .optional()
+    .optional({ values: 'falsy' })
     .isFloat({ min: -90, max: 90 })
     .withMessage('Latitud inválida. Debe estar entre -90 y 90'),
   body('longitude')
-    .optional()
+    .optional({ values: 'falsy' })
     .isFloat({ min: -180, max: 180 })
     .withMessage('Longitud inválida. Debe estar entre -180 y 180'),
   body('phoneNumber')
-    .optional()
+    .optional({ values: 'falsy' })
     .matches(/^[+]?[\d\s\-()]{7,20}$/)
     .withMessage('Número de teléfono inválido'),
   body('whatsappNumber')
-    .optional()
+    .optional({ values: 'falsy' })
     .matches(/^[+]?[\d\s\-()]{7,20}$/)
     .withMessage('Número de WhatsApp inválido'),
   handleValidationErrors
