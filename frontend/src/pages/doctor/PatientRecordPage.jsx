@@ -42,6 +42,9 @@ import {
 import './PatientRecordPage.css';
 
 // Solo se muestra la etiqueta cuando el sexo está indicado
+// createdAt viene en UTC: se muestra en hora de Caracas, igual que las consultas (QA MED-006)
+const caracasDate = (iso) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Caracas' }).format(new Date(iso));
+const caracasTime = (iso) => new Intl.DateTimeFormat('es-VE', { timeZone: 'America/Caracas', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(iso));
 const GENDER_LABELS = { masculino: 'Masculino', femenino: 'Femenino', otro: 'Otro' };
 
 // Lazy loading de Recharts
@@ -302,7 +305,7 @@ export default function PatientRecordPage() {
         rawId: c.id,
         category: 'consultas',
         date: c.appointmentDate,
-        time: c.appointmentTime,
+        time: c.appointmentTime ? String(c.appointmentTime).slice(0, 5) : null,
         title: `Consulta médica ${c.status === 'completed' ? 'finalizada' : 'en curso'}`,
         subtitle: c.diagnosis ? `Diagnóstico: ${c.diagnosis}` : c.reasonForVisit || 'Consulta clínica',
         icon: Stethoscope,
@@ -319,8 +322,8 @@ export default function PatientRecordPage() {
         id: `prescription_${p.id}`,
         rawId: p.id,
         category: 'recipes',
-        date: p.createdAt ? p.createdAt.slice(0, 10) : p.appointmentDate,
-        time: p.createdAt ? p.createdAt.slice(11, 16) : null,
+        date: p.createdAt ? caracasDate(p.createdAt) : p.appointmentDate,
+        time: p.createdAt ? caracasTime(p.createdAt) : null,
         title: 'Récipe Médico emitido',
         subtitle: `${count} ${count === 1 ? 'medicamento' : 'medicamentos'} prescritos`,
         status: p.status,
@@ -361,8 +364,8 @@ export default function PatientRecordPage() {
         id: `doc_${d.id}`,
         rawId: d.id,
         category: cat,
-        date: d.createdAt ? d.createdAt.slice(0, 10) : '',
-        time: d.createdAt ? d.createdAt.slice(11, 16) : null,
+        date: d.createdAt ? caracasDate(d.createdAt) : '',
+        time: d.createdAt ? caracasTime(d.createdAt) : null,
         title: d.title || 'Documento médico',
         subtitle: `Código: ${d.verificationCode || 'N/A'}`,
         status: d.status,
@@ -380,8 +383,8 @@ export default function PatientRecordPage() {
         id: `att_${att.id}`,
         rawId: att.id,
         category: 'archivos',
-        date: att.createdAt ? att.createdAt.slice(0, 10) : '',
-        time: att.createdAt ? att.createdAt.slice(11, 16) : null,
+        date: att.createdAt ? caracasDate(att.createdAt) : '',
+        time: att.createdAt ? caracasTime(att.createdAt) : null,
         title: att.title || 'Archivo adjunto del paciente',
         subtitle: att.category || 'Adjunto clínico',
         icon: Paperclip,

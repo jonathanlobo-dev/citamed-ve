@@ -188,7 +188,14 @@ const AvailabilityCard = ({ availability }) => {
 
   const days = Object.entries(availability).filter(([_, data]) => data.available);
 
-  if (days.length === 0) return null;
+  if (days.length === 0) {
+    // Sin horario publicado: se dice en vez de dejar la tarjeta vacía (QA PAC-UX-002)
+    return (
+      <p className="text-sm text-gray-600">
+        Este médico todavía no ha publicado su horario aquí. Usa <strong>Agendar Cita</strong> para ver los días y horas disponibles.
+      </p>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

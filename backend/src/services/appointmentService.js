@@ -670,6 +670,9 @@ class AppointmentService {
       patientNotes: originalAppointment.patientNotes,
       locationType: originalAppointment.locationType,
       locationAddress: originalAppointment.locationAddress,
+      // Mismo consultorio que la cita original (sin esto la nueva perdía la dirección, QA PAC-003)
+      clinicId: originalAppointment.clinicId,
+      locationId: originalAppointment.locationId,
       consultationFee: originalAppointment.consultationFee,
       status: 'pending',
       rescheduledFrom: originalAppointment.id
