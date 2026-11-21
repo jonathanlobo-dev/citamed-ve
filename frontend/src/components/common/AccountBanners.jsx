@@ -39,7 +39,7 @@ export default function AccountBanners() {
                 <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
                 {b.text}
               </span>
-              <Link to={b.to} className="font-semibold underline underline-offset-2 whitespace-nowrap">
+              <Link to={b.to} className="inline-flex items-center min-h-[40px] px-2 -mx-2 font-semibold underline underline-offset-2 whitespace-nowrap">
                 {b.actionLabel}
               </Link>
             </div>

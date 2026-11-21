@@ -80,13 +80,16 @@ const searchDoctors = async (filters = {}) => {
   const replacements = {};
 
   // Búsqueda por nombre (full text search)
+  // Cada palabra debe aparecer en el nombre, la especialidad, la ciudad o el estado, sin importar acentos
+  // ("medicina general caracas"). Va entre paréntesis para no saltarse los demás filtros (QA PAC-UX-003).
   if (query && query.trim()) {
-    conditions.push(`
-      to_tsvector('spanish', COALESCE(full_name, '')) @@ plainto_tsquery('spanish', :query)
-      OR LOWER(full_name) LIKE LOWER(:queryLike)
-    `);
-    replacements.query = query.trim();
-    replacements.queryLike = `%${query.trim()}%`;
+    const words = query.trim().split(/\s+/).filter(Boolean).slice(0, 6);
+    const haystack = `translate(LOWER(COALESCE(full_name, '') || ' ' || COALESCE(array_to_string(specialties_text, ' '), '') || ' ' || COALESCE(city, '') || ' ' || COALESCE(state, '')), 'áéíóúüñ', 'aeiouun')`;
+    const parts = words.map((word, i) => {
+      replacements[`queryWord${i}`] = `%${word.toLowerCase().replace(/[%_\\]/g, '')}%`;
+      return `${haystack} LIKE translate(:queryWord${i}, 'áéíóúüñ', 'aeiouun')`;
+    });
+    if (parts.length > 0) conditions.push(`(${parts.join(' AND ')})`);
   }
 
   // Filtro por especialidades

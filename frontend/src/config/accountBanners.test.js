@@ -54,6 +54,11 @@ describe('dónde no se muestran', () => {
   test.each(['/login', '/registro', '/registro?role=doctor', '/forgot-password', '/reset-password', '/verificar/email', '/verificar/telefono', '/activar-asistente/abc', '/cita/xyz'])('%s', (path) => {
     expect(keys(user({ emailVerified: false }), path)).toEqual([]);
   });
+  test('la portada y las páginas legales no muestran avisos de cuenta', () => {
+    ['/', '/terminos', '/privacidad', '/codigo-etica'].forEach((p) => {
+      expect(keys(user({ emailVerified: false }), p)).toEqual([]);
+    });
+  });
   test('sin sesión no hay avisos', () => {
     expect(getAccountBanners(null, '/dashboard')).toEqual([]);
   });

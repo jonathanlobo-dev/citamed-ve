@@ -802,7 +802,7 @@ function DoctorAgendaPage() {
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <div className="text-center">
-                  <h3 className="font-bold text-gray-800 text-base sm:text-lg capitalize">
+                  <h3 className="font-bold text-gray-800 text-base sm:text-lg first-letter:uppercase">
                     {getHeaderTitle()}
                   </h3>
                   <p className="text-xs text-gray-500">
@@ -883,7 +883,7 @@ function DoctorAgendaPage() {
                             <div className="flex items-start gap-4">
                               <div className="bg-primary/10 text-primary p-3 rounded-xl flex flex-col items-center justify-center min-w-[70px]">
                                 <Clock className="w-4 h-4 mb-1" />
-                                <span className="font-bold text-sm">{apt.appointmentTime}</span>
+                                <span className="font-bold text-sm">{shortTime(apt.appointmentTime)}</span>
                                 <span className="text-[10px] text-gray-500">{apt.duration || 30} min</span>
                               </div>
                               <div>
@@ -953,7 +953,7 @@ function DoctorAgendaPage() {
                                       {apt.patient.phone}
                                     </span>
                                   )}
-                                  {apt.patient?.email && (
+                                  {apt.patient?.email && !/@sin-correo.citamed.ve$/i.test(apt.patient.email) && (
                                     <span className="flex items-center gap-1">
                                       <Mail className="w-3.5 h-3.5 text-gray-400" />
                                       {apt.patient.email}
@@ -1085,7 +1085,7 @@ function DoctorAgendaPage() {
                                                   {hist.history.map((past) => (
                                                     <div key={past.id} className="p-2 bg-white rounded border border-gray-200 space-y-1">
                                                       <div className="flex items-center justify-between font-bold text-gray-800">
-                                                        <span>{past.appointmentDate} · {past.appointmentTime}</span>
+                                                        <span>{ymdToDmy(past.appointmentDate)} · {shortTime(past.appointmentTime)}</span>
                                                         <span className="text-gray-500 font-normal italic">{past.reasonForVisit || 'Consulta general'}</span>
                                                       </div>
                                                       {past.diagnosis && (
@@ -1293,7 +1293,7 @@ function DoctorAgendaPage() {
                               }`}
                             >
                               <div className="flex items-center justify-between font-bold mb-1">
-                                <span>{apt.appointmentTime}</span>
+                                <span>{shortTime(apt.appointmentTime)}</span>
                                 <span className="text-[10px]">
                                   {apt.status === 'pending'
                                     ? '⏳ Pendiente'
@@ -1389,7 +1389,7 @@ function DoctorAgendaPage() {
                                   : 'bg-green-100 text-green-800 border border-green-200'
                               }`}
                             >
-                              {apt.appointmentTime} {apt.patient?.firstName || 'Cita'}
+                              {shortTime(apt.appointmentTime)} {apt.patient?.firstName || 'Cita'}
                             </div>
                           ))}
                           {dayApts.length > 2 && (

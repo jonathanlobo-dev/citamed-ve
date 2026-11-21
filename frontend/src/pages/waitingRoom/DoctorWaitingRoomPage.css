@@ -26,6 +26,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
   padding: 12px 24px;
   background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
   color: white;
@@ -73,10 +74,12 @@
   color: rgba(255, 255, 255, 0.7);
 }
 
+/* En el flujo normal (no absoluto) para que nunca quede debajo de "Nueva consulta" (QA MED-UX-004) */
 .header-center {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
 }
 
 .connection-status {

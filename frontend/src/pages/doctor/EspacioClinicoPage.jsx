@@ -75,6 +75,7 @@ import { ADULT_VITAL_RANGES, isVitalAbnormal, calculateBMI } from '../../utils/v
 import { shareDocument, prefetchDocumentPdf } from '../../utils/shareDocument';
 import { getCompanionSuggestions, checkMedicationAllergy } from '../../utils/companionRules';
 import './EspacioClinicoPage.css';
+import { shortTime, ymdToDmy } from '../../utils/appointmentLabels';
 
 const APPOINTMENT_STATUS_LABELS = {
   pending: 'Pendiente',
@@ -565,6 +566,10 @@ export default function EspacioClinicoPage() {
 
           // Comprobar borrador en localStorage
           try {
+            // Consulta ya cerrada: lo del servidor es lo definitivo y la copia local sobra (QA MED-UX-009)
+            if (['completed', 'cancelled_patient', 'cancelled_doctor', 'no_show'].includes(apt.status)) {
+              [`citamed_draft_apt_${apt.id}`, `citamed_ai_draft_${apt.id}`, `citamed_recipe_draft_${apt.id}`].forEach((k) => localStorage.removeItem(k));
+            }
             // El borrador de IA solo vive en este equipo: se recupera siempre, sin preguntar
             const savedAiDraft = localStorage.getItem(`citamed_ai_draft_${apt.id}`);
             if (savedAiDraft) setAiDraftText((prev) => prev || savedAiDraft);
@@ -1951,7 +1956,7 @@ export default function EspacioClinicoPage() {
               )}
               <span className="ec-chip flex items-center gap-1">
                 <Clock className="w-3 h-3 text-slate-400" />
-                {appointment?.appointmentDate || 'Hoy'} · {appointment?.appointmentTime || 'Ahora'}
+                {appointment?.appointmentDate ? ymdToDmy(appointment.appointmentDate) : 'Hoy'} · {appointment?.appointmentTime ? shortTime(appointment.appointmentTime) : 'Ahora'}
               </span>
               <span className={`ec-chip ${isDraftMode ? 'ec-chip-draft bg-amber-100 text-amber-800 border-amber-300' : isReadOnly ? 'ec-chip-completed' : 'ec-chip-in-progress'}`}>
                 {isDraftMode ? 'Consulta sin cita' : isReadOnly ? 'Consulta finalizada' : 'En consulta'}
@@ -3461,7 +3466,7 @@ export default function EspacioClinicoPage() {
           <section id="notas-privadas" className="ec-card border-amber-200 bg-amber-50/20">
             <div className="ec-card-header">
               <h2 className="ec-card-title text-base text-amber-900">
-                <Lock className="w-5 h-5 text-amber-600" /> Notas Privadas (doctorNotes)
+                <Lock className="w-5 h-5 text-amber-600" /> Notas privadas (solo tú las ves)
               </h2>
               <span className="text-xs font-semibold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-full">
                 Solo tú puedes ver estas notas
@@ -3710,7 +3715,7 @@ export default function EspacioClinicoPage() {
                     >
                       <div className="flex justify-between gap-2 font-bold text-slate-800">
                         <span>
-                          {c.appointmentDate} · {String(c.appointmentTime || '').slice(0, 5)}
+                          {ymdToDmy(c.appointmentDate)} · {shortTime(c.appointmentTime)}
                         </span>
                         <span className={isCurrent ? 'text-sky-700' : c.status === 'completed' ? 'text-emerald-700' : 'text-slate-500'}>
                           {isCurrent ? 'Consulta actual' : APPOINTMENT_STATUS_LABELS[c.status] || c.status}

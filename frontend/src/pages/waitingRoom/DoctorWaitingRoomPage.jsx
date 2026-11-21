@@ -285,9 +285,12 @@ const DoctorWaitingRoomPage = () => {
         </div>
 
         <div className="header-center">
-          <div className={`connection-status ${connected ? 'connected' : reconnecting ? 'reconnecting' : 'disconnected'}`}>
+          <div
+            className={`connection-status ${connected ? 'connected' : reconnecting ? 'reconnecting' : 'disconnected'}`}
+            title="Conexión de la sala con el servidor. Tu estado para recibir pacientes (Online/Offline) se cambia abajo."
+          >
             <span className="status-dot"></span>
-            <span className="status-text">{connected ? 'Conectado' : reconnecting ? 'Reconectando...' : 'Sin conexión'}</span>
+            <span className="status-text">{connected ? 'Sala en tiempo real' : reconnecting ? 'Reconectando...' : 'Sin conexión'}</span>
           </div>
         </div>
 

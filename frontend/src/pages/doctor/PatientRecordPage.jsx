@@ -541,7 +541,7 @@ export default function PatientRecordPage() {
               <div className="patient-record-demographics">
                 <span>{patient.age || 'Edad no registrada'}</span>
                 {patient.phone && <span>· Tel: {patient.phone}</span>}
-                {patient.email && <span>· {patient.email}</span>}
+                {patient.email && !/@sin-correo.citamed.ve$/i.test(patient.email) && <span>· {patient.email}</span>}
               </div>
 
               {/* Alergias como chips rojos */}

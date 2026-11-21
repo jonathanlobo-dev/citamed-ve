@@ -337,7 +337,7 @@ export default function MiCuentaPage() {
                             <Clock className="w-4 h-4" aria-hidden="true" /> Solicitud en revisión
                           </span>
                         ) : (
-                          <button type="button" className="text-sm font-semibold text-primary hover:underline" onClick={() => setRequestItem(d)}>
+                          <button type="button" className="inline-flex items-center min-h-[40px] px-3 -mx-3 text-sm font-semibold text-primary hover:underline" onClick={() => setRequestItem(d)}>
                             Pedir cambio
                           </button>
                         )}

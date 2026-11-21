@@ -12,6 +12,7 @@ import {
   Lock, BadgeCheck, Smartphone, ChevronDown, ArrowRight, Menu, X, Mic, Sparkles
 } from 'lucide-react';
 import { appHref } from '../config/appUrl';
+import { useAuth } from '../context/AuthContext';
 
 const DOCTOR_FEATURES = [
   { icon: CalendarDays, title: 'Agenda en orden', text: 'Vista por día, semana y mes, con varios consultorios y horarios que tú defines.' },
@@ -133,6 +134,10 @@ function LandingPage() {
   const patientRegisterHref = appHref('/registro?role=patient');
   const directoryHref = appHref('/directorio');
 
+  // Con sesión abierta (en dev y local la portada comparte dominio con el sistema) se ofrece volver al panel
+  const { user, getDashboardPath } = useAuth();
+  const panelHref = user ? appHref(getDashboardPath(user.role)) : null;
+
   const nav = [
     { href: '#medicos', label: 'Para médicos' },
     { href: '#pacientes', label: 'Para pacientes' },
@@ -152,8 +157,14 @@ function LandingPage() {
             {nav.map((n) => <a key={n.href} href={n.href} className="hover:text-teal-600">{n.label}</a>)}
           </nav>
           <div className="hidden md:flex items-center gap-2">
-            <a href={loginHref} className="text-sm font-semibold px-4 py-2 rounded-xl border border-slate-300 hover:border-teal-500">Iniciar sesión</a>
-            <a href={registerHref} className="text-sm font-semibold px-4 py-2 rounded-xl bg-primary text-white hover:opacity-90">Crear cuenta</a>
+            {panelHref ? (
+              <a href={panelHref} className="text-sm font-semibold px-4 py-2 rounded-xl bg-primary text-white hover:opacity-90">Ir a mi panel</a>
+            ) : (
+              <>
+                <a href={loginHref} className="text-sm font-semibold px-4 py-2 rounded-xl border border-slate-300 hover:border-teal-500">Iniciar sesión</a>
+                <a href={registerHref} className="text-sm font-semibold px-4 py-2 rounded-xl bg-primary text-white hover:opacity-90">Crear cuenta</a>
+              </>
+            )}
           </div>
           <button type="button" className="md:hidden p-2" onClick={() => setMenuOpen(!menuOpen)} aria-label="Abrir menú">
             {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -164,10 +175,14 @@ function LandingPage() {
             {nav.map((n) => (
               <a key={n.href} href={n.href} onClick={() => setMenuOpen(false)} className="block font-medium text-slate-700">{n.label}</a>
             ))}
-            <div className="grid grid-cols-2 gap-2 pt-2">
-              <a href={loginHref} className="text-center text-sm font-semibold px-4 py-2.5 rounded-xl border border-slate-300">Iniciar sesión</a>
-              <a href={registerHref} className="text-center text-sm font-semibold px-4 py-2.5 rounded-xl bg-primary text-white">Crear cuenta</a>
-            </div>
+            {panelHref ? (
+              <a href={panelHref} className="block text-center text-sm font-semibold px-4 py-2.5 rounded-xl bg-primary text-white">Ir a mi panel</a>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <a href={loginHref} className="text-center text-sm font-semibold px-4 py-2.5 rounded-xl border border-slate-300">Iniciar sesión</a>
+                <a href={registerHref} className="text-center text-sm font-semibold px-4 py-2.5 rounded-xl bg-primary text-white">Crear cuenta</a>
+              </div>
+            )}
           </div>
         )}
       </header>

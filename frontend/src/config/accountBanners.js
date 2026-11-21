@@ -5,7 +5,7 @@
  */
 
 // Pantallas donde un aviso estorba (acceso, registro, verificación, páginas públicas)
-const HIDE_ON = [/^\/login/, /^\/registro/, /^\/forgot-password/, /^\/reset-password/, /^\/verificar/, /^\/activar-asistente/, /^\/cita\//];
+const HIDE_ON = [/^\/$/, /^\/(terminos|privacidad|codigo-etica)$/, /^\/login/, /^\/registro/, /^\/forgot-password/, /^\/reset-password/, /^\/verificar/, /^\/activar-asistente/, /^\/cita\//];
 
 const DOCTOR_STATUS_TEXT = {
   rejected: 'Tu verificación profesional fue rechazada. Revisa el motivo y vuelve a enviar tus documentos.',
