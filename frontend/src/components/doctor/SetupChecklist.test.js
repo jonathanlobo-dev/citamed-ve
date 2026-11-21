@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { buildSetupTasks } from './SetupChecklist';
+import { buildSetupTasks } from './setupTasks';
 
 const byId = (tasks) => Object.fromEntries(tasks.map((t) => [t.id, t.done]));
 

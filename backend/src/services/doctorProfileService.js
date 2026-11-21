@@ -5,6 +5,7 @@
  * Servicio principal para gestión de perfiles médicos
  */
 
+const { uniquePublicSlug } = require('../utils/publicSlug');
 const { Op } = require('sequelize');
 const db = require('../models');
 
@@ -174,24 +175,7 @@ async function updateBasicInfo(doctorProfileId, data) {
     }
   } else if (!profile.publicSlug && (profile.firstName || profile.lastName)) {
     // Generación automática inicial si no tiene slug
-    const baseSlug = `${profile.firstName || ''} ${profile.lastName || ''}`
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'medico';
-
-    const { Op } = require('sequelize');
-    let candidate = baseSlug;
-    let counter = 1;
-    while (true) {
-      const existing = await DoctorProfile.findOne({
-        where: { publicSlug: candidate, id: { [Op.ne]: doctorProfileId } }
-      });
-      if (!existing) break;
-      counter++;
-      candidate = `${baseSlug}-${counter}`;
-    }
+    const candidate = await uniquePublicSlug(DoctorProfile, profile.firstName, profile.lastName, { excludeId: doctorProfileId });
     updateData.publicSlug = candidate;
   }
 

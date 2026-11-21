@@ -19,7 +19,8 @@ function DoctorStep2Professional({
   onPrev,
   onSubmit,
   isSubmitting,
-  specialties = null
+  specialties = null,
+  onRetrySpecialties
 }) {
   const validateStep = () => {
     const newErrors = {};
@@ -91,8 +92,11 @@ function DoctorStep2Professional({
               Cargando especialidades...
             </div>
           ) : specialties.length === 0 ? (
-            <div className="w-full pl-10 pr-4 py-3 border border-amber-300 bg-amber-50 rounded-lg text-sm text-amber-700">
-              No pudimos cargar las especialidades. Revisa tu conexión y recarga la página.
+            <div className="w-full pl-10 pr-4 py-3 border border-amber-300 bg-amber-50 rounded-lg text-sm text-amber-700 flex flex-wrap items-center justify-between gap-2">
+              <span>No pudimos cargar las especialidades.</span>
+              <button type="button" onClick={onRetrySpecialties} className="font-semibold underline">
+                Intentar de nuevo
+              </button>
             </div>
           ) : (
             <select

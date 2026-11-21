@@ -7,7 +7,7 @@
  * (tarjeta "Prepara tu consultorio").
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Stethoscope, AlertCircle, CheckCircle } from 'lucide-react';
@@ -67,19 +67,28 @@ function DoctorWizard() {
     persistData: true
   });
 
-  // Cargar especialidades
-  useEffect(() => {
-    const fetchSpecialties = async () => {
+  // Cargar especialidades. El servidor puede tardar en despertar, así que se reintenta solo
+  // varias veces antes de mostrar un aviso, y el aviso trae un botón para intentar de nuevo.
+  const loadSpecialties = useCallback(async () => {
+    setSpecialties(null);
+    for (let intento = 0; intento < 4; intento++) {
       try {
         const response = await api.get('/specialties');
-        setSpecialties(response.data.success ? (response.data.data || []) : []);
+        if (response.data.success && response.data.data?.length) {
+          setSpecialties(response.data.data);
+          return;
+        }
       } catch (error) {
         console.error('Error cargando especialidades:', error);
-        setSpecialties([]);
       }
-    };
-    fetchSpecialties();
+      await new Promise((r) => setTimeout(r, 2000 * (intento + 1)));
+    }
+    setSpecialties([]);
   }, []);
+
+  useEffect(() => {
+    loadSpecialties();
+  }, [loadSpecialties]);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -199,6 +208,7 @@ function DoctorWizard() {
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
             specialties={specialties}
+            onRetrySpecialties={loadSpecialties}
           />
         );
       default:

@@ -19,8 +19,10 @@ const {
   Clinic,
   ClinicLocation,
   ClinicDoctor,
+  DoctorSpecialty,
   sequelize
 } = require('../models');
+const { uniquePublicSlug } = require('../utils/publicSlug');
 
 /**
  * Genera token JWT para un usuario
@@ -247,8 +249,19 @@ const createDoctor = async (data) => {
       acceptsInsurance: data.acceptsInsurance || false,
       acceptedInsurances: data.acceptedInsurances || null,
       profileStatus: 'pending_review', // Médicos requieren aprobación
-      isVerified: false
+      isVerified: false,
+      // Enlace propio desde el registro, para que el médico pueda compartirlo de inmediato
+      publicSlug: await uniquePublicSlug(DoctorProfile, data.firstName, data.lastName, { transaction })
     }, { transaction });
+
+    // La especialidad elegida al registrarse queda como principal (la usan el perfil, el directorio y la página pública)
+    if (profile.specialtyId) {
+      await DoctorSpecialty.create({
+        doctorProfileId: profile.id,
+        specialtyId: profile.specialtyId,
+        isPrimary: true
+      }, { transaction });
+    }
 
     // Auto-crear Consultorio Privado del Médico
     try {

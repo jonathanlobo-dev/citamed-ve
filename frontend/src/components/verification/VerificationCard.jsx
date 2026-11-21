@@ -170,7 +170,7 @@ function VerificationCard({
         <h2 className="text-2xl font-bold text-gray-800 mb-2">
           {title}
         </h2>
-        <p className="text-gray-600">
+        <p className="text-gray-600 [overflow-wrap:anywhere]">
           {isSent ? subtitle : (type === 'email' ? 'Verificaremos tu correo electrónico' : 'Verificaremos tu número de teléfono')}
         </p>
       </div>

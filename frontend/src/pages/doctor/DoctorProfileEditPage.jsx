@@ -1112,6 +1112,14 @@ const DoctorProfileEditPage = () => {
   } = useDoctorProfile({ autoFetch: true });
 
   const [searchParams] = useSearchParams();
+  // Si se llega con ?tab= (por ejemplo desde Prepara tu consultorio), bajar directo a las pestañas
+  const scrolledToTabs = useRef(false);
+  const tabsRef = (node) => {
+    if (node && searchParams.get('tab') && !scrolledToTabs.current) {
+      scrolledToTabs.current = true;
+      setTimeout(() => node.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+    }
+  };
   const [activeTab, setActiveTab] = useState(
     ['info', 'services', 'schedule', 'location'].includes(searchParams.get('tab')) ? searchParams.get('tab') : 'info'
   );
@@ -1468,7 +1476,7 @@ const DoctorProfileEditPage = () => {
       </div>
 
       {/* Tabs de navegación */}
-      <div className="sticky top-0 z-20 bg-white border-b shadow-sm">
+      <div ref={tabsRef} className="sticky top-0 z-20 bg-white border-b shadow-sm scroll-mt-16">
         <div className="max-w-6xl mx-auto px-4">
           <nav className="flex gap-1 overflow-x-auto">
             {tabs.map(tab => {
