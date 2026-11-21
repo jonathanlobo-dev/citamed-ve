@@ -64,8 +64,9 @@ const EditButton = ({ onClick, label = 'Modificar' }) => (
   </button>
 );
 
-// Modal genérico para editar secciones
-const EditModal = ({ isOpen, onClose, title, children, onSave, saving }) => {
+// Panel lateral genérico para editar secciones (regla del proyecto: nada de modales).
+// Cada editor trae su propio botón de guardar; el pie solo cierra el panel.
+const EditModal = ({ isOpen, onClose, title, children, saving }) => {
   if (!isOpen) return null;
 
   return (
@@ -74,55 +75,44 @@ const EditModal = ({ isOpen, onClose, title, children, onSave, saving }) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex justify-end bg-black/40"
         onClick={onClose}
       >
-        <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.95, opacity: 0 }}
-          className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+        <motion.aside
+          initial={{ x: '100%' }}
+          animate={{ x: 0 }}
+          exit={{ x: '100%' }}
+          transition={{ type: 'tween', duration: 0.25 }}
+          className="bg-white shadow-2xl w-full max-w-xl h-full flex flex-col"
           onClick={e => e.stopPropagation()}
+          role="dialog"
+          aria-label={title}
         >
-          {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-teal-50 to-cyan-50">
             <h3 className="text-xl font-bold text-gray-900">{title}</h3>
             <button
               onClick={onClose}
+              aria-label="Cerrar"
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <X className="w-5 h-5 text-gray-500" />
             </button>
           </div>
 
-          {/* Content */}
-          <div className="p-6 overflow-y-auto max-h-[60vh]">
+          <div className="p-6 overflow-y-auto flex-1">
             {children}
           </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50">
+          <div className="flex items-center justify-end px-6 py-4 border-t bg-gray-50">
             <button
               onClick={onClose}
               disabled={saving}
-              className="px-6 py-2.5 text-gray-700 hover:bg-gray-100 rounded-xl font-medium transition-colors"
+              className="px-6 py-2.5 text-gray-700 hover:bg-gray-100 rounded-xl font-medium transition-colors disabled:opacity-50"
             >
-              Cancelar
-            </button>
-            <button
-              onClick={onSave}
-              disabled={saving}
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-xl font-medium hover:from-teal-600 hover:to-cyan-600 transition-all shadow-sm disabled:opacity-50"
-            >
-              {saving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-              Guardar Cambios
+              Cerrar
             </button>
           </div>
-        </motion.div>
+        </motion.aside>
       </motion.div>
     </AnimatePresence>
   );
@@ -1105,7 +1095,7 @@ const DoctorProfileEditPage = () => {
 
   const {
     profile, loading, error, saving, completeness, specialties,
-    fetchMyProfile, fetchCompleteness, updateBasicInfo, uploadProfilePhoto,
+    fetchMyProfile, fetchCompleteness, updateBasicInfo, updateLocationInfo, uploadProfilePhoto,
     addSpecialty, removeSpecialty,
     addEducation, updateEducation, deleteEducation,
     addExperience, updateExperience, deleteExperience
@@ -1165,7 +1155,7 @@ const DoctorProfileEditPage = () => {
 
   // Guardar ubicación
   const handleSaveLocation = async (data) => {
-    const result = await updateBasicInfo(data);
+    const result = await updateLocationInfo(data);
     if (result?.success) {
       setEditingSection(null);
       fetchCompleteness();

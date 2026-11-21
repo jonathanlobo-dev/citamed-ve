@@ -6,7 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 import { FEATURES } from './config/features';
 import LandingPage from './pages/LandingPage';
-import { isAppHost, isLandingHost, systemRedirectFor } from './config/appUrl';
+import { isAppHost, isLandingHost, systemRedirectFor, homeUrl } from './config/appUrl';
 import AccountBanners from './components/common/AccountBanners';
 import LoginPage from './pages/LoginPage';
 import RegistroPage from './pages/RegistroPage';
@@ -573,6 +573,8 @@ function AppRoutes() {
           )
         }
       />
+      {/* Cualquier ruta que no existe: aviso claro en vez de pantalla en blanco */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
     </Suspense>
   );
@@ -588,6 +590,21 @@ if (typeof window !== 'undefined' && isLandingHost()) {
   } catch {
     // Navegador sin acceso a localStorage: no hay nada que limpiar
   }
+}
+
+function NotFoundPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="text-center max-w-sm">
+        <p className="text-5xl font-bold text-teal-600 mb-2">404</p>
+        <h1 className="text-xl font-semibold text-gray-900 mb-2">Esta página no existe</h1>
+        <p className="text-gray-600 mb-6">Revisa el enlace o vuelve al inicio.</p>
+        <a href={homeUrl()} className="inline-block px-6 py-3 bg-teal-600 text-white rounded-xl font-medium hover:bg-teal-700">
+          Ir al inicio
+        </a>
+      </div>
+    </div>
+  );
 }
 
 function App() {

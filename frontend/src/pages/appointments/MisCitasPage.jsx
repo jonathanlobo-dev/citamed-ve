@@ -62,7 +62,7 @@ const MisCitasPage = () => {
   const fetchMyPayments = async () => {
     try {
       const res = await paymentService.listMine();
-      const list = res?.data || (Array.isArray(res) ? res : []);
+      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
       const map = {};
       list.forEach((p) => {
         const aptId = p.appointmentId || p.appointment?.id;
@@ -145,7 +145,7 @@ const MisCitasPage = () => {
       setLoading(true);
       setError(null);
       const response = await appointmentService.getMyAppointments({ all: 'true' });
-      setAppointments(response.data || []);
+      setAppointments(Array.isArray(response?.data) ? response.data : []);
       fetchMyPayments();
     } catch (err) {
       console.error('Error fetching appointments:', err);

@@ -1147,7 +1147,7 @@ export default function AdminPanelPage() {
                         onClick={() => handleOpenUserDetail(usr.id)}
                       >
                         <td>
-                          <div className="font-semibold text-gray-900">{usr.name || 'Sin nombre'}</div>
+                          <div className="font-semibold text-gray-900">{usr.name || [usr.firstName, usr.lastName].filter(Boolean).join(' ') || 'Sin nombre'}</div>
                           <div className="text-xs text-gray-500">{usr.email}</div>
                         </td>
                         <td className="text-sm">{usr.identificationNumber || '—'}</td>

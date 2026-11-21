@@ -192,20 +192,24 @@ export default function DoctorPublicSlugPage() {
                 {doctor.lastName?.[0]}
               </div>
             )}
-            <div
-              className="absolute bottom-0 right-0 p-1 bg-white rounded-full shadow"
-              title="Médico verificado por CitaMed"
-            >
-              <ShieldCheck className="w-5 h-5 text-teal-600" />
-            </div>
+            {doctor.isVerified && (
+              <div
+                className="absolute bottom-0 right-0 p-1 bg-white rounded-full shadow"
+                title="Médico verificado por CitaMed"
+              >
+                <ShieldCheck className="w-5 h-5 text-teal-600" />
+              </div>
+            )}
           </div>
 
           <div className="mt-3 sm:mt-0 flex-1 min-w-0">
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 mb-1">
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200/60">
-                <CheckCircle className="w-3 h-3 text-teal-600" />
-                Verificado
-              </span>
+              {doctor.isVerified && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200/60">
+                  <CheckCircle className="w-3 h-3 text-teal-600" />
+                  Verificado
+                </span>
+              )}
               {doctor.acceptingNewPatients && (
                 <span className="text-[11px] font-semibold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200/60">
                   Nuevos pacientes

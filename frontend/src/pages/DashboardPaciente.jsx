@@ -7,7 +7,6 @@ import {
   Clock,
   FileText,
   Activity,
-  Pill,
   ShoppingCart,
   DollarSign,
   Video,
@@ -59,13 +58,6 @@ function DashboardPaciente() {
       description: 'Accede a tu historia médica completa y recetas',
       path: '/paciente/mi-historia',
       color: 'from-red-500 to-red-600'
-    },
-    {
-      title: 'Mis Recetas',
-      icon: Pill,
-      description: 'Recetas médicas y prescripciones',
-      path: '/paciente/recetas',
-      color: 'from-pink-500 to-pink-600'
     },
     {
       title: 'MARKETMED',

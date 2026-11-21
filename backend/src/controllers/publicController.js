@@ -87,7 +87,8 @@ async function getDoctorBySlug(req, res) {
       treatmentApproaches: profile.treatmentApproaches || [],
       specialConditions: profile.specialConditions || [],
       telemedicineEnabled: !!profile.telemedicineEnabled,
-      acceptingNewPatients: profile.acceptingNewPatients !== false
+      acceptingNewPatients: profile.acceptingNewPatients !== false,
+      isVerified: profile.isVerified === true
     };
 
     return res.json({

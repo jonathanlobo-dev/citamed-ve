@@ -66,7 +66,7 @@ async function getDoctorPatients(doctorId, { search = '', page = 1, limit = 20 }
     userWhere[Op.or] = [
       { firstName: { [Op.iLike]: `%${trimmedSearch}%` } },
       { lastName: { [Op.iLike]: `%${trimmedSearch}%` } },
-      { '$patientProfile.identification_number$': { [Op.iLike]: `%${trimmedSearch}%` } }
+      { '$patientProfile.identificationNumber$': { [Op.iLike]: `%${trimmedSearch}%` } }
     ];
   }
 
