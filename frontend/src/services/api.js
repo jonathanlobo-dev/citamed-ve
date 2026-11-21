@@ -86,6 +86,12 @@ api.interceptors.response.use(
   },
   (error) => {
     afterProtectedRequest(error.config);
+    // "Error de validación" no dice qué falló: se reemplaza por el mensaje del primer campo (QA)
+    const data = error.response?.data;
+    if (error.response?.status === 400 && data && /^Error de validaci[oó]n/i.test(data.message || '')) {
+      const first = Array.isArray(data.errors) ? data.errors.find((e) => e?.message) : null;
+      if (first) data.message = first.message;
+    }
     if (error.response?.status === 401) {
       // Token expirado o inválido
       localStorage.removeItem('citamed_token');

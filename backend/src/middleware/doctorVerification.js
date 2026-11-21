@@ -13,6 +13,15 @@ const { DoctorProfile } = require('../models');
 const NOT_VERIFIED_MESSAGE =
   'Tu verificación profesional está en revisión. Mientras tanto puedes preparar tu consultorio, pero aún no puedes atender, emitir documentos ni cobrar.';
 
+// El mensaje depende del estado real: "en revisión" solo si ya envió documentos (QA NUE-UX-002)
+function notVerifiedMessage(status) {
+  if (status === 'pending') return NOT_VERIFIED_MESSAGE;
+  if (status === 'rejected') {
+    return 'Tu verificación profesional fue rechazada. Revisa el motivo en Verificación y vuelve a enviar tus documentos para poder atender, emitir documentos y cobrar.';
+  }
+  return 'Aún no has enviado tus documentos de verificación. Envíalos desde Verificación para poder atender, emitir documentos y cobrar. Mientras tanto puedes preparar tu consultorio.';
+}
+
 function isEnforced(env = process.env) {
   return String(env.ENFORCE_DOCTOR_VERIFICATION || '').toLowerCase() === 'true';
 }
@@ -36,7 +45,7 @@ async function requireVerifiedDoctor(req, res, next) {
       success: false,
       code: 'DOCTOR_NOT_VERIFIED',
       verificationStatus: profile?.verificationStatus || 'unverified',
-      message: NOT_VERIFIED_MESSAGE
+      message: notVerifiedMessage(profile?.verificationStatus)
     });
   } catch (error) {
     return next(error);

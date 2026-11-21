@@ -49,32 +49,29 @@ function LoginPage() {
   const [twoFactorLoading, setTwoFactorLoading] = useState(false);
   const [twoFactorError, setTwoFactorError] = useState(null);
 
-  const validateField = (name, value) => {
-    const newErrors = { ...errors };
-    switch (name) {
-      case 'email':
-        if (!value) {
-          newErrors.email = 'El correo es obligatorio';
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-          newErrors.email = 'Ingresa un correo válido';
-        } else {
-          delete newErrors.email;
-        }
-        break;
-      case 'password':
-        if (!value) {
-          newErrors.password = 'La contraseña es obligatoria';
-        } else if (value.length < 6) {
-          newErrors.password = 'Mínimo 6 caracteres';
-        } else {
-          delete newErrors.password;
-        }
-        break;
-      default:
-        break;
+  // Devuelve el error del campo (o null). Se actualiza el estado con la forma funcional para que
+  // validar correo y clave seguidos no se pisen entre sí (QA PAC-UX-010).
+  const fieldError = (name, value) => {
+    if (name === 'email') {
+      if (!value) return 'El correo es obligatorio';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Ingresa un correo válido';
     }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (name === 'password') {
+      if (!value) return 'La contraseña es obligatoria';
+      if (value.length < 6) return 'Mínimo 6 caracteres';
+    }
+    return null;
+  };
+
+  const validateField = (name, value) => {
+    const message = fieldError(name, value);
+    setErrors((prev) => {
+      const next = { ...prev };
+      if (message) next[name] = message;
+      else delete next[name];
+      return next;
+    });
+    return !message;
   };
 
   const handleChange = (e) => {

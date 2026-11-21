@@ -163,9 +163,8 @@ export default function RecordPaymentDrawer({
   const patientName =
     appointment?.patient?.name ||
     `${appointment?.patient?.firstName || ''} ${appointment?.patient?.lastName || ''}`.trim() ||
-    appointment?.patientProfile?.firstName
-      ? `${appointment?.patientProfile?.firstName || ''} ${appointment?.patientProfile?.lastName || ''}`.trim()
-      : 'Paciente';
+    `${appointment?.patientProfile?.firstName || ''} ${appointment?.patientProfile?.lastName || ''}`.trim() ||
+    'Paciente';
 
   const appointmentDate = appointment?.appointmentDate || '';
   const formattedDate = appointmentDate

@@ -407,8 +407,8 @@ export default function ExcelImportDrawer({
                 </div>
 
                 {/* Tabla scrollable de filas */}
-                <div className="border border-slate-200 rounded-lg overflow-hidden max-h-64 overflow-y-auto">
-                  <table className="w-full text-left text-[11px]">
+                <div className="border border-slate-200 rounded-lg max-h-64 overflow-auto">
+                  <table className="w-full min-w-[560px] text-left text-[11px]">
                     <thead className="bg-slate-100 text-slate-600 font-semibold sticky top-0 border-b border-slate-200 z-10">
                       <tr>
                         <th className="p-2">#</th>
@@ -477,7 +477,7 @@ export default function ExcelImportDrawer({
                   <button
                     type="button"
                     onClick={handleExecuteImport}
-                    disabled={submitting || parsedRows.length === 0}
+                    disabled={submitting || validRows.length === 0}
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-sm transition disabled:opacity-50 inline-flex items-center gap-2"
                   >
                     {submitting ? (
@@ -488,7 +488,7 @@ export default function ExcelImportDrawer({
                     ) : (
                       <>
                         <Upload className="w-3.5 h-3.5" />
-                        <span>Importar {parsedRows.length} pacientes</span>
+                        <span>Importar {validRows.length} {validRows.length === 1 ? 'paciente' : 'pacientes'}</span>
                       </>
                     )}
                   </button>

@@ -117,9 +117,18 @@ export default function EspacioClinicoPage() {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   const isDraftMode = !appointmentId || appointmentId === 'nueva';
+
+  // El perfil guardado al iniciar sesión puede estar viejo (aprobado después): se confirma con el servidor
+  const cachedUnverified = isDraftMode && user?.role === 'doctor' && user?.profile && user.profile.isVerified !== true;
+  const [verificationChecked, setVerificationChecked] = useState(!cachedUnverified);
+  useEffect(() => {
+    if (verificationChecked) return;
+    Promise.resolve(refreshUser?.()).finally(() => setVerificationChecked(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const urlPatientId = searchParams.get('patientId');
 
   // Estados de consulta sin cita (Walk-in)
@@ -1347,7 +1356,7 @@ export default function EspacioClinicoPage() {
     e.preventDefault();
     if (guardDraftMode('emitir orden de exámenes')) return;
     if (selectedExams.length === 0 && !labOtherExams.trim()) {
-      alert('Debes seleccionar al menos un examen o escribir uno en otros exámenes.');
+      toast.error('Debes seleccionar al menos un examen o escribir uno en otros exámenes.');
       return;
     }
 
@@ -1370,10 +1379,10 @@ export default function EspacioClinicoPage() {
       setAiSuggestedLabs([]);
       setLabIndication('');
       setLabDiagnosis('');
-      alert('Orden de exámenes emitida exitosamente.');
+      toast.success('Orden de exámenes emitida exitosamente.');
     } catch (err) {
       console.error('Error emitiendo orden de exámenes:', err);
-      alert(err.response?.data?.message || 'Error al emitir orden de exámenes');
+      toast.error(err.response?.data?.message || 'Error al emitir orden de exámenes');
     } finally {
       setSubmittingDoc(false);
     }
@@ -1398,10 +1407,10 @@ export default function EspacioClinicoPage() {
       });
       addIssuedDocument(res.data);
       setDrawerRestNote(false);
-      alert('Reposo médico emitido exitosamente.');
+      toast.success('Reposo médico emitido exitosamente.');
     } catch (err) {
       console.error('Error emitiendo reposo:', err);
-      alert(err.response?.data?.message || 'Error al emitir reposo');
+      toast.error(err.response?.data?.message || 'Error al emitir reposo');
     } finally {
       setSubmittingDoc(false);
     }
@@ -1425,10 +1434,10 @@ export default function EspacioClinicoPage() {
       });
       addIssuedDocument(res.data);
       setDrawerCertificate(false);
-      alert('Constancia médica emitida exitosamente.');
+      toast.success('Constancia médica emitida exitosamente.');
     } catch (err) {
       console.error('Error emitiendo constancia:', err);
-      alert(err.response?.data?.message || 'Error al emitir constancia');
+      toast.error(err.response?.data?.message || 'Error al emitir constancia');
     } finally {
       setSubmittingDoc(false);
     }
@@ -1439,7 +1448,7 @@ export default function EspacioClinicoPage() {
     e.preventDefault();
     if (guardDraftMode('emitir informe médico')) return;
     if (!reportBody.trim()) {
-      alert('El informe médico debe contener texto.');
+      toast.error('El informe médico debe contener texto.');
       return;
     }
     setSubmittingDoc(true);
@@ -1453,10 +1462,10 @@ export default function EspacioClinicoPage() {
       });
       addIssuedDocument(res.data);
       setDrawerReport(false);
-      alert('Informe médico emitido exitosamente.');
+      toast.success('Informe médico emitido exitosamente.');
     } catch (err) {
       console.error('Error emitiendo informe:', err);
-      alert(err.response?.data?.message || 'Error al emitir informe');
+      toast.error(err.response?.data?.message || 'Error al emitir informe');
     } finally {
       setSubmittingDoc(false);
     }
@@ -1467,7 +1476,7 @@ export default function EspacioClinicoPage() {
     e.preventDefault();
     if (guardDraftMode('adjuntar archivos')) return;
     if (!attachmentFile) {
-      alert('Por favor selecciona un archivo.');
+      toast.error('Por favor selecciona un archivo.');
       return;
     }
     setSubmittingDoc(true);
@@ -1482,14 +1491,14 @@ export default function EspacioClinicoPage() {
       setDrawerAttachment(false);
       setAttachmentFile(null);
       setAttachmentTitle('');
-      alert('Archivo adjuntado exitosamente.');
+      toast.success('Archivo adjuntado exitosamente.');
     } catch (err) {
       console.error('Error subiendo adjunto:', err);
       if (err.response?.status === 503) {
         setStorageAvailable(false);
-        alert('El servicio de almacenamiento de archivos adjuntos no está activo actualmente.');
+        toast.error('El servicio de almacenamiento de archivos adjuntos no está activo actualmente.');
       } else {
-        alert(err.response?.data?.message || 'Error al subir archivo');
+        toast.error(err.response?.data?.message || 'Error al subir archivo');
       }
     } finally {
       setSubmittingDoc(false);
@@ -1511,7 +1520,7 @@ export default function EspacioClinicoPage() {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Error descargando PDF:', err);
-      alert('Error al descargar el PDF.');
+      toast.error('Error al descargar el PDF.');
     }
   };
 
@@ -1525,10 +1534,10 @@ export default function EspacioClinicoPage() {
       setDocuments((prev) =>
         prev.map((d) => (d.id === docId ? { ...d, status: 'voided', voidReason: reason.trim() } : d))
       );
-      alert('Documento anulado.');
+      toast.success('Documento anulado.');
     } catch (err) {
       console.error('Error anulando documento:', err);
-      alert(err.response?.data?.message || 'Error al anular documento');
+      toast.error(err.response?.data?.message || 'Error al anular documento');
     }
   };
 
@@ -1552,10 +1561,10 @@ export default function EspacioClinicoPage() {
       setDrawerAddAllergy(false);
       setNewAllergen('');
       setNewAllergyReaction('');
-      alert('Alergia registrada.');
+      toast.success('Alergia registrada.');
     } catch (err) {
       console.error('Error registrando alergia:', err);
-      alert(err.response?.data?.message || 'Error al registrar alergia');
+      toast.error(err.response?.data?.message || 'Error al registrar alergia');
     }
   };
 
@@ -1578,10 +1587,10 @@ export default function EspacioClinicoPage() {
       setDrawerAddCondition(false);
       setNewConditionName('');
       setNewConditionNotes('');
-      alert('Condición médica registrada.');
+      toast.success('Condición médica registrada.');
     } catch (err) {
       console.error('Error registrando condición:', err);
-      alert(err.response?.data?.message || 'Error al registrar condición');
+      toast.error(err.response?.data?.message || 'Error al registrar condición');
     }
   };
 
@@ -1627,7 +1636,7 @@ export default function EspacioClinicoPage() {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Error descargando récipe:', err);
-      alert('Error al descargar el récipe.');
+      toast.error('Error al descargar el récipe.');
     }
   };
 
@@ -1784,7 +1793,7 @@ export default function EspacioClinicoPage() {
           }
         } catch (prescErr) {
           console.error('[EspacioClinico] Error emitiendo récipe:', prescErr);
-          alert('Consulta completada, pero hubo un detalle con el récipe: ' + (prescErr.response?.data?.error || prescErr.message));
+          toast.error('Consulta completada, pero hubo un detalle con el récipe: ' + (prescErr.response?.data?.error || prescErr.message));
         }
       }
 
@@ -1803,7 +1812,7 @@ export default function EspacioClinicoPage() {
       setDrawerSummary(true);
     } catch (err) {
       console.error('[EspacioClinico] Error al finalizar consulta:', err);
-      alert(err.response?.data?.message || 'Error al finalizar la consulta');
+      toast.error(err.response?.data?.message || 'Error al finalizar la consulta');
     } finally {
       setCompleting(false);
     }
@@ -1817,6 +1826,35 @@ export default function EspacioClinicoPage() {
       (item) => item.name.toLowerCase().includes(term) || item.category.toLowerCase().includes(term)
     );
   }, [labCatalog, labSearch]);
+
+  // Médico sin verificar: el servidor no le deja guardar la consulta, así que se avisa antes
+  // de que escriba toda una nota (QA NUE-UX-002)
+  if (verificationChecked && isDraftMode && user?.role === 'doctor' && user?.profile && user.profile.isVerified !== true) {
+    const pendingReview = user.profile.verificationStatus === 'pending';
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+        <div className="max-w-md w-full bg-white border border-amber-200 rounded-2xl shadow-sm p-6 text-center">
+          <ShieldAlert className="w-10 h-10 text-amber-500 mx-auto mb-3" />
+          <h1 className="text-lg font-bold text-slate-900 mb-2">Aún no puedes atender consultas</h1>
+          <p className="text-sm text-slate-600 mb-5">
+            {pendingReview
+              ? 'Tus documentos están en revisión. Te avisaremos cuando tu cuenta quede verificada.'
+              : 'Primero envía tus documentos de verificación. Mientras tanto puedes preparar tu consultorio.'}
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2 justify-center">
+            {!pendingReview && (
+              <Link to="/medico/verificacion" className="px-4 py-2.5 bg-primary text-white rounded-lg font-semibold">
+                Enviar documentos
+              </Link>
+            )}
+            <Link to="/medico/dashboard" className="px-4 py-2.5 border border-slate-300 text-slate-700 rounded-lg font-semibold">
+              Volver al panel
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -3515,7 +3553,7 @@ export default function EspacioClinicoPage() {
           )}
           {saveStatus === 'error' && (
             <span className="text-rose-700 flex items-center gap-1.5" title={saveErrorMessage}>
-              <AlertCircle className="w-4 h-4 text-rose-600" /> Error al guardar cambios
+              <AlertCircle className="w-4 h-4 text-rose-600" /> {saveErrorMessage || 'Error al guardar cambios'}
             </span>
           )}
         </div>

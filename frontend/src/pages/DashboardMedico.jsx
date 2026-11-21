@@ -215,7 +215,7 @@ function DashboardMedico() {
               <div>
                 <p className="text-teal-100 text-sm font-medium">Perfil</p>
                 <p className="text-3xl font-bold">{completeness?.percentage || 0}%</p>
-                <p className="text-teal-100 text-xs">Completo</p>
+                <p className="text-teal-100 text-xs">completado</p>
               </div>
               {completeness?.percentage === 100 ? (
                 <CheckCircle className="w-12 h-12 text-teal-200" />
