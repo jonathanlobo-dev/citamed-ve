@@ -25,7 +25,6 @@ const searchDoctors = async (req, res) => {
       languages,
       acceptsInsurance,
       insuranceNames,
-      isVerified,
       gender,
       reputationLevels,
       hasAvailability,
@@ -61,9 +60,8 @@ const searchDoctors = async (req, res) => {
       insuranceNames: insuranceNames ?
         (Array.isArray(insuranceNames) ? insuranceNames : [insuranceNames]) :
         undefined,
-      isVerified: isVerified !== undefined ?
-        isVerified === 'true' :
-        undefined,
+      // El directorio público solo muestra médicos verificados (nunca a quien aún está en revisión)
+      isVerified: true,
       gender,
       reputationLevels: reputationLevels ?
         (Array.isArray(reputationLevels) ? reputationLevels : [reputationLevels]) :

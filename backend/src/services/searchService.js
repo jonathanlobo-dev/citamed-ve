@@ -613,7 +613,7 @@ const quickSearch = async (query, limit = 5) => {
     const doctors = await sequelize.query(`
       SELECT doctor_id, doctor_profile_id, full_name, specialties_text, city, profile_photo
       FROM doctor_search_cache
-      WHERE LOWER(full_name) LIKE LOWER(:query)
+      WHERE LOWER(full_name) LIKE LOWER(:query) AND is_verified = true
       ORDER BY average_rating DESC
       LIMIT :limit
     `, {
