@@ -4,6 +4,7 @@
  */
 
 const axios = require('axios');
+const { approveDoctorByEmail } = require('./lib/approveDoctor');
 
 const API_BASE = process.env.API_URL || 'http://localhost:5000/api';
 
@@ -145,6 +146,15 @@ async function runTest() {
       fail('Inicio de sesión de admin falló', err);
       allPassed = false;
       process.exit(1);
+    }
+
+    // El directorio público solo muestra médicos verificados: se aprueba como lo haría el admin
+    try {
+      await approveDoctorByEmail(API_BASE, docEmail);
+      pass('Médico de prueba aprobado (el directorio solo muestra verificados)');
+    } catch (approveErr) {
+      fail('No se pudo aprobar al médico de prueba', approveErr);
+      allPassed = false;
     }
 
     // Poblar doctor en doctor_search_cache con el token de admin
