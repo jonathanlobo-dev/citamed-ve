@@ -29,37 +29,37 @@ const handleValidation = (req, res, next) => {
  */
 const validateUpdateProfile = [
   body('bloodType')
-    .optional()
+    .optional({ values: 'falsy' })
     .isIn(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'unknown'])
     .withMessage('Tipo de sangre no válido'),
 
   body('height')
-    .optional()
+    .optional({ values: 'falsy' })
     .isFloat({ min: 50, max: 250 })
     .withMessage('La altura debe estar entre 50 y 250 cm'),
 
   body('weight')
-    .optional()
+    .optional({ values: 'falsy' })
     .isFloat({ min: 2, max: 300 })
     .withMessage('El peso debe estar entre 2 y 300 kg'),
 
   body('smokingStatus')
-    .optional()
+    .optional({ values: 'falsy' })
     .isIn(['never', 'former', 'current', 'unknown'])
     .withMessage('Estado de fumador no válido'),
 
   body('alcoholConsumption')
-    .optional()
+    .optional({ values: 'falsy' })
     .isIn(['never', 'occasional', 'moderate', 'heavy', 'unknown'])
     .withMessage('Consumo de alcohol no válido'),
 
   body('exerciseFrequency')
-    .optional()
+    .optional({ values: 'falsy' })
     .isIn(['sedentary', 'light', 'moderate', 'active', 'very_active', 'unknown'])
     .withMessage('Frecuencia de ejercicio no válida'),
 
   body('notes')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 5000 })
     .withMessage('Las notas no pueden exceder 5000 caracteres'),
 
@@ -83,7 +83,7 @@ const validateEmergencyContact = [
     .withMessage('Formato de teléfono no válido'),
 
   body('relationship')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 100 })
     .withMessage('La relación no puede exceder 100 caracteres'),
 
@@ -95,22 +95,22 @@ const validateEmergencyContact = [
  */
 const validateInsurance = [
   body('company')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 200 })
     .withMessage('El nombre de la aseguradora no puede exceder 200 caracteres'),
 
   body('policyNumber')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 100 })
     .withMessage('El número de póliza no puede exceder 100 caracteres'),
 
   body('validUntil')
-    .optional()
+    .optional({ values: 'falsy' })
     .isISO8601()
     .withMessage('Fecha de vencimiento no válida'),
 
   body('type')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 100 })
     .withMessage('El tipo de plan no puede exceder 100 caracteres'),
 
@@ -128,7 +128,7 @@ const validateAddMedicalHistory = [
     .withMessage('La condición debe tener entre 3 y 200 caracteres'),
 
   body('diagnosedDate')
-    .optional()
+    .optional({ values: 'falsy' })
     .isISO8601()
     .withMessage('Fecha de diagnóstico no válida')
     .custom((value) => {
@@ -139,22 +139,22 @@ const validateAddMedicalHistory = [
     }),
 
   body('status')
-    .optional()
+    .optional({ values: 'falsy' })
     .isIn(['active', 'resolved', 'chronic'])
     .withMessage('Estado no válido'),
 
   body('severity')
-    .optional()
+    .optional({ values: 'falsy' })
     .isIn(['mild', 'moderate', 'severe'])
     .withMessage('Severidad no válida'),
 
   body('notes')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 2000 })
     .withMessage('Las notas no pueden exceder 2000 caracteres'),
 
   body('diagnosedBy')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 200 })
     .withMessage('El nombre del médico no puede exceder 200 caracteres'),
 
@@ -208,17 +208,17 @@ const validateAddAllergy = [
     .withMessage('Severidad no válida'),
 
   body('reaction')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 2000 })
     .withMessage('La descripción de la reacción no puede exceder 2000 caracteres'),
 
   body('diagnosedDate')
-    .optional()
+    .optional({ values: 'falsy' })
     .isISO8601()
     .withMessage('Fecha de diagnóstico no válida'),
 
   body('notes')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 2000 })
     .withMessage('Las notas no pueden exceder 2000 caracteres'),
 
@@ -235,22 +235,22 @@ const validateUpdateAllergy = [
 
   // Campos opcionales para actualización
   body('allergyType')
-    .optional()
+    .optional({ values: 'falsy' })
     .isIn(['medication', 'food', 'environmental', 'other'])
     .withMessage('Tipo de alergia no válido'),
 
   body('allergen')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ min: 2, max: 200 })
     .withMessage('El alérgeno debe tener entre 2 y 200 caracteres'),
 
   body('severity')
-    .optional()
+    .optional({ values: 'falsy' })
     .isIn(['mild', 'moderate', 'severe', 'life_threatening'])
     .withMessage('Severidad no válida'),
 
   body('reaction')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 2000 })
     .withMessage('La descripción de la reacción no puede exceder 2000 caracteres'),
 
@@ -291,7 +291,7 @@ const validateAddMedication = [
     .withMessage('La frecuencia no puede exceder 100 caracteres'),
 
   body('route')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 50 })
     .withMessage('La vía de administración no puede exceder 50 caracteres'),
 
@@ -302,7 +302,7 @@ const validateAddMedication = [
     .withMessage('Fecha de inicio no válida'),
 
   body('endDate')
-    .optional()
+    .optional({ values: 'falsy' })
     .isISO8601()
     .withMessage('Fecha de fin no válida')
     .custom((value, { req }) => {
@@ -313,17 +313,17 @@ const validateAddMedication = [
     }),
 
   body('prescribedBy')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 200 })
     .withMessage('El nombre del médico no puede exceder 200 caracteres'),
 
   body('reason')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 2000 })
     .withMessage('La razón no puede exceder 2000 caracteres'),
 
   body('notes')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 2000 })
     .withMessage('Las notas no pueden exceder 2000 caracteres'),
 
@@ -339,22 +339,22 @@ const validateUpdateMedication = [
     .withMessage('ID de medicamento no válido'),
 
   body('medicationName')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ min: 2, max: 200 })
     .withMessage('El nombre debe tener entre 2 y 200 caracteres'),
 
   body('dosage')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 100 })
     .withMessage('La dosis no puede exceder 100 caracteres'),
 
   body('frequency')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 100 })
     .withMessage('La frecuencia no puede exceder 100 caracteres'),
 
   body('isActive')
-    .optional()
+    .optional({ values: 'falsy' })
     .isBoolean()
     .withMessage('isActive debe ser booleano'),
 

@@ -371,8 +371,10 @@ const passwordRecoveryService = {
       // (Antes se cifraba aquí y el hook la volvía a cifrar, y la clave nueva nunca funcionaba.)
       // Una asistente invitada activa su cuenta al definir su clave, porque ya demostró ser
       // dueña del correo con el código de verificación.
+      // El enlace de recuperación llega al correo: usarlo también demuestra que el correo es suyo.
       await user.update({
         password: newPassword,
+        ...(user.emailVerified ? {} : { emailVerified: true, emailVerifiedAt: new Date() }),
         ...(user.role === 'assistant' && user.accountClaimed === false ? { accountClaimed: true } : {})
       });
 

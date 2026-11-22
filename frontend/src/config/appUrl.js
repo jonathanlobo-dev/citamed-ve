@@ -48,9 +48,23 @@ export function homeUrl() {
   return isAppHost() && landing ? `${landing}/` : '/';
 }
 
+function hasSession() {
+  try {
+    return !!localStorage.getItem('citamed_token');
+  } catch {
+    return false;
+  }
+}
+
 /** Vuelve al inicio. Dentro del sistema (app.) el "/" solo lleva al login, así que se sale a la presentación */
 export function goToHome(navigate) {
   const landing = landingOrigin();
+  // La sesión vive en app.: la presentación (otro dominio) no la ve y parecería cerrada.
+  // Con sesión abierta, "Inicio" lleva al panel de la persona.
+  if (isAppHost() && landing && hasSession()) {
+    navigate('/dashboard');
+    return;
+  }
   if (isAppHost() && landing) {
     window.location.href = `${landing}/`;
     return;

@@ -89,8 +89,9 @@ api.interceptors.response.use(
     // "Error de validación" no dice qué falló: se reemplaza por el mensaje del primer campo (QA)
     const data = error.response?.data;
     if (error.response?.status === 400 && data && /^Error de validaci[oó]n/i.test(data.message || '')) {
-      const first = Array.isArray(data.errors) ? data.errors.find((e) => e?.message) : null;
-      if (first) data.message = first.message;
+      // Algunos validadores mandan { message } y otros el formato crudo de express-validator ({ msg })
+      const first = Array.isArray(data.errors) ? data.errors.find((e) => e?.message || e?.msg) : null;
+      if (first) data.message = first.message || first.msg;
     }
     if (error.response?.status === 401) {
       // Token expirado o inválido
