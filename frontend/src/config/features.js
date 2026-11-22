@@ -12,7 +12,7 @@
 const RELEASED_IN_PRODUCTION = {
   AI: true, // IA en el Espacio Clínico (liberada)
   SUPERADMIN: true, // Panel de superadministración (liberado)
-  PWA: false, // App instalable (en construcción)
+  PWA: true, // App instalable (liberada el 22/11)
   ASSISTANT: true, // Asistente del médico (liberada)
   PUBLIC_PAGE: true, // Página pública del médico con enlace propio (liberada)
   WA_CONFIRM: true, // Confirmar o cancelar cita desde WhatsApp (liberada)

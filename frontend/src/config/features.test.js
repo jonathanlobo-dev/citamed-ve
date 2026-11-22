@@ -19,7 +19,7 @@ describe('producción (rama master)', () => {
     const f = await load(branch);
     expect(f.ai).toBe(true);
     expect(f.superadmin).toBe(true);
-    expect(f.pwa).toBe(false);
+    expect(f.pwa).toBe(true);
     expect(f.assistant).toBe(true);
     expect(f.publicPage).toBe(true);
     expect(f.waConfirm).toBe(true);
@@ -39,7 +39,7 @@ describe('forzar con variables del build', () => {
   test('encender una función en producción', async () => {
     const f = await load('master', { VITE_FEATURE_ASSISTANT: 'true' });
     expect(f.assistant).toBe(true);
-    expect(f.pwa).toBe(false);
+    expect(f.aiPatientInstructions).toBe(false);
   });
   test('apagar una función en pruebas', async () => {
     const f = await load('dev', { VITE_FEATURE_AI: 'false' });
@@ -47,8 +47,8 @@ describe('forzar con variables del build', () => {
     expect(f.superadmin).toBe(true);
   });
   test('un valor raro no cambia nada', async () => {
-    const f = await load('master', { VITE_FEATURE_PWA: 'quizas' });
-    expect(f.pwa).toBe(false);
+    const f = await load('master', { VITE_FEATURE_AI_PATIENT_INSTRUCTIONS: 'quizas' });
+    expect(f.aiPatientInstructions).toBe(false);
   });
 });
 
