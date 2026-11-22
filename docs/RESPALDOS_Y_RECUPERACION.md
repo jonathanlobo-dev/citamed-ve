@@ -60,3 +60,39 @@ Revisa que cada archivo exista, que su huella coincida (no está alterado ni da�
 - [ ] Apuntar un servidor local a ese proyecto y correr `npm run test:flows`.
 - [ ] Anotar cuánto tardó y qué faltó, y actualizar esta guía.
 - [ ] Borrar el proyecto de ensayo.
+
+## 6. Respaldo automático diario (gratis, en dos lugares)
+
+El archivo `.github/workflows/db-backup.yml` corre todos los días a las 02:00 hora de Caracas (y a mano desde GitHub, Actions, "Respaldo diario de la base", Run workflow). Hace:
+
+1. `pg_dump` completo de la base (esquema y datos).
+2. Copia de los archivos clínicos de Storage (bucket `clinical-files`).
+3. Lo comprime y lo **cifra con AES-256** (`gpg`) con `BACKUP_PASSPHRASE`. Si falta la frase, no corre.
+4. Guarda la copia cifrada en:
+   - **Copia A:** Releases de un repositorio **privado** aparte (por ejemplo `citamed-backups`). Nunca en `citamed-ve`, que es público: el flujo se niega si se intenta. Conserva 30 días.
+   - **Copia B:** Cloudflare R2 (10 GB gratis), carpeta por fecha.
+
+No deja nada en los artifacts de Actions.
+
+### Secretos que hay que crear en GitHub (citamed-ve, Settings, Secrets and variables, Actions)
+
+| Secreto | Contenido |
+|---|---|
+| `BACKUP_DATABASE_URL` | Cadena del session pooler de Supabase de producción (puerto 5432, con la clave y `?sslmode=require`) |
+| `BACKUP_PASSPHRASE` | Frase larga y única. Guardarla en el gestor de contraseñas: sin ella la copia no se abre |
+| `BACKUP_REPO` | `jonathanlobo-dev/citamed-backups` (repositorio privado y vacío) |
+| `BACKUP_REPO_TOKEN` | Token de GitHub de grano fino con permiso Contents: lectura y escritura solo sobre ese repositorio |
+| `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` | Para copiar los archivos clínicos (opcional, pero recomendado) |
+| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` | Para la copia B (opcional) |
+
+Basta con uno de los dos destinos para que corra; lo ideal son los dos.
+
+### Restaurar una copia del flujo automático
+
+```bash
+sha256sum -c citamed-AAAA-MM-DD.sha256
+gpg --decrypt citamed-AAAA-MM-DD.tar.gz.gpg | tar -xzf - -C restaurado/
+psql "$DATABASE_URL_DESTINO" -f restaurado/citamed-db-AAAA-MM-DD.sql
+```
+
+El volcado lleva `--clean --if-exists`: **borra las tablas antes de recrearlas**. Usarlo solo contra un proyecto vacío o cuando se acepta perder el estado actual. Los archivos de `restaurado/storage/` se vuelven a subir al bucket con la misma ruta.

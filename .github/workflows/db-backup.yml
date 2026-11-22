@@ -1,0 +1,110 @@
+name: Respaldo diario de la base
+
+# Todos los días a las 06:00 UTC (02:00 hora de Caracas). También se puede correr a mano desde Actions.
+# Copia la base completa (pg_dump) y los archivos clínicos de Storage, los cifra con AES-256
+# y guarda la copia en dos lugares gratuitos:
+#   A) Releases de un repositorio PRIVADO aparte (nunca este, porque este repositorio es público).
+#   B) Cloudflare R2 (10 GB gratis).
+# No deja artifacts en Actions: la copia nunca queda en el repositorio público.
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Revisar configuración
+        env:
+          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          BACKUP_REPO: ${{ secrets.BACKUP_REPO }}
+          BACKUP_REPO_TOKEN: ${{ secrets.BACKUP_REPO_TOKEN }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        run: |
+          [ -n "$DATABASE_URL" ] || { echo "Falta BACKUP_DATABASE_URL"; exit 1; }
+          [ -n "$PASSPHRASE" ] || { echo "Falta BACKUP_PASSPHRASE: sin ella la copia quedaría con historias clínicas en claro"; exit 1; }
+          if [ -z "$BACKUP_REPO_TOKEN" ] && [ -z "$R2_ACCESS_KEY_ID" ]; then
+            echo "No hay ningún destino configurado (BACKUP_REPO_TOKEN o R2_*)"; exit 1
+          fi
+          if [ "$BACKUP_REPO" = "${{ github.repository }}" ]; then
+            echo "BACKUP_REPO no puede ser este repositorio: es público"; exit 1
+          fi
+
+      - name: Copia de la base (pg_dump 17)
+        env:
+          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          FECHA=$(date -u +'%Y-%m-%d')
+          echo "FECHA=$FECHA" >> "$GITHUB_ENV"
+          mkdir -p out
+          docker run --rm postgres:17 pg_dump "$DATABASE_URL" --no-owner --no-acl --clean --if-exists \
+            > "out/citamed-db-$FECHA.sql" 2> dumperr.log || { cat dumperr.log; exit 1; }
+          ls -lh out
+
+      - name: Copia de los archivos clínicos (Storage)
+        env:
+          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          if [ -z "$SERVICE_KEY" ] || [ -z "$SUPABASE_URL" ]; then
+            echo "Sin SUPABASE_SERVICE_ROLE_KEY o SUPABASE_URL: se omiten los archivos (la base sí se copió)."
+            exit 0
+          fi
+          docker run --rm postgres:17 psql "$DATABASE_URL" -Atc \
+            "select bucket_id || '|' || name from storage.objects order by 1" > objetos.txt
+          mkdir -p out/storage
+          FALLOS=0
+          while IFS='|' read -r bucket ruta; do
+            [ -z "$bucket" ] && continue
+            dest="out/storage/$bucket/$ruta"
+            mkdir -p "$(dirname "$dest")"
+            curl -fsSL -H "Authorization: Bearer $SERVICE_KEY" "$SUPABASE_URL/storage/v1/object/$bucket/$ruta" -o "$dest" \
+              || { echo "No se pudo bajar $bucket/$ruta"; FALLOS=$((FALLOS+1)); }
+          done < objetos.txt
+          echo "Archivos: $(wc -l < objetos.txt), fallidos: $FALLOS"
+
+      - name: Comprimir y cifrar (AES-256)
+        env:
+          PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          tar -czf - -C out . | gpg --batch --yes --symmetric --cipher-algo AES256 \
+            --passphrase "$PASSPHRASE" -o "citamed-$FECHA.tar.gz.gpg"
+          rm -rf out
+          sha256sum "citamed-$FECHA.tar.gz.gpg" > "citamed-$FECHA.sha256"
+          ls -lh citamed-*
+
+      - name: Copia A, Releases del repositorio privado
+        env:
+          GH_TOKEN: ${{ secrets.BACKUP_REPO_TOKEN }}
+          BACKUP_REPO: ${{ secrets.BACKUP_REPO }}
+        run: |
+          if [ -z "$GH_TOKEN" ] || [ -z "$BACKUP_REPO" ]; then echo "Copia A sin configurar, se omite."; exit 0; fi
+          [ "$(gh repo view "$BACKUP_REPO" --json isPrivate -q .isPrivate)" = "true" ] || { echo "$BACKUP_REPO no es privado"; exit 1; }
+          TAG="backup-$FECHA"
+          gh release delete "$TAG" -R "$BACKUP_REPO" --cleanup-tag -y 2>/dev/null || true
+          gh release create "$TAG" -R "$BACKUP_REPO" citamed-$FECHA.tar.gz.gpg citamed-$FECHA.sha256 \
+            --title "Respaldo CitaMed $FECHA" --notes "Respaldo diario cifrado."
+          LIMITE=$(date -u -d '30 days ago' +%Y-%m-%d)
+          gh release list -R "$BACKUP_REPO" --limit 100 --json tagName,createdAt \
+            -q ".[] | select(.tagName | startswith(\"backup-\")) | select(.createdAt < \"$LIMITE\") | .tagName" |
+            while read -r OLD; do [ -n "$OLD" ] && gh release delete "$OLD" -R "$BACKUP_REPO" --cleanup-tag -y; done || true
+
+      - name: Copia B, Cloudflare R2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET_NAME }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$R2_ACCOUNT_ID" ]; then echo "Copia B sin configurar, se omite."; exit 0; fi
+          B="${R2_BUCKET:-citamed-backups}"
+          for f in citamed-$FECHA.tar.gz.gpg citamed-$FECHA.sha256; do
+            aws s3 cp "$f" "s3://$B/$FECHA/$f" --endpoint-url "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+          done
