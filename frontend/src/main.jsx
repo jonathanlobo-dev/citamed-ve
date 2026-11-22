@@ -4,9 +4,12 @@ import { Toaster } from 'react-hot-toast'
 import './index.css'
 import App from './App.jsx'
 import { FEATURES } from './config/features'
+import { isAppHost } from './config/appUrl'
 
-// App instalable (interruptor FEATURES.pwa): manifiesto y service worker solo en el sitio publicado
-if (FEATURES.pwa && 'serviceWorker' in navigator && import.meta.env.PROD) {
+// App instalable (interruptor FEATURES.pwa): manifiesto y service worker solo en el sitio publicado.
+// Con dominios separados solo se instala el sistema (app.), nunca la página de presentación.
+const pwaHost = !import.meta.env.VITE_APP_URL || isAppHost()
+if (FEATURES.pwa && pwaHost && 'serviceWorker' in navigator && import.meta.env.PROD) {
   const manifest = document.createElement('link');
   manifest.rel = 'manifest';
   manifest.href = '/manifest.webmanifest';
