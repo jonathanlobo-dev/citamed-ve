@@ -38,7 +38,8 @@ const patients = [
 ];
 
 async function main() {
-  const lines = [`Cuentas QA de CitaMed (${new Date().toISOString().slice(0, 10)}), ${API}`, ''];
+  const appUrl = process.env.APP_URL || (API.includes('citamedve.app') ? 'https://app.citamedve.app' : 'https://dev.citamed-ve.pages.dev');
+  const lines = [`Cuentas QA de CitaMed (${new Date().toISOString().slice(0, 10)})`, `Entrar en: ${appUrl}`, ''];
 
   for (const [i, d] of doctors.entries()) {
     const email = `qa.medico${i + 1}.${TAG}@citamedve.app`;
