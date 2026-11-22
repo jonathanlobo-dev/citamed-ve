@@ -177,7 +177,7 @@ export const SORT_OPTIONS = [
   { value: 'average_rating', label: 'Mejor valorados' },
   { value: 'total_reviews', label: 'Más reseñas' },
   { value: 'years_of_experience', label: 'Más experiencia' },
-  { value: 'consultation_price_online', label: 'Precio (menor a mayor)' },
+  { value: 'min_price', label: 'Precio (menor a mayor)' },
   { value: 'distance', label: 'Más cercanos' }
 ];
 

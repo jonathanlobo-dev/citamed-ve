@@ -8,6 +8,9 @@
 const { Op, QueryTypes } = require('sequelize');
 const { sequelize } = require('../models');
 
+// Precio más bajo del médico entre sus modalidades (LEAST ignora las que no tiene)
+const MIN_PRICE_SQL = 'LEAST(consultation_price_online, consultation_price_in_person)';
+
 /**
  * Calcula la distancia usando fórmula de Haversine (en km)
  */
@@ -130,13 +133,13 @@ const searchDoctors = async (filters = {}) => {
       replacements.maxPrice = maxPrice;
     }
   } else {
-    // Both or not specified - check either price
+    // Sin modalidad: se usa el precio más bajo del médico (el mismo que usa el orden por precio)
     if (minPrice !== undefined) {
-      conditions.push(`(consultation_price_online >= :minPrice OR consultation_price_in_person >= :minPrice)`);
+      conditions.push(`${MIN_PRICE_SQL} >= :minPrice`);
       replacements.minPrice = minPrice;
     }
     if (maxPrice !== undefined) {
-      conditions.push(`(consultation_price_online <= :maxPrice OR consultation_price_in_person <= :maxPrice)`);
+      conditions.push(`${MIN_PRICE_SQL} <= :maxPrice`);
       replacements.maxPrice = maxPrice;
     }
   }
@@ -251,6 +254,8 @@ const searchDoctors = async (filters = {}) => {
   let orderBy;
   if (sortBy === 'distance' && distanceOrder) {
     orderBy = `distance ${sortOrder === 'ASC' ? 'ASC' : 'ASC'}, average_rating DESC`;
+  } else if (sortBy === 'min_price') {
+    orderBy = `${MIN_PRICE_SQL} ${sortOrder === 'DESC' ? 'DESC' : 'ASC'} NULLS LAST, average_rating DESC`;
   } else if (validSortFields.includes(sortBy)) {
     orderBy = `${sortBy} ${sortOrder === 'ASC' ? 'ASC' : 'DESC'}`;
   } else {

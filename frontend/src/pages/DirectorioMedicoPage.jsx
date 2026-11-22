@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { normalizeText, lowestPrice } from '../utils/directorySearch';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Loader, Star, MapPin, Calendar, Award, Users, X, Video,
@@ -217,7 +218,7 @@ const EmptyState = ({ hasFilters, onClearFilters, totalDoctors }) => (
 
 function DirectorioMedicoPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [specialties, setSpecialties] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [filteredDoctors, setFilteredDoctors] = useState([]);
@@ -232,16 +233,30 @@ function DirectorioMedicoPage() {
     const specialtyFromURL = searchParams.get('specialty');
     const queryFromURL = searchParams.get('q');
     const cityFromURL = searchParams.get('city');
+    const priceFromURL = searchParams.get('price');
 
     if (specialtyFromURL) setSelectedSpecialty(specialtyFromURL);
     if (queryFromURL) setSearchQuery(queryFromURL);
     if (cityFromURL) setSelectedCity(cityFromURL);
+    if (priceFromURL) setPriceRange(priceFromURL);
 
     fetchInitialData();
-  }, [searchParams]);
+    // Solo al abrir la página: después la URL se actualiza desde los filtros
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // La búsqueda queda en la dirección: al volver de un perfil con Atrás se recupera
+  useEffect(() => {
+    const next = {};
+    if (searchQuery.trim()) next.q = searchQuery.trim();
+    if (selectedSpecialty) next.specialty = selectedSpecialty;
+    if (selectedCity) next.city = selectedCity;
+    if (priceRange !== 'all') next.price = priceRange;
+    setSearchParams(next, { replace: true });
+  }, [searchQuery, selectedSpecialty, selectedCity, priceRange, setSearchParams]);
 
   useEffect(() => {
-    if (doctors.length > 0) filterDoctors();
+    filterDoctors();
   }, [selectedSpecialty, selectedCity, priceRange, searchQuery, doctors]);
 
   const fetchInitialData = async () => {
@@ -275,7 +290,7 @@ function DirectorioMedicoPage() {
     if (selectedSpecialty) {
       filtered = filtered.filter(doctor =>
         doctor.specialties_text?.some(s =>
-          s.toLowerCase().includes(selectedSpecialty.toLowerCase())
+          normalizeText(s).includes(normalizeText(selectedSpecialty))
         )
       );
     }
@@ -288,7 +303,7 @@ function DirectorioMedicoPage() {
 
     if (priceRange !== 'all') {
       filtered = filtered.filter(doctor => {
-        const fee = parseFloat(doctor.consultation_price_in_person) || 0;
+        const fee = lowestPrice(doctor);
         switch(priceRange) {
           case 'low': return fee > 0 && fee < 30;
           case 'medium': return fee >= 30 && fee < 60;
@@ -298,13 +313,19 @@ function DirectorioMedicoPage() {
       });
     }
 
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(doctor =>
-        doctor.full_name?.toLowerCase().includes(query) ||
-        doctor.specialties_text?.some(s => s.toLowerCase().includes(query)) ||
-        doctor.city?.toLowerCase().includes(query)
-      );
+    const query = normalizeText(searchQuery);
+    if (query) {
+      // Cada palabra debe aparecer en el nombre, una especialidad o la ciudad
+      const words = query.split(/\s+/);
+      filtered = filtered.filter(doctor => {
+        const haystack = normalizeText([
+          doctor.full_name,
+          ...(doctor.specialties_text || []),
+          doctor.city,
+          doctor.state
+        ].join(' '));
+        return words.every(w => haystack.includes(w));
+      });
     }
 
     setFilteredDoctors(filtered);

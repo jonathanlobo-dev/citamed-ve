@@ -106,7 +106,8 @@ const SearchPage = () => {
   const handleSortChange = (sortBy) => {
     updateFilters({
       sortBy,
-      sortOrder: sortBy === filters.sortBy && filters.sortOrder === 'DESC' ? 'ASC' : 'DESC'
+      // Precio va de menor a mayor; lo demás, de mayor a menor (mejor valorados, más reseñas, más experiencia)
+      sortOrder: sortBy === 'min_price' || sortBy === 'distance' ? 'ASC' : 'DESC'
     });
   };
 
