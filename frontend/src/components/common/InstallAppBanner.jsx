@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Download, X, Smartphone, Share2, PlusSquare, MoreVertical } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 /**
  * Aviso flotante para instalar CitaMed como app (misma idea que usa NeosVet).
@@ -7,7 +8,8 @@ import { Download, X, Smartphone, Share2, PlusSquare, MoreVertical } from 'lucid
  *   si no, muestra los pasos del menú de Chrome.
  * - iPhone: no hay aviso automático; muestra los pasos de Safari (Compartir > Agregar a inicio).
  * Se oculta si ya está instalada y, si la persona lo cierra, no vuelve a salir en 7 días.
- * Solo aparece si la página cargó el manifiesto (interruptor FEATURES.pwa y dominio del sistema).
+ * Solo aparece si la página cargó el manifiesto (interruptor FEATURES.pwa y dominio del sistema)
+ * y con sesión iniciada, para no tapar los botones de inicio de sesión y registro en el teléfono.
  */
 
 const DISMISS_KEY = 'citamed_pwa_dismissed';
@@ -47,6 +49,7 @@ function recentlyDismissed() {
 }
 
 export default function InstallAppBanner() {
+  const { user } = useAuth();
   const [visible, setVisible] = useState(false);
   const [showSteps, setShowSteps] = useState(false);
   const [platform] = useState(() => detectPlatform());
@@ -92,7 +95,7 @@ export default function InstallAppBanner() {
     }
   };
 
-  if (!visible) return null;
+  if (!visible || !user) return null;
 
   const steps =
     platform === 'ios'
