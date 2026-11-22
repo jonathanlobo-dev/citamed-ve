@@ -59,7 +59,8 @@ export function AuthProvider({ children }) {
 
   const login = async (credentials) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, credentials);
+      // Con señal débil la petición puede quedar colgada: a los 25 s se corta con un mensaje claro
+      const response = await axios.post(`${API_URL}/auth/login`, credentials, { timeout: 25000 });
 
       if (response.data.success) {
         // Verificar si requiere 2FA
@@ -83,8 +84,7 @@ export function AuthProvider({ children }) {
         toast.success('Sesión iniciada correctamente');
         return { success: true, user: userWithProfile };
       } else {
-        toast.error(response.data.message || 'Error al iniciar sesión');
-        return { success: false, message: response.data.message };
+        return { success: false, message: response.data.message || 'Error al iniciar sesión' };
       }
     } catch (error) {
       const isSuspended =
@@ -92,8 +92,10 @@ export function AuthProvider({ children }) {
         error.response?.data?.code === 'ACCOUNT_SUSPENDED';
       const message = isSuspended
         ? 'Tu cuenta está suspendida. Escríbenos a soporte si crees que es un error.'
-        : error.response?.data?.message || 'Error al iniciar sesión';
-      toast.error(message);
+        : !error.response
+          ? 'No pudimos conectar con CitaMed. Revisa tu conexión a internet e intenta de nuevo.'
+          : error.response?.data?.message || 'Error al iniciar sesión';
+      // El aviso lo muestra la pantalla de inicio de sesión (antes salía dos veces)
       return {
         success: false,
         message,

@@ -8,6 +8,7 @@ import { FEATURES } from './config/features';
 import LandingPage from './pages/LandingPage';
 import { isAppHost, isLandingHost, systemRedirectFor, homeUrl } from './config/appUrl';
 import AccountBanners from './components/common/AccountBanners';
+import InstallAppBanner from './components/common/InstallAppBanner';
 import LoginPage from './pages/LoginPage';
 import RegistroPage from './pages/RegistroPage';
 
@@ -614,6 +615,7 @@ function App() {
         <Router>
           <div className="app">
             {!isLandingHost() && <AccountBanners />}
+            {FEATURES.pwa && !isLandingHost() && <InstallAppBanner />}
             <AppRoutes />
 
           </div>
