@@ -6,6 +6,7 @@
  */
 
 const { Op } = require('sequelize');
+const storageService = require('./storageService');
 const db = require('../models');
 const auditService = require('./auditService');
 
@@ -368,11 +369,13 @@ async function getRequestDetails(requestId) {
       ...request.toJSON(),
       waitingDays: request.getWaitingDays()
     },
-    documents: documents.map(doc => ({
+    // Los documentos están en un espacio privado: se entrega un enlace temporal (10 min)
+    documents: await Promise.all(documents.map(async doc => ({
       ...doc.toJSON(),
+      fileUrl: await storageService.resolveFileUrl(doc.fileUrl),
       typeName: DOCUMENT_TYPES[doc.documentType]?.name || doc.documentType,
       isRequired: REQUIRED_DOCUMENTS.includes(doc.documentType)
-    })),
+    }))),
     previousRequests,
     requiredDocuments: REQUIRED_DOCUMENTS.map(type => ({
       type,
