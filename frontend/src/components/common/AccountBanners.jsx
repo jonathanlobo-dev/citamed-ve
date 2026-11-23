@@ -19,11 +19,14 @@ export default function AccountBanners() {
   const { pathname } = useLocation();
   const userId = user?.id;
 
-  // Una vez por sesión se trae el estado real (la copia guardada puede estar vieja)
+  // Se trae el estado real (la copia guardada puede estar vieja). Al médico sin verificar se le
+  // vuelve a consultar al cambiar de pantalla: si acaba de enviar sus documentos, el aviso se
+  // actualiza sin tener que cerrar sesión (QA: decía "falta enviar" con los documentos ya enviados)
+  const pendingDoctor = user?.role === 'doctor' && user?.profile?.isVerified !== true;
   useEffect(() => {
     if (userId) refreshUser();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, pendingDoctor ? pathname : null]);
 
   const banners = getAccountBanners(user, pathname);
   if (banners.length === 0) return null;

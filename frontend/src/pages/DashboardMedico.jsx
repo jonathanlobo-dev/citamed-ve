@@ -1,59 +1,121 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-// eslint-disable-next-line no-unused-vars
-import { motion } from 'framer-motion';
-import {
-  Activity,
-  Clock,
-  Calendar,
-  Users,
-  Heart,
-  TrendingUp,
-  DollarSign,
-  Video,
-  MessageSquare,
-  Settings,
-  BarChart3,
-  Stethoscope,
-  CheckCircle,
-  AlertCircle,
-  Star,
-  Plus,
-  UserCheck,
-  Globe,
-  Copy,
-  ExternalLink,
-  Share2
-} from 'lucide-react';
+/**
+ * DashboardMedico - CITAMED.VE
+ * Panel principal del médico ("Espacio médico"), según la propuesta del piloto (QA 23/11):
+ * menú lateral azul, una sola tarjeta de verificación profesional y las tareas del consultorio
+ * ordenadas, con agenda, cobros y perfil a la derecha.
+ * Colores de la marca: azul #0D304B, turquesa #00B9A5, naranja #FF8A00, gris #F2F6F8.
+ */
+import { useEffect, useState } from 'react';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import Navbar from '../components/common/Navbar/Navbar';
-import useDoctorProfile from '../hooks/useDoctorProfile';
-import { FEATURES, SHOW_UNBUILT_SECTIONS } from '../config/features';
-import SetupChecklist from '../components/doctor/SetupChecklist';
+import {
+  LayoutGrid, CalendarDays, Wallet, User, Search, Home, LogOut, ShieldCheck, ArrowRight,
+  MapPin, Clock, CreditCard, Camera, Link2, ExternalLink, ChevronRight, Check, Star,
+  Plus, Users, Armchair, UserCheck, BarChart3, Stethoscope, Menu, X
+} from 'lucide-react';
 
-// Módulos que todavía no existen (llevan a páginas de "próximamente"): se ocultan hasta que estén hechos
-const UNBUILT_PATHS = ['/modulo/telemedicina', '/modulo/marketmed', '/modulo/citamed-paga', '/medico/estado-actual', '/medico/fidelizacion', '/medico/estadisticas', '/medico/mensajeria', '/medico/reportes', '/medico/configuracion'];
+import { useAuth } from '../context/AuthContext';
+import useDoctorProfile from '../hooks/useDoctorProfile';
+import { FEATURES } from '../config/features';
+import { goToHome } from '../config/appUrl';
+import { buildSetupTasks } from '../components/doctor/setupTasks';
+
+const NAVY = '#0D304B';
+const TEAL = '#00B9A5';
+
+const MY_SPACE = [
+  { to: '/medico/dashboard', label: 'Mi consultorio', icon: LayoutGrid },
+  { to: '/medico/consulta/nueva', label: 'Nueva consulta', icon: Plus },
+  { to: '/medico/agenda', label: 'Mi agenda', icon: CalendarDays },
+  { to: '/medico/sala-espera', label: 'Sala de espera', icon: Armchair },
+  { to: '/medico/pacientes', label: 'Mis pacientes', icon: Users },
+  { to: '/medico/cobros', label: 'Cobros', icon: Wallet },
+  ...(FEATURES.doctorReports ? [{ to: '/medico/reportes', label: 'Reportes', icon: BarChart3 }] : [])
+];
+
+const MY_ACCOUNT = [
+  { to: '/medico/perfil/editar', label: 'Perfil médico', icon: User },
+  ...(FEATURES.assistant ? [{ to: '/medico/asistentes', label: 'Mi asistente', icon: UserCheck }] : []),
+  { to: '/directorio', label: 'Directorio médico', icon: Search }
+];
+
+// Estado de la verificación, con el perfil recién consultado (no con la sesión guardada)
+const VERIFICATION = {
+  pending: { pill: 'En revisión', pillCls: 'bg-amber-50 text-amber-700 border-amber-200', text: 'Recibimos tus documentos y los estamos revisando. Mientras tanto puedes preparar tu consultorio; para atender, emitir documentos o cobrar hace falta la aprobación.', action: 'Ver estado' },
+  rejected: { pill: 'Rechazada', pillCls: 'bg-red-50 text-red-700 border-red-200', text: 'Tu verificación fue rechazada. Revisa el motivo y vuelve a enviar tus documentos.', action: 'Revisar verificación' },
+  documents_incomplete: { pill: 'Faltan documentos', pillCls: 'bg-orange-50 text-orange-700 border-orange-200', text: 'Necesitamos más documentos para revisar tu verificación. Sube lo que falta.', action: 'Subir documentos' },
+  unverified: { pill: 'Pendiente', pillCls: 'bg-orange-50 text-orange-700 border-orange-200', text: 'Puedes preparar tu consultorio. Para atender, emitir documentos o cobrar, primero debes completar la verificación.', action: 'Revisar verificación' }
+};
+
+// Texto del botón de cada tarea, como en la propuesta
+const TASK_UI = {
+  location: { title: 'Dirección del consultorio', hint: 'Indica dónde recibirás a tus pacientes.', doneHint: 'Tu dirección ya está cargada.', action: 'Agregar', icon: MapPin },
+  schedule: { title: 'Horarios de atención', hint: 'Los pacientes solo agendan en los horarios que publiques.', doneHint: 'Tu disponibilidad ya está configurada.', action: 'Configurar', icon: Clock },
+  price: { title: 'Tarifa de la consulta', hint: 'Define el precio que verá el paciente.', doneHint: 'Tu tarifa ya está definida.', action: 'Definir', icon: CreditCard },
+  photo: { title: 'Fotografía de perfil', hint: 'Dale una imagen profesional a tu perfil.', doneHint: 'Tu foto ya está en tu perfil.', action: 'Subir', icon: Camera },
+  share: { title: 'Tu página pública', hint: 'Comparte tu enlace por WhatsApp.', action: null, icon: Link2 }
+};
+
+function SideLink({ item, onClick }) {
+  const Icon = item.icon;
+  return (
+    <NavLink
+      to={item.to}
+      end
+      onClick={onClick}
+      className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${isActive ? 'bg-white/10 text-white font-semibold' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
+    >
+      {({ isActive }) => (
+        <>
+          <Icon className="w-[18px] h-[18px] shrink-0" style={{ color: isActive ? TEAL : undefined }} />
+          {item.label}
+        </>
+      )}
+    </NavLink>
+  );
+}
+
+function Sidebar({ onNavigate, onLogout }) {
+  return (
+    <div className="flex flex-col h-full px-3 py-6" style={{ backgroundColor: NAVY }}>
+      <p className="px-3 mb-2 text-[11px] font-semibold tracking-wider text-slate-400">MI ESPACIO</p>
+      <nav className="space-y-1">{MY_SPACE.map((i) => <SideLink key={i.to} item={i} onClick={onNavigate} />)}</nav>
+      <div className="my-5 mx-3 border-t border-white/10" />
+      <p className="px-3 mb-2 text-[11px] font-semibold tracking-wider text-slate-400">MI CUENTA</p>
+      <nav className="space-y-1">{MY_ACCOUNT.map((i) => <SideLink key={i.to} item={i} onClick={onNavigate} />)}</nav>
+      <div className="mt-auto pt-6 space-y-1">
+        <button type="button" onClick={goToHome} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-white/5 hover:text-white">
+          <Home className="w-[18px] h-[18px]" /> Inicio público
+        </button>
+        <button type="button" onClick={onLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-white/5 hover:text-white">
+          <LogOut className="w-[18px] h-[18px]" /> Salir
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function DashboardMedico() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { profile, completeness, fetchMyProfile, fetchCompleteness } = useDoctorProfile();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     fetchMyProfile();
     fetchCompleteness();
   }, [fetchMyProfile, fetchCompleteness]);
 
-  // Solo el enlace guardado en el perfil: inventarlo con el nombre daba "Perfil no disponible"
+  // Si el estado de verificación cambió, la sesión guardada se pone al día (para los avisos de otras pantallas)
+  useEffect(() => {
+    const saved = user?.profile?.verificationStatus;
+    if (profile?.verificationStatus && saved && profile.verificationStatus !== saved) refreshUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.verificationStatus]);
+
   const slug = profile?.publicSlug || null;
   const publicPageUrl = slug ? `${window.location.origin}/dr/${slug}` : null;
-
-  const handleCopyLink = () => {
-    if (!publicPageUrl) return;
-    navigator.clipboard.writeText(publicPageUrl);
-    toast.success('¡Enlace a tu página pública copiado!');
-  };
 
   const handleShareWhatsApp = () => {
     if (!publicPageUrl) return;
@@ -61,320 +123,238 @@ function DashboardMedico() {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
   };
 
-  const modules = [
-    {
-      title: 'Nueva Consulta',
-      icon: Plus,
-      description: 'Atención inmediata de paciente sin cita (Walk-in)',
-      path: '/medico/consulta/nueva',
-      color: 'from-emerald-500 to-teal-600',
-      badge: 'Walk-in'
-    },
-    {
-      title: 'Estado Actual',
-      icon: Activity,
-      description: 'Resumen de tu jornada médica y estadísticas del día',
-      path: '/medico/estado-actual',
-      color: 'from-blue-500 to-blue-600',
-      badge: 'En Vivo'
-    },
-    {
-      title: 'Sala de Espera',
-      icon: Clock,
-      description: 'Pacientes en espera - Gestión en tiempo real',
-      path: '/medico/sala-espera',
-      color: 'from-purple-500 to-purple-600',
-      badge: 'Tiempo Real'
-    },
-    {
-      title: 'Mi Agenda',
-      icon: Calendar,
-      description: 'Calendario de consultas y disponibilidad',
-      path: '/medico/agenda',
-      color: 'from-green-500 to-green-600'
-    },
-    {
-      title: 'Mis Pacientes',
-      icon: Users,
-      description: 'Directorio completo de pacientes atendidos',
-      path: '/medico/pacientes',
-      color: 'from-indigo-500 to-indigo-600'
-    },
-    {
-      title: 'Fidelización',
-      icon: Heart,
-      description: 'Programa de seguimiento y retención de pacientes',
-      path: '/medico/fidelizacion',
-      color: 'from-pink-500 to-pink-600',
-      badge: 'Nuevo'
-    },
-    {
-      title: 'Estadísticas',
-      icon: TrendingUp,
-      description: 'Métricas de rendimiento y análisis de consultas',
-      path: '/medico/estadisticas',
-      color: 'from-orange-500 to-orange-600'
-    },
-    {
-      title: 'Cobros',
-      icon: DollarSign,
-      description: 'Validación de pagos, cobros pendientes y recibos',
-      path: '/medico/cobros',
-      color: 'from-yellow-500 to-yellow-600'
-    },
-    {
-      title: 'Telemedicina',
-      icon: Video,
-      description: 'Consultas virtuales por videollamada',
-      path: '/modulo/telemedicina',
-      color: 'from-red-500 to-red-600'
-    },
-    {
-      title: 'Mensajería',
-      icon: MessageSquare,
-      description: 'Comunicación segura con pacientes',
-      path: '/medico/mensajeria',
-      color: 'from-teal-500 to-teal-600',
-      badge: 'Seguro'
-    },
-    {
-      title: 'Mi Perfil Médico',
-      icon: Stethoscope,
-      description: 'Gestiona tu perfil profesional, especialidades y credenciales',
-      path: '/medico/perfil/editar',
-      color: 'from-teal-500 to-teal-600',
-      badge: 'Importante'
-    },
-    {
-      title: 'Reportes',
-      icon: BarChart3,
-      description: 'Ingresos, egresos y utilidad de tu consultorio',
-      path: '/medico/reportes',
-      color: 'from-violet-500 to-violet-600'
-    },
-    {
-      title: 'Configuración',
-      icon: Settings,
-      description: 'Ajustes de consultorio y preferencias',
-      path: '/medico/configuracion',
-      color: 'from-gray-500 to-gray-600'
-    },
-    ...(FEATURES.assistant ? [{
-      title: 'Mi Asistente',
-      icon: UserCheck,
-      description: 'Invita a tu secretaria o asistente y define sus permisos',
-      path: '/medico/asistentes',
-      color: 'from-sky-500 to-indigo-600',
-      badge: 'Nuevo'
-    }] : [])
-  ];
+  const handleCopyLink = () => {
+    if (!publicPageUrl) return;
+    navigator.clipboard.writeText(publicPageUrl);
+    toast.success('Enlace a tu página pública copiado');
+  };
 
-  const firstName = user?.profile?.firstName || user?.firstName || 'Doctor';
-  const specialty = user?.profile?.specialty || user?.specialty || 'Medicina General';
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const q = query.trim();
+    navigate(q ? `/directorio?q=${encodeURIComponent(q)}` : '/directorio');
+  };
+
+  const firstName = profile?.firstName || user?.profile?.firstName || user?.firstName || '';
+  const lastName = profile?.lastName || user?.profile?.lastName || user?.lastName || '';
+  const fullName = `${firstName} ${lastName}`.trim() || 'Doctor';
+  const initials = `${firstName[0] || ''}${lastName[0] || ''}`.toUpperCase() || 'DR';
+  // La especialidad puede venir como texto (sesión) o como objeto { name } (perfil)
+  const specialtyOf = (s) => (s && typeof s === 'object' ? s.name : s);
+  const specialty = specialtyOf(profile?.specialty) || specialtyOf(user?.profile?.specialty) || 'Medicina general';
+
+  const verified = profile?.isVerified === true;
+  const verification = profile && !verified ? (VERIFICATION[profile.verificationStatus] || VERIFICATION.unverified) : null;
+
+  const tasks = buildSetupTasks(profile, { onSharePublicPage: handleShareWhatsApp }).filter((t) => t.id !== 'documents');
+  const pendingTasks = tasks.filter((t) => !t.optional && !t.done).length;
+
+  const percent = completeness?.percentage || 0;
+  const reviews = profile?.totalReviews || 0;
+  const rating = reviews > 0 && profile?.averageRating ? parseFloat(profile.averageRating).toFixed(1) : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <Navbar />
+    <div className="min-h-screen" style={{ backgroundColor: '#F2F6F8' }}>
+      {/* Barra superior */}
+      <header className="sticky top-0 z-30 bg-white border-b border-slate-200">
+        <div className="flex items-center gap-4 px-4 lg:px-6 h-16">
+          <button type="button" className="lg:hidden p-2 -ml-2 text-slate-600" onClick={() => setMenuOpen(true)} aria-label="Abrir menú">
+            <Menu className="w-6 h-6" />
+          </button>
+          <Link to="/medico/dashboard" className="flex items-center gap-2 shrink-0">
+            <img src="/icons/icon-192.png" alt="" className="w-8 h-8 rounded-lg" />
+            <span className="text-xl font-extrabold tracking-tight" style={{ color: NAVY }}>
+              CITAMED<span style={{ color: '#FF8A00' }}>.VE</span>
+            </span>
+          </Link>
+          <span className="hidden md:block h-7 w-px bg-slate-200" />
+          <span className="hidden md:block text-sm font-medium text-slate-600">Espacio médico</span>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <h1 className="text-4xl font-extrabold text-primary mb-2">
-            Hola, Dr. {firstName}
-          </h1>
-          <p className="text-gray-600 text-lg flex items-center gap-2">
-            <Stethoscope className="w-5 h-5 text-primary" />
-            {specialty} • Panel Médico Profesional
-          </p>
-        </motion.div>
+          <form onSubmit={handleSearch} className="hidden md:flex items-center gap-2 ml-auto w-64 px-3 h-10 rounded-lg bg-slate-50 border border-slate-200">
+            <Search className="w-4 h-4 text-slate-400" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar médicos" className="flex-1 bg-transparent text-sm outline-none" />
+          </form>
 
-        <SetupChecklist profile={profile} onSharePublicPage={handleShareWhatsApp} />
-
-        {/* Stats Cards - Quick Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          {/* Perfil Completo - Dato Real */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1 }}
-            className="bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl p-6 text-white shadow-lg cursor-pointer hover:shadow-xl transition-shadow"
-            onClick={() => navigate('/medico/perfil/editar')}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-teal-100 text-sm font-medium">Perfil</p>
-                <p className="text-3xl font-bold">{completeness?.percentage || 0}%</p>
-                <p className="text-teal-100 text-xs">completado</p>
-              </div>
-              {completeness?.percentage === 100 ? (
-                <CheckCircle className="w-12 h-12 text-teal-200" />
-              ) : (
-                <AlertCircle className="w-12 h-12 text-teal-200 opacity-50" />
-              )}
-            </div>
-          </motion.div>
-
-          {/* Rating - Dato Real */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl p-6 text-white shadow-lg"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-amber-100 text-sm font-medium">Rating</p>
-                <p className="text-3xl font-bold">
-                  {profile?.averageRating ? parseFloat(profile.averageRating).toFixed(1) : '—'}
-                </p>
-                <p className="text-amber-100 text-xs">
-                  {profile?.totalReviews || 0} reseñas
-                </p>
-              </div>
-              <Star className="w-12 h-12 text-amber-200" />
-            </div>
-          </motion.div>
-
-          {/* Agenda: lleva a la pantalla real en vez de una cifra "Próximamente" (QA MED-UX-005) */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.3 }}
-            className="bg-gradient-to-br from-slate-600 to-slate-700 rounded-xl p-6 text-white shadow-lg cursor-pointer hover:shadow-xl transition-shadow"
-            onClick={() => navigate('/medico/agenda')}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-200 text-sm font-medium">Citas de hoy</p>
-                <p className="text-xl font-bold mt-1">Ver agenda</p>
-                <p className="text-slate-300 text-xs">Abre tu agenda del día</p>
-              </div>
-              <Calendar className="w-12 h-12 text-slate-300" />
-            </div>
-          </motion.div>
-          {/* Cobros: lleva a la pantalla real en vez de una cifra "Próximamente" (QA MED-UX-005) */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.4 }}
-            className="bg-gradient-to-br from-slate-600 to-slate-700 rounded-xl p-6 text-white shadow-lg cursor-pointer hover:shadow-xl transition-shadow"
-            onClick={() => navigate('/medico/cobros')}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-200 text-sm font-medium">Ingresos</p>
-                <p className="text-xl font-bold mt-1">Ver cobros</p>
-                <p className="text-slate-300 text-xs">Consultas cobradas y por cobrar</p>
-              </div>
-              <DollarSign className="w-12 h-12 text-slate-300" />
-            </div>
-          </motion.div>
+          <Link to="/cuenta" className="flex items-center gap-3 ml-auto md:ml-4">
+            {profile?.profilePhoto
+              ? <img src={profile.profilePhoto} alt="" className="w-9 h-9 rounded-full object-cover" />
+              : <span className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold" style={{ backgroundColor: '#E0F5F2', color: NAVY }}>{initials}</span>}
+            <span className="hidden sm:block leading-tight">
+              <span className="block text-sm font-semibold" style={{ color: NAVY }}>Dr. {fullName}</span>
+              <span className="block text-xs text-slate-500">{specialty}</span>
+            </span>
+          </Link>
         </div>
+      </header>
 
-        {/* B4: Tarjeta "Tu página pública" con enlace, botón copiar y botón compartir por WhatsApp */}
-        {FEATURES.publicPage && publicPageUrl && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8 bg-gradient-to-r from-teal-800 via-teal-900 to-slate-900 rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-5 border border-teal-500/20"
-          >
-            <div className="space-y-1.5 max-w-xl">
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 bg-teal-500/20 rounded-lg text-teal-300">
-                  <Globe className="w-5 h-5" />
-                </span>
-                <h3 className="text-lg font-bold text-white tracking-tight">
-                  Tu página pública en CitaMed
-                </h3>
-                <span className="bg-teal-400/20 text-teal-200 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-teal-400/30">
-                  Enlace propio
-                </span>
-              </div>
-              <p className="text-xs text-teal-100/90 leading-relaxed">
-                Comparte este enlace con tus pacientes para que conozcan tus servicios y agenden citas directamente.
-              </p>
-              <div className="pt-1.5 flex items-center gap-2">
-                <code className="px-3 py-1.5 bg-black/40 rounded-lg text-xs font-mono text-teal-200 select-all border border-white/10">
-                  {publicPageUrl}
-                </code>
-              </div>
-            </div>
+      <div className="flex">
+        {/* Menú lateral fijo en computadora */}
+        <aside className="hidden lg:block w-56 shrink-0 sticky top-16 h-[calc(100vh-4rem)]">
+          <Sidebar onLogout={handleLogout} />
+        </aside>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition border border-white/10 shadow-sm"
-              >
-                <Copy className="w-3.5 h-3.5 text-teal-300" />
-                <span>Copiar enlace</span>
+        {/* Menú lateral en el teléfono (panel que se desliza) */}
+        {menuOpen && (
+          <div className="lg:hidden fixed inset-0 z-40">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setMenuOpen(false)} />
+            <div className="absolute inset-y-0 left-0 w-64 shadow-xl">
+              <button type="button" className="absolute top-3 right-3 p-2 text-white/80 z-10" onClick={() => setMenuOpen(false)} aria-label="Cerrar menú">
+                <X className="w-5 h-5" />
               </button>
-              <a
-                href={publicPageUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition border border-white/10 shadow-sm"
-              >
-                <ExternalLink className="w-3.5 h-3.5 text-teal-300" />
-                <span>Ver página</span>
-              </a>
-              <button
-                type="button"
-                onClick={handleShareWhatsApp}
-                className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
-              >
-                <Share2 className="w-3.5 h-3.5" />
-                <span>Compartir por WhatsApp</span>
-              </button>
+              <Sidebar onNavigate={() => setMenuOpen(false)} onLogout={handleLogout} />
             </div>
-          </motion.div>
+          </div>
         )}
 
-        {/* Modules Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {modules.filter((m) => SHOW_UNBUILT_SECTIONS || !UNBUILT_PATHS.includes(m.path) || (m.path === '/medico/reportes' && FEATURES.doctorReports)).map((module, index) => {
-            const Icon = module.icon;
-            return (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 + index * 0.05 }}
-                whileHover={{ scale: 1.05, rotateY: 5 }}
-                className="cursor-pointer relative"
-                onClick={() => navigate(module.path)}
-              >
-                <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-6 border border-gray-200 hover:shadow-2xl transition-all duration-300 h-full">
-                  {/* Badge */}
-                  {module.badge && (
-                    <div className="absolute top-4 right-4">
-                      <span className="bg-gradient-to-r from-primary to-accent text-white text-xs font-bold px-2 py-1 rounded-full">
-                        {module.badge}
-                      </span>
-                    </div>
-                  )}
+        <main className="flex-1 min-w-0 px-4 lg:px-6 py-5 space-y-4">
+          <p className="text-xs text-slate-500">Mi consultorio <span className="mx-1.5">/</span> Inicio</p>
 
-                  {/* Icon */}
-                  <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${module.color} flex items-center justify-center mb-4`}>
-                    <Icon className="w-7 h-7 text-white" />
-                  </div>
+          {/* Bienvenida */}
+          <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col md:flex-row">
+            <div className="flex-1 p-6 md:p-7">
+              <p className="text-[11px] font-semibold tracking-wider" style={{ color: TEAL }}>BIENVENIDO A TU ESPACIO MÉDICO</p>
+              <h1 className="mt-2 text-2xl md:text-3xl font-bold" style={{ color: NAVY }}>Hola, Dr. {fullName}</h1>
+              <p className="mt-2 text-sm text-slate-600">
+                {pendingTasks > 0 ? 'Prepara tu consultorio para empezar.' : 'Tu consultorio está listo para recibir pacientes.'}
+                <br />Organiza tu consultorio desde un solo lugar.
+              </p>
+              <p className="mt-4 flex items-center gap-1.5 text-xs text-slate-500"><User className="w-3.5 h-3.5" /> {specialty}</p>
+            </div>
+            <div className="hidden md:flex w-[38%] items-center justify-center relative" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #145374 55%, ${TEAL} 130%)` }}>
+              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 20% 30%, #fff 0, transparent 40%), radial-gradient(circle at 80% 80%, #00B9A5 0, transparent 45%)' }} />
+              <div className="relative flex items-center gap-4 text-white">
+                <span className="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center"><Stethoscope className="w-8 h-8" /></span>
+                <span className="w-12 h-12 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center"><CalendarDays className="w-6 h-6" /></span>
+                <span className="w-10 h-10 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center"><ShieldCheck className="w-5 h-5" /></span>
+              </div>
+            </div>
+          </section>
 
-                  {/* Content */}
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">
-                    {module.title}
-                  </h3>
-                  <p className="text-gray-600 text-sm">
-                    {module.description}
-                  </p>
+          {/* Verificación profesional: una sola tarjeta con el estado real */}
+          {verification && (
+            <section className="bg-white rounded-2xl border border-slate-200 border-l-4 p-5 flex flex-col md:flex-row md:items-center gap-4" style={{ borderLeftColor: TEAL }}>
+              <span className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: '#E0F5F2', color: NAVY }}>
+                <ShieldCheck className="w-5 h-5" />
+              </span>
+              <div className="flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="font-semibold" style={{ color: NAVY }}>Verificación profesional</h2>
+                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border ${verification.pillCls}`}>{verification.pill}</span>
                 </div>
-              </motion.div>
-            );
-          })}
-        </div>
+                <p className="mt-1 text-sm text-slate-600 max-w-xl">{verification.text}</p>
+              </div>
+              <Link to="/medico/verificacion" className="inline-flex items-center justify-center gap-3 px-5 h-11 rounded-lg text-sm font-semibold text-white shrink-0" style={{ backgroundColor: NAVY }}>
+                {verification.action} <ArrowRight className="w-4 h-4" />
+              </Link>
+            </section>
+          )}
+
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-4">
+            {/* Prepara tu consultorio */}
+            <section className="bg-white rounded-2xl border border-slate-200">
+              <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4 border-b border-slate-100">
+                <div>
+                  <h2 className="text-lg font-semibold" style={{ color: NAVY }}>Prepara tu consultorio</h2>
+                  <p className="text-sm text-slate-500">{pendingTasks > 0 ? 'Tu próximo paso está aquí.' : 'Todo listo. Puedes cambiar cualquier dato cuando quieras.'}</p>
+                </div>
+                <Link to="/medico/perfil/editar" className="text-[11px] font-semibold tracking-wider text-slate-500 hover:text-slate-700 pt-1">CONFIGURACIÓN</Link>
+              </div>
+              <ul className="px-3 py-2">
+                {tasks.map((task) => {
+                  const ui = TASK_UI[task.id];
+                  if (!ui) return null;
+                  const Icon = ui.icon;
+                  const isShare = task.id === 'share';
+                  const body = (
+                    <>
+                      <span className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${task.done ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-500'}`}>
+                        <Icon className="w-[18px] h-[18px]" />
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-sm font-semibold" style={{ color: NAVY }}>
+                          {ui.title}{task.optional && <span className="ml-1.5 text-[11px] font-normal text-slate-400">Opcional</span>}
+                        </span>
+                        <span className="block text-xs text-slate-500">
+                          {isShare && !publicPageUrl ? task.hint : (task.done ? ui.doneHint : ui.hint)}
+                        </span>
+                      </span>
+                      {isShare
+                        ? <ExternalLink className="w-4 h-4 text-slate-400 shrink-0" />
+                        : task.done
+                          ? <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200"><Check className="w-3.5 h-3.5" /> Listo</span>
+                          : <span className="text-sm font-semibold" style={{ color: NAVY }}>{ui.action}</span>}
+                      {!isShare && <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />}
+                    </>
+                  );
+                  const cls = 'flex items-center gap-3 px-2 py-3.5 rounded-lg hover:bg-slate-50 w-full text-left';
+                  return (
+                    <li key={task.id} className="border-b border-slate-100 last:border-0">
+                      {task.to
+                        ? <Link to={task.to} className={cls}>{body}</Link>
+                        : <button type="button" onClick={task.onClick} className={cls}>{body}</button>}
+                      {isShare && publicPageUrl && (
+                        <div className="flex flex-wrap gap-2 pl-14 pb-3 -mt-1">
+                          <button type="button" onClick={handleCopyLink} className="text-xs font-semibold px-3 py-1.5 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50">Copiar enlace</button>
+                          <a href={publicPageUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold px-3 py-1.5 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50">Ver página</a>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+
+            {/* Columna derecha */}
+            <div className="space-y-4">
+              <section className="rounded-2xl p-5 text-white" style={{ backgroundColor: NAVY }}>
+                <div className="flex items-start justify-between">
+                  <p className="text-[11px] font-semibold tracking-wider text-slate-300">AGENDA MÉDICA</p>
+                  <CalendarDays className="w-5 h-5" style={{ color: TEAL }} />
+                </div>
+                <h3 className="mt-2 text-xl font-semibold">Tus citas, a la mano</h3>
+                <p className="mt-1 text-xs text-slate-300">Consulta la agenda de tu consultorio.</p>
+                <Link to="/medico/agenda" className="mt-4 flex items-center justify-between px-4 h-10 rounded-lg bg-white text-sm font-semibold" style={{ color: NAVY }}>
+                  Ver agenda <ArrowRight className="w-4 h-4" />
+                </Link>
+              </section>
+
+              <Link to="/medico/cobros" className="bg-white rounded-2xl border border-slate-200 p-5 flex items-center gap-3 hover:border-slate-300">
+                <span className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center text-slate-500"><Wallet className="w-5 h-5" /></span>
+                <span className="flex-1">
+                  <span className="block font-semibold" style={{ color: NAVY }}>Cobros</span>
+                  <span className="block text-xs text-slate-500">Consulta tus movimientos.</span>
+                </span>
+                <span className="flex items-center gap-1 text-xs font-semibold" style={{ color: NAVY }}>Ver cobros <ArrowRight className="w-3.5 h-3.5" /></span>
+              </Link>
+
+              <section className="bg-white rounded-2xl border border-slate-200 p-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold" style={{ color: NAVY }}>Tu perfil profesional</h3>
+                  <span className="text-xl font-bold" style={{ color: NAVY }}>{percent} %</span>
+                </div>
+                <div className="mt-3 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${percent}%`, backgroundColor: TEAL }} />
+                </div>
+                <div className="mt-2 flex items-center justify-between text-xs">
+                  <span className="text-slate-500">Completado</span>
+                  <Link to="/medico/perfil/editar" className="flex items-center gap-1 font-semibold" style={{ color: NAVY }}>Editar perfil <ArrowRight className="w-3.5 h-3.5" /></Link>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <span className="flex items-center gap-1.5">
+                    <Star className="w-3.5 h-3.5" style={rating ? { color: '#FF8A00', fill: '#FF8A00' } : undefined} />
+                    {rating ? `${rating} de calificación` : 'Sin reseñas todavía'}
+                  </span>
+                  <span>{reviews} {reviews === 1 ? 'reseña' : 'reseñas'}</span>
+                </div>
+              </section>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );

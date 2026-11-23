@@ -31,12 +31,12 @@ describe('aviso de verificación profesional', () => {
   test.each([['pending', 'info', 'Ver estado'], ['unverified', 'info', 'Subir documentos'], ['documents_incomplete', 'info', 'Subir documentos'], ['rejected', 'danger', 'Subir documentos']])(
     'estado %s: tono %s, botón "%s"',
     (status, tone, label) => {
-      const [b] = getAccountBanners(doctor({ isVerified: false, verificationStatus: status }), '/medico/dashboard');
+      const [b] = getAccountBanners(doctor({ isVerified: false, verificationStatus: status }), '/medico/agenda');
       expect(b).toMatchObject({ key: 'doctor', tone, actionLabel: label, to: '/medico/verificacion' });
     }
   );
   test('el aviso dice claramente qué no puede hacer mientras tanto', () => {
-    const [b] = getAccountBanners(doctor({ isVerified: false, verificationStatus: 'pending' }), '/medico/dashboard');
+    const [b] = getAccountBanners(doctor({ isVerified: false, verificationStatus: 'pending' }), '/medico/agenda');
     expect(b.text).toMatch(/no puedes atender, emitir documentos ni cobrar/);
   });
   test('un estado desconocido se trata como sin verificar', () => {
@@ -61,5 +61,8 @@ describe('dónde no se muestran', () => {
   });
   test('sin sesión no hay avisos', () => {
     expect(getAccountBanners(null, '/dashboard')).toEqual([]);
+  });
+  test('en el panel del médico no sale el aviso: ahí está la tarjeta de verificación', () => {
+    expect(keys(doctor({ isVerified: false, verificationStatus: 'pending' }), '/medico/dashboard')).toEqual([]);
   });
 });

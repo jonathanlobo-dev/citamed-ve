@@ -29,7 +29,8 @@ export function getAccountBanners(user, pathname = '/') {
     });
   }
 
-  if (user.role === 'doctor' && user.profile && user.profile.isVerified !== true) {
+  // En el panel no: ahí la tarjeta Verificación profesional muestra el mismo estado
+  if (user.role === 'doctor' && user.profile && user.profile.isVerified !== true && pathname !== '/medico/dashboard') {
     const status = user.profile.verificationStatus || 'unverified';
     banners.push({
       key: 'doctor',
