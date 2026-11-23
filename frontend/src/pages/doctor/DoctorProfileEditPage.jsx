@@ -6,6 +6,7 @@
  * El médico ve su perfil como lo ven los pacientes, con opciones de editar cada sección
  */
 
+import { toDecimalInput } from '../../utils/decimalInput';
 import { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -216,7 +217,12 @@ const BasicInfoEditor = ({ profile, onSave, saving }) => {
   const [newLanguage, setNewLanguage] = useState('');
 
   const handleSubmit = () => {
-    onSave(formData);
+    onSave({
+      ...formData,
+      consultationFee: parseFloat(formData.consultationFee) || 0,
+      priceTeleconsultation: parseFloat(formData.priceTeleconsultation) || 0,
+      priceHomeVisit: parseFloat(formData.priceHomeVisit) || 0
+    });
   };
 
   const addLanguage = () => {
@@ -317,9 +323,10 @@ const BasicInfoEditor = ({ profile, onSave, saving }) => {
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={formData.consultationFee}
-                onChange={(e) => setFormData(prev => ({ ...prev, consultationFee: parseFloat(e.target.value) || 0 }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, consultationFee: toDecimalInput(e.target.value) }))}
                 className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500"
               />
             </div>
@@ -329,9 +336,10 @@ const BasicInfoEditor = ({ profile, onSave, saving }) => {
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={formData.priceTeleconsultation}
-                onChange={(e) => setFormData(prev => ({ ...prev, priceTeleconsultation: parseFloat(e.target.value) || 0 }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, priceTeleconsultation: toDecimalInput(e.target.value) }))}
                 className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500"
               />
             </div>
@@ -341,9 +349,10 @@ const BasicInfoEditor = ({ profile, onSave, saving }) => {
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={formData.priceHomeVisit}
-                onChange={(e) => setFormData(prev => ({ ...prev, priceHomeVisit: parseFloat(e.target.value) || 0 }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, priceHomeVisit: toDecimalInput(e.target.value) }))}
                 className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500"
               />
             </div>
