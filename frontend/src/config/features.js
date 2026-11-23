@@ -18,8 +18,8 @@ const RELEASED_IN_PRODUCTION = {
   WA_CONFIRM: true, // Confirmar o cancelar cita desde WhatsApp (liberada)
   AI_PATIENT_INSTRUCTIONS: false, // Indicaciones para el paciente con IA (mejora futura)
   EXCEL_IMPORT: true, // Importar pacientes desde Excel (liberada)
-  DOCTOR_REPORTS: false, // Reportes del médico: ingresos, egresos y utilidad (en construcción)
-  GUEST_BOOKING: false // Primera cita sin registro (en construcción; el servidor también pide GUEST_BOOKING_ENABLED=true)
+  DOCTOR_REPORTS: true, // Reportes del médico: ingresos, egresos y utilidad (liberado 22/11)
+  GUEST_BOOKING: true // Primera cita sin registro (liberado 22/11; el servidor también pide GUEST_BOOKING_ENABLED=true)
 };
 
 const branch = typeof __BUILD_BRANCH__ !== 'undefined' ? __BUILD_BRANCH__ : 'local';

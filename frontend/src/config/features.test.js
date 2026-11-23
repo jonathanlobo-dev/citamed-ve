@@ -25,8 +25,8 @@ describe('producción (rama master)', () => {
     expect(f.waConfirm).toBe(true);
     expect(f.aiPatientInstructions).toBe(false);
     expect(f.excelImport).toBe(true);
-    expect(f.doctorReports).toBe(false);
-    expect(f.guestBooking).toBe(false);
+    expect(f.doctorReports).toBe(true);
+    expect(f.guestBooking).toBe(true);
   });
 });
 
