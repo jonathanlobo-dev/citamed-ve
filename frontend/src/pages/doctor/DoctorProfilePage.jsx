@@ -886,7 +886,7 @@ const DoctorProfilePage = () => {
       </div>
 
       {/* CTA Flotante móvil */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4 z-30">
+      <div className="lg:hidden fixed left-0 right-0 bg-white border-t shadow-lg p-4 z-30" style={{ bottom: 'var(--patient-bottom-h, 0px)' }}>
         <div className="flex gap-3">
           <button
             onClick={() => navigate(`/agendar/${profile?.id || doctorId}`)}

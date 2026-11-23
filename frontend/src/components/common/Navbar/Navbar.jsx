@@ -102,7 +102,7 @@ function Navbar() {
   ].filter((item) => SHOW_UNBUILT_SECTIONS || !item.unbuilt);
 
   return (
-    <nav className="bg-white shadow-md sticky top-0 z-50">
+    <nav className="bg-white shadow-md sticky z-50" style={{ top: 'var(--patient-top-h, 0px)' }}>
       <div className="container mx-auto px-4 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* LOGO */}

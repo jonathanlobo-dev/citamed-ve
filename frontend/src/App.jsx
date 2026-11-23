@@ -9,6 +9,7 @@ import LandingPage from './pages/LandingPage';
 import { isAppHost, isLandingHost, systemRedirectFor, homeUrl } from './config/appUrl';
 import AccountBanners from './components/common/AccountBanners';
 import InstallAppBanner from './components/common/InstallAppBanner';
+import PatientNavBar from './components/patient/PatientNavBar';
 import LoginPage from './pages/LoginPage';
 import RegistroPage from './pages/RegistroPage';
 
@@ -617,6 +618,7 @@ function App() {
           <div className="app">
             {!isLandingHost() && <AccountBanners />}
             {FEATURES.pwa && !isLandingHost() && <InstallAppBanner />}
+            <PatientNavBar />
             <AppRoutes />
 
           </div>

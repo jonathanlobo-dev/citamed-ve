@@ -60,8 +60,9 @@ function hasSession() {
 export function goToHome(navigate) {
   const landing = landingOrigin();
   // La sesión vive en app.: la presentación (otro dominio) no la ve y parecería cerrada.
-  // Con sesión abierta, "Inicio" lleva al panel de la persona.
-  if (isAppHost() && landing && hasSession()) {
+  // Con sesión abierta, "Inicio" lleva al panel de la persona (en cualquier entorno: con sesión,
+  // "/" solo llevaría a la presentación o al login). /dashboard reenvía a cada rol a su panel.
+  if (hasSession()) {
     navigate('/dashboard');
     return;
   }

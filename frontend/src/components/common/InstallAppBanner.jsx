@@ -112,7 +112,8 @@ export default function InstallAppBanner() {
 
   return (
     <div
-      className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-50"
+      className="fixed left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-50"
+      style={{ bottom: 'calc(1rem + var(--patient-bottom-h, 0px))' }}
       role="region"
       aria-label="Instalar CitaMed"
     >

@@ -5,6 +5,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Barra de navegación del paciente (components/patient/PatientNavBar.jsx):
+   arriba fija en todos los tamaños y abajo en el teléfono. Navbar y los avisos fijos leen estas medidas. */
+body.has-patient-nav {
+  --patient-top-h: 3rem;
+}
+@media (max-width: 767px) {
+  body.has-patient-nav {
+    --patient-bottom-h: calc(4rem + env(safe-area-inset-bottom));
+    padding-bottom: var(--patient-bottom-h);
+  }
+}
+
 @layer base {
   * {
     box-sizing: border-box;

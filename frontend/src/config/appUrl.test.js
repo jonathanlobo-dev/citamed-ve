@@ -126,3 +126,31 @@ describe('citamedve.app es solo la presentación', () => {
     expect(mod.appHref('/login')).toBe('/login');
   });
 });
+
+describe('"Inicio" con la sesión abierta lleva al panel', () => {
+  const conSesion = () => vi.stubGlobal('localStorage', { getItem: (k) => (k === 'citamed_token' ? 'jwt' : null) });
+
+  test('en local y pruebas (sin VITE_APP_URL)', async () => {
+    const { mod } = await load({ href: 'http://localhost:5173/paciente/mis-citas' });
+    conSesion();
+    const navigate = vi.fn();
+    mod.goToHome(navigate);
+    expect(navigate).toHaveBeenCalledWith('/dashboard');
+    expect(navigate).not.toHaveBeenCalledWith('/');
+  });
+  test('dentro del sistema (app.) sin salir a la presentación', async () => {
+    const { mod, location } = await load({ href: 'https://app.citamedve.app/cuenta', env: APP });
+    conSesion();
+    const navigate = vi.fn();
+    mod.goToHome(navigate);
+    expect(navigate).toHaveBeenCalledWith('/dashboard');
+    expect(location.href).toBe('https://app.citamedve.app/cuenta');
+  });
+  test('sin sesión todo sigue igual', async () => {
+    const { mod } = await load({ href: 'http://localhost:5173/login' });
+    vi.stubGlobal('localStorage', { getItem: () => null });
+    const navigate = vi.fn();
+    mod.goToHome(navigate);
+    expect(navigate).toHaveBeenCalledWith('/');
+  });
+});
