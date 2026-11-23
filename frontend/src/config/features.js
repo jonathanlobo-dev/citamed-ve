@@ -18,7 +18,8 @@ const RELEASED_IN_PRODUCTION = {
   WA_CONFIRM: true, // Confirmar o cancelar cita desde WhatsApp (liberada)
   AI_PATIENT_INSTRUCTIONS: false, // Indicaciones para el paciente con IA (mejora futura)
   EXCEL_IMPORT: true, // Importar pacientes desde Excel (liberada)
-  DOCTOR_REPORTS: false // Reportes del médico: ingresos, egresos y utilidad (en construcción)
+  DOCTOR_REPORTS: false, // Reportes del médico: ingresos, egresos y utilidad (en construcción)
+  GUEST_BOOKING: false // Primera cita sin registro (en construcción; el servidor también pide GUEST_BOOKING_ENABLED=true)
 };
 
 const branch = typeof __BUILD_BRANCH__ !== 'undefined' ? __BUILD_BRANCH__ : 'local';
@@ -40,7 +41,8 @@ export const FEATURES = {
   waConfirm: flag('WA_CONFIRM'),
   aiPatientInstructions: flag('AI_PATIENT_INSTRUCTIONS'),
   excelImport: flag('EXCEL_IMPORT'),
-  doctorReports: flag('DOCTOR_REPORTS')
+  doctorReports: flag('DOCTOR_REPORTS'),
+  guestBooking: flag('GUEST_BOOKING')
 };
 
 // Secciones que todavía no existen de verdad (módulos MarketMed, Telemedicina y Citamed Paga,

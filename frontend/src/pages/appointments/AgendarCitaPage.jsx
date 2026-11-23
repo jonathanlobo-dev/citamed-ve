@@ -18,6 +18,8 @@ import {
 import Navbar from '../../components/common/Navbar/Navbar';
 import { useAuth } from '../../context/AuthContext';
 import appointmentService from '../../services/appointmentService';
+import guestBookingService from '../../services/guestBookingService';
+import GuestBookingDrawer from '../../components/appointments/GuestBookingDrawer';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import './AgendarCitaPage.css';
@@ -27,7 +29,11 @@ const AgendarCitaPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const rescheduleId = searchParams.get('reschedule');
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  // Sin sesión se puede pedir la primera cita dando los datos (solo si el interruptor lo permite en App.jsx)
+  const isGuest = !user;
+  const [guestDrawerOpen, setGuestDrawerOpen] = useState(false);
+  const [guestResult, setGuestResult] = useState(null);
 
   const [doctor, setDoctor] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -157,7 +163,9 @@ const AgendarCitaPage = () => {
         setLoadingSlots(true);
         const dateStr = formatLocalDate(selectedDate);
         const targetDoctorId = doctor?.id || doctorId;
-        const response = await appointmentService.getAvailableSlots(targetDoctorId, dateStr);
+        const response = isGuest
+          ? { data: await guestBookingService.getSlots(targetDoctorId, dateStr).then((r) => r.data) }
+          : await appointmentService.getAvailableSlots(targetDoctorId, dateStr);
         
         // Extraer solo las horas únicas de los slots
         const slots = response.data?.slots || [];
@@ -183,7 +191,7 @@ const AgendarCitaPage = () => {
     };
 
     fetchSlots();
-  }, [selectedDate, doctorId, doctor]);
+  }, [selectedDate, doctorId, doctor, isGuest]);
 
   const generateCalendarDays = () => {
     const year = currentMonth.getFullYear();
@@ -238,6 +246,12 @@ const AgendarCitaPage = () => {
   const handleBookAppointment = async () => {
     if (!selectedDate || !selectedSlot || !doctorId || !doctor) return;
 
+    // Un visitante sin sesión deja sus datos en el panel lateral antes de enviar la solicitud
+    if (isGuest) {
+      setGuestDrawerOpen(true);
+      return;
+    }
+
     try {
       setBookingInProgress(true);
 
@@ -285,7 +299,9 @@ const AgendarCitaPage = () => {
       // Si el horario fue tomado, refrescar slots automáticamente
       if (selectedDate) {
         const dateStr = formatLocalDate(selectedDate);
-        appointmentService.getAvailableSlots(doctor?.id || doctorId, dateStr)
+        (isGuest
+          ? guestBookingService.getSlots(doctor?.id || doctorId, dateStr)
+          : appointmentService.getAvailableSlots(doctor?.id || doctorId, dateStr))
           .then((res) => {
             const slots = res.data?.slots || [];
             const uniqueSlots = [...new Set(slots.map(s => s.start))].sort();
@@ -308,7 +324,7 @@ const AgendarCitaPage = () => {
 
   const dayNames = ['D', 'L', 'Ma', 'Mi', 'J', 'V', 'S'];
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <Loader className="w-8 h-8 animate-spin text-primary" />
@@ -382,7 +398,7 @@ const AgendarCitaPage = () => {
                 Aprobación del consultorio:
               </p>
               <p className="text-blue-700 text-xs leading-relaxed">
-                Tu cupo ha quedado bloqueado para ti. El médico o su asistente confirmará la cita a la brevedad. Puedes seguir el estado en <strong>Mis Citas</strong>.
+                Tu cupo ha quedado bloqueado para ti. El médico o su asistente confirmará la cita a la brevedad.{guestResult ? '' : <> Puedes seguir el estado en <strong>Mis Citas</strong>.</>}
               </p>
             </div>
 
@@ -422,13 +438,33 @@ const AgendarCitaPage = () => {
               </motion.div>
             )}
 
+            {guestResult && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm text-emerald-900 text-left mb-6">
+                <p className="font-semibold mb-1">Crea tu cuenta para no perder nada</p>
+                <p className="text-xs leading-relaxed text-emerald-800">
+                  {guestResult.emailSent
+                    ? <>Te enviamos un correo a <strong>{guestResult.email}</strong> con un enlace para elegir tu clave. Así podrás agendar de nuevo, ver tus récipes digitales y no olvidar nada.</>
+                    : <>Ya creamos tu cuenta. Para agendar de nuevo, ver tus récipes digitales y no olvidar nada, elige tu clave desde <strong>Olvidé mi clave</strong> con el correo <strong>{guestResult.email}</strong>.</>}
+                </p>
+              </div>
+            )}
+
             <div className="space-y-3">
+              {guestResult ? (
+                <button
+                  onClick={() => navigate('/forgot-password')}
+                  className="w-full bg-primary text-white py-3 rounded-xl font-semibold hover:bg-primary-dark transition shadow-md"
+                >
+                  Elegir mi clave
+                </button>
+              ) : (
               <button
                 onClick={() => navigate('/paciente/mis-citas')}
                 className="w-full bg-primary text-white py-3 rounded-xl font-semibold hover:bg-primary-dark transition shadow-md"
               >
                 Ver Mis Citas
               </button>
+              )}
               <button
                 onClick={() => navigate('/directorio')}
                 className="w-full border border-gray-300 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-50 transition"
@@ -445,6 +481,27 @@ const AgendarCitaPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <Navbar />
+
+      {isGuest && (
+        <GuestBookingDrawer
+          open={guestDrawerOpen}
+          onClose={() => setGuestDrawerOpen(false)}
+          summary={selectedDate && selectedSlot ? `${selectedDate.toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' })} a las ${selectedSlot}` : ''}
+          booking={{
+            doctorProfileId: doctor?.id || parseInt(doctorId),
+            appointmentDate: formatLocalDate(selectedDate),
+            appointmentTime: selectedSlot,
+            reasonForVisit: reason
+          }}
+          onBooked={(result) => {
+            setGuestResult(result);
+            setNewAppointmentId(result.appointment?.id);
+            setGuestDrawerOpen(false);
+            setBookingSuccess(true);
+            toast.success('¡Solicitud de cita enviada con éxito!');
+          }}
+        />
+      )}
 
       <div className="container mx-auto px-4 py-8">
         {/* Header with Doctor Info */}
@@ -648,12 +705,12 @@ const AgendarCitaPage = () => {
                       ) : (
                         <>
                           <Check className="w-5 h-5" />
-                          {rescheduleId ? 'Solicitar reprogramación' : 'Enviar Solicitud de Cita'}
+                          {rescheduleId ? 'Solicitar reprogramación' : isGuest ? 'Continuar con mis datos' : 'Enviar Solicitud de Cita'}
                         </>
                       )}
                     </button>
                     <p className="text-xs text-gray-500 text-center mt-2.5">
-                      🔒 Tu horario se reservará de inmediato y el consultorio confirmará tu cita.
+                      🔒 Tu horario se reservará de inmediato y el consultorio confirmará tu cita.{isGuest ? ' No necesitas cuenta para pedirla.' : ''}
                     </p>
                   </div>
                 )}

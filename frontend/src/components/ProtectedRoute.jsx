@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-function ProtectedRoute({ children, allowedRoles = [] }) {
+function ProtectedRoute({ children, allowedRoles = [], allowGuest = false }) {
   const { user, loading, getDashboardPath } = useAuth();
   const location = useLocation();
 
@@ -14,6 +14,11 @@ function ProtectedRoute({ children, allowedRoles = [] }) {
         </div>
       </div>
     );
+  }
+
+  // Páginas que un visitante sin sesión puede abrir (por ejemplo, pedir su primera cita)
+  if (!user && allowGuest) {
+    return children;
   }
 
   // No está logueado → redirect a login preservando la ruta de origen

@@ -121,6 +121,7 @@ const aiRoutes = require("./routes/ai");
 const exchangeRateRoutes = require("./routes/exchangeRates");
 const paymentRoutes = require("./routes/payments");
 const doctorFinanceRoutes = require("./routes/doctorFinance");
+const guestBookingRoutes = require("./routes/guestBooking");
 const assistantRoutes = require("./routes/assistants");
 const publicRoutes = require("./routes/public");
 
@@ -165,6 +166,7 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/exchange-rate", exchangeRateRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/doctor-finance", doctorFinanceRoutes);
+app.use("/api/guest-booking", guestBookingRoutes);
 app.use("/api/assistants", assistantRoutes);
 
 // ==================== RUTAS BÁSICAS ====================

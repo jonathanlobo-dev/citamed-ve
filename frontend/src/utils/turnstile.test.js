@@ -28,6 +28,7 @@ describe('rutas protegidas', () => {
     '/auth/register/provider',
     '/password-recovery/request',
     '/password/request',
+    '/guest-booking/appointments',
     '/auth/login?x=1'
   ])('%s se protege', async (url) => {
     const t = await load('clave');
@@ -51,6 +52,9 @@ describe('rutas protegidas', () => {
     const rec = readFileSync(join(ROOT, 'backend/src/routes/passwordRecovery.js'), 'utf8');
     expect(rec).toMatch(/router\.post\('\/request',\s*requireTurnstile/);
     expect(t.isProtectedUrl('/password-recovery/request')).toBe(true);
+    const guest = readFileSync(join(ROOT, 'backend/src/routes/guestBooking.js'), 'utf8');
+    expect(guest).toMatch(/'\/appointments',[\s\S]*requireTurnstile/);
+    expect(t.isProtectedUrl('/guest-booking/appointments')).toBe(true);
   });
 });
 

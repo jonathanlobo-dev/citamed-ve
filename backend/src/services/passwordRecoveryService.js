@@ -375,7 +375,9 @@ const passwordRecoveryService = {
       await user.update({
         password: newPassword,
         ...(user.emailVerified ? {} : { emailVerified: true, emailVerifiedAt: new Date() }),
-        ...(user.role === 'assistant' && user.accountClaimed === false ? { accountClaimed: true } : {})
+        // Lo mismo vale para un paciente que pidió su primera cita sin registro: al poner su clave
+        // con el enlace que llegó a su correo, su cuenta queda activa
+        ...(['assistant', 'patient'].includes(user.role) && user.accountClaimed === false ? { accountClaimed: true } : {})
       });
 
       // Marcar token como usado

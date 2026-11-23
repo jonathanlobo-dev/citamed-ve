@@ -335,7 +335,7 @@ function AppRoutes() {
       <Route
         path="/agendar/:doctorId"
         element={
-          <ProtectedRoute allowedRoles={['patient']}>
+          <ProtectedRoute allowedRoles={['patient']} allowGuest={FEATURES.guestBooking}>
             <AgendarCitaPage />
           </ProtectedRoute>
         }

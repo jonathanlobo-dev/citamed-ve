@@ -12,7 +12,7 @@ async function load(branch, env = {}) {
 
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
-const ALL = ['ai', 'superadmin', 'pwa', 'assistant', 'publicPage', 'waConfirm', 'aiPatientInstructions', 'excelImport', 'doctorReports'];
+const ALL = ['ai', 'superadmin', 'pwa', 'assistant', 'publicPage', 'waConfirm', 'aiPatientInstructions', 'excelImport', 'doctorReports', 'guestBooking'];
 
 describe('producción (rama master)', () => {
   test.each(['master', 'main'])('%s: solo está encendido lo que ya se entregó', async (branch) => {
@@ -26,6 +26,7 @@ describe('producción (rama master)', () => {
     expect(f.aiPatientInstructions).toBe(false);
     expect(f.excelImport).toBe(true);
     expect(f.doctorReports).toBe(false);
+    expect(f.guestBooking).toBe(false);
   });
 });
 

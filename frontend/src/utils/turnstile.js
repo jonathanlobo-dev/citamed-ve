@@ -21,7 +21,8 @@ export const getTurnstileToken = () => currentToken;
 const PROTECTED = [
   /\/auth\/login$/,
   /\/auth\/register(\/(patient|doctor|provider))?$/,
-  /\/(password|password-recovery)\/request$/
+  /\/(password|password-recovery)\/request$/,
+  /\/guest-booking\/appointments$/
 ];
 
 export function isProtectedUrl(url = '') {
