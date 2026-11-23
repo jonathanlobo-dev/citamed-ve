@@ -7,6 +7,7 @@
  * guardado automático y panel lateral para antecedentes e historia.
  */
 
+import { toDecimalInput } from '../../utils/decimalInput';
 import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
 import {
@@ -2527,10 +2528,11 @@ export default function EspacioClinicoPage() {
                     <span className="text-slate-400">mmHg</span>
                   </span>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={vitalSigns.systolic}
                     onChange={(e) =>
-                      setVitalSigns((prev) => ({ ...prev, systolic: e.target.value }))
+                      setVitalSigns((prev) => ({ ...prev, systolic: toDecimalInput(e.target.value) }))
                     }
                     placeholder=""
                     className="ec-vital-input"
@@ -2554,10 +2556,11 @@ export default function EspacioClinicoPage() {
                     <span className="text-slate-400">mmHg</span>
                   </span>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={vitalSigns.diastolic}
                     onChange={(e) =>
-                      setVitalSigns((prev) => ({ ...prev, diastolic: e.target.value }))
+                      setVitalSigns((prev) => ({ ...prev, diastolic: toDecimalInput(e.target.value) }))
                     }
                     placeholder=""
                     className="ec-vital-input"
@@ -2579,9 +2582,10 @@ export default function EspacioClinicoPage() {
                     <span className="text-slate-400">lpm</span>
                   </span>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={vitalSigns.heartRate}
-                    onChange={(e) => setVitalSigns((prev) => ({ ...prev, heartRate: e.target.value }))}
+                    onChange={(e) => setVitalSigns((prev) => ({ ...prev, heartRate: toDecimalInput(e.target.value) }))}
                     placeholder=""
                     className="ec-vital-input"
                     readOnly={isReadOnly}
@@ -2602,10 +2606,11 @@ export default function EspacioClinicoPage() {
                     <span className="text-slate-400">rpm</span>
                   </span>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={vitalSigns.respiratoryRate}
                     onChange={(e) =>
-                      setVitalSigns((prev) => ({ ...prev, respiratoryRate: e.target.value }))
+                      setVitalSigns((prev) => ({ ...prev, respiratoryRate: toDecimalInput(e.target.value) }))
                     }
                     placeholder=""
                     className="ec-vital-input"
@@ -2627,10 +2632,11 @@ export default function EspacioClinicoPage() {
                     <span className="text-slate-400">°C</span>
                   </span>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     step="0.1"
                     value={vitalSigns.temperature}
-                    onChange={(e) => setVitalSigns((prev) => ({ ...prev, temperature: e.target.value }))}
+                    onChange={(e) => setVitalSigns((prev) => ({ ...prev, temperature: toDecimalInput(e.target.value) }))}
                     placeholder=""
                     className="ec-vital-input"
                     readOnly={isReadOnly}
@@ -2651,10 +2657,11 @@ export default function EspacioClinicoPage() {
                     <span className="text-slate-400">%</span>
                   </span>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={vitalSigns.oxygenSaturation}
                     onChange={(e) =>
-                      setVitalSigns((prev) => ({ ...prev, oxygenSaturation: e.target.value }))
+                      setVitalSigns((prev) => ({ ...prev, oxygenSaturation: toDecimalInput(e.target.value) }))
                     }
                     placeholder=""
                     className="ec-vital-input"
@@ -2672,10 +2679,11 @@ export default function EspacioClinicoPage() {
                     <span className="text-slate-400">kg</span>
                   </span>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     step="0.1"
                     value={vitalSigns.weightKg}
-                    onChange={(e) => setVitalSigns((prev) => ({ ...prev, weightKg: e.target.value }))}
+                    onChange={(e) => setVitalSigns((prev) => ({ ...prev, weightKg: toDecimalInput(e.target.value) }))}
                     placeholder=""
                     className="ec-vital-input"
                     readOnly={isReadOnly}
@@ -2689,9 +2697,10 @@ export default function EspacioClinicoPage() {
                     <span className="text-slate-400">cm</span>
                   </span>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={vitalSigns.heightCm}
-                    onChange={(e) => setVitalSigns((prev) => ({ ...prev, heightCm: e.target.value }))}
+                    onChange={(e) => setVitalSigns((prev) => ({ ...prev, heightCm: toDecimalInput(e.target.value) }))}
                     placeholder=""
                     className="ec-vital-input"
                     readOnly={isReadOnly}
@@ -2705,9 +2714,10 @@ export default function EspacioClinicoPage() {
                     <span className="text-slate-400">mg/dL</span>
                   </span>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={vitalSigns.glucose}
-                    onChange={(e) => setVitalSigns((prev) => ({ ...prev, glucose: e.target.value }))}
+                    onChange={(e) => setVitalSigns((prev) => ({ ...prev, glucose: toDecimalInput(e.target.value) }))}
                     placeholder=""
                     className="ec-vital-input"
                     readOnly={isReadOnly}

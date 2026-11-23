@@ -5,6 +5,7 @@
  * Página de edición del perfil del paciente con 4 tabs
  */
 
+import { toDecimalInput } from '../../utils/decimalInput';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -233,9 +234,10 @@ const PersonalInfoTab = ({ profile, onUpdate, saving }) => {
           <FormInput
             label="Peso (kg)"
             name="weight"
-            type="number"
+            type="text"
+            inputMode="decimal"
             value={formData.weight}
-            onChange={handleChange}
+            onChange={(e) => handleChange({ target: { name: 'weight', value: toDecimalInput(e.target.value) } })}
             min="2"
             max="300"
             step="0.1"
