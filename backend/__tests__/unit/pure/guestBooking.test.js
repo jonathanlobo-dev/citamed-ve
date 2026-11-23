@@ -37,8 +37,8 @@ describe('validateGuestInput', () => {
     });
   });
 
-  test('el correo se guarda igual que en el registro y el inicio de sesión (Gmail sin puntos ni +alias)', () => {
-    expect(guest.validateGuestInput(valid({ email: 'Juan.Perez+citas@gmail.com' })).email).toBe('juanperez@gmail.com');
+  test('el correo se guarda tal como se escribe, en minúsculas (los alias son cuentas aparte)', () => {
+    expect(guest.validateGuestInput(valid({ email: 'Juan.Perez+citas@gmail.com' })).email).toBe('juan.perez+citas@gmail.com');
     expect(guest.validateGuestInput(valid({ email: 'ana.perez@hotmail.com' })).email).toBe('ana.perez@hotmail.com');
   });
 

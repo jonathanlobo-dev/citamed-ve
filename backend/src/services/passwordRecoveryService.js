@@ -42,9 +42,7 @@ const passwordRecoveryService = {
       const normalizedEmail = email.toLowerCase().trim();
 
       // Buscar usuario (sin revelar si existe)
-      const user = await User.findOne({
-        where: { email: normalizedEmail }
-      });
+      const user = await require('../utils/canonicalEmail').findUserByEmail(User, normalizedEmail);
 
       // Si no existe el usuario, retornar éxito igual (seguridad)
       if (!user) {
@@ -227,9 +225,7 @@ const passwordRecoveryService = {
       const normalizedEmail = email.toLowerCase().trim();
 
       // Buscar usuario
-      const user = await User.findOne({
-        where: { email: normalizedEmail }
-      });
+      const user = await require('../utils/canonicalEmail').findUserByEmail(User, normalizedEmail);
 
       if (!user) {
         return {
@@ -484,9 +480,7 @@ const passwordRecoveryService = {
     try {
       const normalizedEmail = email.toLowerCase().trim();
 
-      const user = await User.findOne({
-        where: { email: normalizedEmail }
-      });
+      const user = await require('../utils/canonicalEmail').findUserByEmail(User, normalizedEmail);
 
       if (!user) {
         return { count: 0, canRetry: true, retryAfter: 0 };

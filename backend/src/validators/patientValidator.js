@@ -36,7 +36,7 @@ const patientStep1Validator = [
     .withMessage('Email es requerido')
     .isEmail()
     .withMessage('Email debe ser válido')
-    .normalizeEmail()
+    .trim().toLowerCase()
     .isLength({ max: 255 })
     .withMessage('Email no puede exceder 255 caracteres'),
 

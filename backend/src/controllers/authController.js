@@ -161,7 +161,7 @@ const authController = {
         });
       }
 
-      const user = await User.findOne({ where: { email } });
+      const user = await require('../utils/canonicalEmail').findUserByEmail(User, email);
 
       if (!user) {
         return res.status(401).json({

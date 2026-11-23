@@ -41,7 +41,7 @@ const registerValidator = [
     .withMessage('Email es requerido')
     .isEmail()
     .withMessage('Email debe ser válido')
-    .normalizeEmail()
+    .trim().toLowerCase()
     .isLength({ max: 255 })
     .withMessage('Email no puede exceder 255 caracteres'),
 
@@ -107,7 +107,7 @@ const loginValidator = [
     .withMessage('Email es requerido')
     .isEmail()
     .withMessage('Email debe ser válido')
-    .normalizeEmail(),
+    .trim().toLowerCase(),
 
   body('password')
     .notEmpty()
@@ -124,7 +124,7 @@ const forgotPasswordValidator = [
     .withMessage('Email es requerido')
     .isEmail()
     .withMessage('Email debe ser válido')
-    .normalizeEmail()
+    .trim().toLowerCase()
 ];
 
 /**

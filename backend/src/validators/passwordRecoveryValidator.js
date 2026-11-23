@@ -45,7 +45,7 @@ const validateRequestReset = [
     .withMessage('El email es requerido')
     .isEmail()
     .withMessage('Ingresa un email válido')
-    .normalizeEmail(),
+    .trim().toLowerCase(),
 
   handleValidationErrors
 ];
@@ -74,7 +74,7 @@ const validateVerifyCode = [
     .withMessage('El email es requerido')
     .isEmail()
     .withMessage('Ingresa un email válido')
-    .normalizeEmail(),
+    .trim().toLowerCase(),
 
   body('code')
     .trim()
