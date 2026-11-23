@@ -126,7 +126,13 @@ export async function readSpreadsheet(buffer, fileName = '') {
 
   const ExcelJS = (await import('exceljs')).default;
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(bytes);
+  try {
+    await workbook.xlsx.load(bytes);
+  } catch {
+    // Algunos programas generan .xlsx con una estructura que el lector no reconoce
+    // (QA vio "Cannot read properties of undefined (reading 'sheets')"): explicarlo en lenguaje claro
+    throw new Error('No pudimos leer este Excel. Ábrelo en Excel o Google Sheets y guárdalo de nuevo como .xlsx, o usa la plantilla o el formato CSV.');
+  }
   const sheet = workbook.worksheets[0];
   if (!sheet) throw new Error('El archivo no contiene ninguna hoja');
 

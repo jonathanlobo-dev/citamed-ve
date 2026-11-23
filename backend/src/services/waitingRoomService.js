@@ -208,7 +208,10 @@ class WaitingRoomService {
       this._assertAccess(entry, user, ['patient', 'doctor']);
     }
 
-    if (!['waiting', 'en_route'].includes(entry.status)) {
+    // El médico o la asistente también marcan "Llegó" a quien tiene cita pero no entró a la
+    // cola desde su teléfono (llega al consultorio sin abrir la app). QA vio un 400 en ese caso.
+    const allowed = user && user.role !== 'patient' ? ['scheduled', 'waiting', 'en_route'] : ['waiting', 'en_route'];
+    if (!allowed.includes(entry.status)) {
       const err = new Error('El paciente debe estar en cola o en camino');
       err.statusCode = 400;
       throw err;

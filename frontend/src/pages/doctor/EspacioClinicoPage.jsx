@@ -1511,6 +1511,22 @@ export default function EspacioClinicoPage() {
     }
   };
 
+  // Abrir un archivo adjunto (QA: aparecía en la lista sin forma de abrirlo).
+  // La pestaña se abre antes de pedir el enlace para que el teléfono no la bloquee.
+  const handleOpenAttachment = async (doc) => {
+    const win = window.open('', '_blank');
+    try {
+      const res = await medicalDocumentService.getFileSignedUrl(doc.id);
+      const url = res?.data?.signedUrl;
+      if (!url) throw new Error('sin enlace');
+      if (win) win.location.href = url; else window.location.href = url;
+    } catch (err) {
+      if (win) win.close();
+      console.error('Error abriendo adjunto:', err);
+      toast.error('No se pudo abrir el archivo.');
+    }
+  };
+
   // Descarga de PDF de documento médico
   const handleDownloadDocPdf = async (doc) => {
     try {
@@ -3194,10 +3210,16 @@ export default function EspacioClinicoPage() {
             {/* Tarjeta: Cobro de esta consulta (Semana 8 / B5) */}
             {(!isDraftMode || identifiedPatient) && (
               (() => {
-                const rawFee = paymentSummary?.feeUsd ?? appointment?.consultationFee ?? 0;
+                // El servidor manda "pricing.amountUsd" y la lista "payments" (no feeUsd ni activePayment):
+                // por eso "Ver recibo" pedía el recibo de un pago vacío (QA R4-E100)
+                const rawFee = paymentSummary?.feeUsd ?? paymentSummary?.pricing?.amountUsd ?? appointment?.consultationFee ?? 0;
                 const feeNum = Number(rawFee) || 0;
                 const isFree = feeNum === 0;
-                const activePayment = paymentSummary?.activePayment;
+                const summaryPayments = paymentSummary?.payments || [];
+                const activePayment = paymentSummary?.activePayment
+                  || summaryPayments.find((p) => p.status === 'approved')
+                  || summaryPayments.find((p) => p.status === 'reported')
+                  || summaryPayments[0];
                 const isPaid = activePayment?.status === 'approved' || appointment?.paymentStatus === 'paid';
                 const isUnderReview = activePayment?.status === 'reported';
                 const isRejected = activePayment?.status === 'rejected';
@@ -3237,9 +3259,9 @@ export default function EspacioClinicoPage() {
                           ) : (
                             <>
                               Tarifa: <strong className="text-slate-900">${feeNum.toFixed(2)} USD</strong>
-                              {paymentSummary?.feeVes && (
+                              {(paymentSummary?.feeVes ?? paymentSummary?.pricing?.amountVes) && (
                                 <span className="ml-1 text-slate-600 font-medium">
-                                  (~ Bs. {Number(paymentSummary.feeVes).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                                  (~ Bs. {Number(paymentSummary.feeVes ?? paymentSummary.pricing?.amountVes).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
                                 </span>
                               )}
                               {activePayment?.receiptNumber && ` • Recibo ${activePayment.receiptNumber}`}
@@ -3431,6 +3453,16 @@ export default function EspacioClinicoPage() {
                       </div>
 
                       <div className="flex items-center gap-2">
+                        {doc.type === 'attachment' && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenAttachment(doc)}
+                            className="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-slate-600 hover:text-primary hover:bg-slate-100 rounded-lg transition"
+                            title="Abrir archivo"
+                          >
+                            <Download className="w-4 h-4" /> Abrir
+                          </button>
+                        )}
                         {doc.type !== 'attachment' && !isVoided && (
                           <>
                             <button
@@ -3613,6 +3645,12 @@ export default function EspacioClinicoPage() {
             <p className="text-xs text-slate-600 mb-3">
               Se registrarán la nota SOAP, signos vitales y examen físico. La consulta pasará a estado completado.
             </p>
+            {!soapNote.assessment?.trim() && (
+              <div className="p-2.5 mb-4 bg-amber-50 border border-amber-200 rounded-lg text-left text-xs text-amber-900 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <span>La evaluación (diagnóstico) está vacía. Puedes finalizar igual, pero revisa la nota antes.</span>
+              </div>
+            )}
             {aiAppliedToRecipe && (
               <div className="p-2.5 mb-4 bg-amber-50 border border-amber-200 rounded-lg text-left text-xs text-amber-900 flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />

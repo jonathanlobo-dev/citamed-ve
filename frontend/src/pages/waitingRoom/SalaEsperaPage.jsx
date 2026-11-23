@@ -23,6 +23,7 @@ import {
 import Navbar from '../../components/common/Navbar/Navbar';
 import appointmentService from '../../services/appointmentService';
 import { todayCaracas } from '../../utils/financeLabels';
+import { formatTime12 } from '../../utils/appointmentLabels';
 
 const SalaEsperaPage = () => {
   const navigate = useNavigate();
@@ -227,7 +228,7 @@ const SalaEsperaPage = () => {
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
                         <div className="flex items-center gap-2 text-gray-600">
                           <Clock className="w-5 h-5 text-purple-500" />
-                          <span className="font-medium">{appointment.appointmentTime}</span>
+                          <span className="font-medium">{formatTime12(appointment.appointmentTime)}</span>
                         </div>
                         <div className="flex items-center gap-2 text-gray-600">
                           <Users className="w-5 h-5 text-purple-500" />
@@ -240,6 +241,21 @@ const SalaEsperaPage = () => {
                           </div>
                         )}
                       </div>
+
+                      {/* Puesto en la cola (también mientras el médico no confirma) */}
+                      {appointment.queuePosition && (
+                        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 text-indigo-800">
+                          <span className="flex items-center gap-2">
+                            <Armchair className="w-5 h-5 text-indigo-600" />
+                            <strong>Puesto #{appointment.queuePosition} en la cola</strong>
+                          </span>
+                          <span className="text-sm">
+                            {appointment.queuePosition === 1
+                              ? 'Eres el primero'
+                              : `${appointment.queuePosition - 1} persona(s) antes de ti`}
+                          </span>
+                        </div>
+                      )}
 
                       {/* Boton de entrar (solo si el médico ya confirmó) */}
                       {appointment.status === 'pending' ? (

@@ -15,6 +15,7 @@ import { useAuth } from '../../context/AuthContext';
 import appointmentService from '../../services/appointmentService';
 import prescriptionAPI from '../../services/prescriptionService';
 import api from '../../services/api';
+import toast from 'react-hot-toast';
 import './DoctorWaitingRoomPage.css';
 
 const DoctorWaitingRoomPage = () => {
@@ -157,6 +158,7 @@ const DoctorWaitingRoomPage = () => {
       await refreshQueue();
     } catch (err) {
       console.error('Error recording physical check-in:', err);
+      toast.error(err.response?.data?.message || 'No se pudo marcar la llegada del paciente');
     } finally {
       setActionLoading(false);
     }

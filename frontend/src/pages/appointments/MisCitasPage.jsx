@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { formatTime12 } from '../../utils/appointmentLabels';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -576,7 +577,7 @@ const MisCitasPage = () => {
                     </div>
                     <div className="flex items-center gap-2 text-gray-600">
                       <Clock className="w-5 h-5 text-gray-400" />
-                      <span>{String(appointment.appointmentTime || '').slice(0, 5)}</span>
+                      <span>{formatTime12(appointment.appointmentTime)}</span>
                     </div>
                     {(appointment.clinic || appointment.clinicLocation || appointment.locationAddress) && (
                       <div className="flex items-center gap-2 text-gray-600">

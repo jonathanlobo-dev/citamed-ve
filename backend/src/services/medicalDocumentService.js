@@ -184,6 +184,12 @@ async function createDocument({ appointmentId, type, content = {} }, user) {
         attendedTo: typeof content.attendedTo === 'string' ? content.attendedTo.trim().slice(0, 10) : null,
         observations: typeof content.observations === 'string' ? content.observations.trim().slice(0, 2000) : null
       };
+      // QA: se emitía una constancia con la hora de salida antes que la de entrada
+      if (cleanContent.attendedFrom && cleanContent.attendedTo && cleanContent.attendedTo <= cleanContent.attendedFrom) {
+        const err = new Error('La hora de salida debe ser después de la hora de entrada');
+        err.statusCode = 400;
+        throw err;
+      }
       title = 'Constancia Médica';
       break;
     }

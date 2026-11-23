@@ -22,3 +22,12 @@ export const ymdToDmy = (value) => {
   const [y, m, d] = String(value || '').split('T')[0].split('-');
   return y && m && d ? `${d}/${m}/${y}` : String(value || '');
 };
+
+/** "17:30:00" -> "5:30 p. m." (hora de reloj normal, sin pasar por new Date) */
+export function formatTime12(time) {
+  if (!/^\d{1,2}:\d{2}/.test(String(time || ''))) return '';
+  const [h, m] = String(time).split(':').map(Number);
+  const suffix = h < 12 ? 'a. m.' : 'p. m.';
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${String(m || 0).padStart(2, '0')} ${suffix}`;
+}
