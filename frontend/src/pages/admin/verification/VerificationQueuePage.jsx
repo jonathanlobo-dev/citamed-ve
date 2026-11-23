@@ -186,7 +186,7 @@ export default function VerificationQueuePage() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link
-              to="/admin/dashboard"
+              to="/admin"
               className="p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
               <ArrowLeft className="h-5 w-5 text-gray-600" />
@@ -526,7 +526,9 @@ export default function VerificationQueuePage() {
                 {requestDetails.request.status !== 'approved' && requestDetails.request.status !== 'rejected' && (
                   <div className="border-t pt-4 space-y-3">
                     {/* Verificar si todos los requeridos están aprobados */}
-                    {requestDetails.requiredDocuments?.every(d => d.approved) && (
+                    {/* Igual que el servidor: sin documentos subidos se aprueba revisando el MPPS a mano;
+                        si subió documentos, todos los requeridos deben estar aprobados */}
+                    {((requestDetails.documents?.length || 0) === 0 || requestDetails.requiredDocuments?.every(d => d.approved)) && (
                       <button
                         onClick={() => handleApproveVerification(requestDetails.request.id)}
                         disabled={actionLoading}
