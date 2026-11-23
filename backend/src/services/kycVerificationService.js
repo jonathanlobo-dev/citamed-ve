@@ -324,7 +324,7 @@ async function getRequestDetails(requestId) {
         model: DoctorProfile,
         as: 'doctorProfile',
         include: [
-          { model: User, as: 'user', attributes: ['id', 'email', 'phoneNumber'] }
+          { model: User, as: 'user', attributes: ['id', 'email', 'phone', 'firstName', 'lastName'] }
         ]
       },
       {

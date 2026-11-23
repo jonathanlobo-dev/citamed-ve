@@ -549,7 +549,9 @@ export default function VerificationQueuePage() {
                   </div>
                 )}
               </div>
-            ) : null}
+            ) : (
+              <p className="text-sm text-red-600">No se pudo cargar esta solicitud. Cierra el panel y vuelve a intentarlo.</p>
+            )}
           </div>
         </div>
       )}
