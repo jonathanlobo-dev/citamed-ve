@@ -410,7 +410,9 @@ const passwordRecoveryService = {
 
       return {
         success: true,
-        message: 'Contraseña actualizada exitosamente'
+        message: 'Contraseña actualizada exitosamente',
+        // Quien tiene el enlace es el dueño del correo: la pantalla lo usa para entrar de una vez
+        email: user.email
       };
 
     } catch (error) {

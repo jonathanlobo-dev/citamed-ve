@@ -22,9 +22,11 @@ import Button from '../../components/common/Button/button';
 import PasswordStrengthIndicator from '../../components/auth/PasswordStrengthIndicator';
 import { usePasswordRecovery, RECOVERY_STEPS } from '../../hooks/usePasswordRecovery';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
+  const { login: authLogin } = useAuth();
   const [searchParams] = useSearchParams();
   const tokenFromUrl = searchParams.get('token');
 
@@ -95,6 +97,20 @@ function ResetPasswordPage() {
     const result = await resetPassword(formData.newPassword, formData.confirmPassword);
 
     if (result.success) {
+      // Entra de una vez con la clave nueva (como al crear la clínica en NeosVet).
+      // Si la cuenta tiene verificación en dos pasos o algo falla, queda el aviso de ir a iniciar sesión.
+      if (result.email) {
+        try {
+          const login = await authLogin({ email: result.email, password: formData.newPassword });
+          if (login?.success && !login.requires2FA) {
+            toast.success('¡Listo! Tu clave quedó guardada');
+            navigate('/dashboard', { replace: true });
+            return;
+          }
+        } catch {
+          // sigue al aviso normal
+        }
+      }
       toast.success('Contraseña actualizada exitosamente');
     } else {
       toast.error(result.message || 'Error al cambiar contraseña');

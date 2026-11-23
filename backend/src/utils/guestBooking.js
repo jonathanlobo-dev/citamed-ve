@@ -43,8 +43,11 @@ function validateGuestInput(body = {}) {
 
   const phone = normalizePhoneVE(body.phone);
 
-  const email = String(body.email || '').trim().toLowerCase();
-  if (!EMAIL_REGEX.test(email) || email.length > 120) throw fail('Escribe un correo válido');
+  const rawEmail = String(body.email || '').trim().toLowerCase();
+  if (!EMAIL_REGEX.test(rawEmail) || rawEmail.length > 120) throw fail('Escribe un correo válido');
+  // Igual que el registro y el inicio de sesión (express-validator normalizeEmail): en Gmail quita
+  // puntos y lo que va después de "+". Si se guardara distinto, la persona no podría entrar.
+  const email = require('./canonicalEmail').canonicalEmail(rawEmail);
 
   const doctorProfileId = Number(body.doctorProfileId);
   if (!Number.isInteger(doctorProfileId) || doctorProfileId <= 0) throw fail('Médico no válido');

@@ -155,7 +155,8 @@ const passwordRecoveryController = {
       if (result.success) {
         res.json({
           success: true,
-          message: result.message
+          message: result.message,
+          ...(result.email ? { data: { email: result.email } } : {})
         });
       } else {
         res.status(400).json({

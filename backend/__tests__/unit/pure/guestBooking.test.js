@@ -37,6 +37,11 @@ describe('validateGuestInput', () => {
     });
   });
 
+  test('el correo se guarda igual que en el registro y el inicio de sesión (Gmail sin puntos ni +alias)', () => {
+    expect(guest.validateGuestInput(valid({ email: 'Juan.Perez+citas@gmail.com' })).email).toBe('juanperez@gmail.com');
+    expect(guest.validateGuestInput(valid({ email: 'ana.perez@hotmail.com' })).email).toBe('ana.perez@hotmail.com');
+  });
+
   test('sin motivo se usa Consulta general', () => {
     expect(guest.validateGuestInput(valid({ reasonForVisit: '   ' })).reasonForVisit).toBe('Consulta general');
   });

@@ -76,7 +76,7 @@ class AssistantController {
         });
       }
 
-      const cleanEmail = email.trim().toLowerCase();
+      const cleanEmail = require('../utils/canonicalEmail').canonicalEmail(email);
 
       // Buscar si el usuario ya existe
       let assistantUser = await User.findOne({ where: { email: cleanEmail } });

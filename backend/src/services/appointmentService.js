@@ -345,7 +345,7 @@ class AppointmentService {
 
         let cleanEmail = null;
         if (email && String(email).trim()) {
-          cleanEmail = String(email).trim().toLowerCase();
+          cleanEmail = require('../utils/canonicalEmail').canonicalEmail(email);
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           if (!emailRegex.test(cleanEmail)) {
             const err = new Error('El correo electrónico no es válido');

@@ -205,7 +205,7 @@ export function usePasswordRecovery({ initialToken = null } = {}) {
 
       if (result.success) {
         setStep(RECOVERY_STEPS.SUCCESS);
-        return { success: true };
+        return { success: true, email: result.data?.email || result.email || null };
       } else {
         setError(result.message);
         return { success: false, message: result.message };

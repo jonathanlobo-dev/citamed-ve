@@ -736,7 +736,7 @@ async function importPatientsFromExcel(doctorId, rawRows, user) {
     // 4. Validar correo opcional
     let cleanEmail = null;
     if (emailRaw) {
-      cleanEmail = emailRaw.toLowerCase();
+      cleanEmail = require('../utils/canonicalEmail').canonicalEmail(emailRaw);
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(cleanEmail)) {
         summary.errors++;
