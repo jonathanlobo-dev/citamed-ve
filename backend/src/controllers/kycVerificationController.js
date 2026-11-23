@@ -297,6 +297,34 @@ const getRequestDetails = async (req, res) => {
 };
 
 /**
+ * GET /api/kyc/admin/requests/:id/sacs
+ * Consulta el MPPS del médico en el SACS y lo compara con su nombre (ayuda al admin a aprobar)
+ */
+const checkSacs = async (req, res) => {
+  try {
+    const request = await db.VerificationRequest.findByPk(parseInt(req.params.id, 10), {
+      include: [{ model: db.DoctorProfile, as: 'doctorProfile', include: [{ model: db.User, as: 'user', attributes: ['firstName', 'lastName'] }] }]
+    });
+    if (!request?.doctorProfile) {
+      return res.status(404).json({ success: false, error: 'Solicitud no encontrada' });
+    }
+    const profile = request.doctorProfile;
+    const result = await require('../services/sacsService').checkDoctor({
+      mpps: profile.mppsNumber || profile.licenseNumber,
+      firstName: profile.user?.firstName,
+      lastName: profile.user?.lastName
+    });
+    res.json({
+      success: true,
+      data: { ...result, declared: { mpps: profile.mppsNumber || profile.licenseNumber, firstName: profile.user?.firstName, lastName: profile.user?.lastName } }
+    });
+  } catch (error) {
+    console.error('Error consultando el SACS:', error);
+    res.status(500).json({ success: false, error: 'No se pudo consultar el SACS' });
+  }
+};
+
+/**
  * POST /api/admin/verification/requests/:id/assign
  * Asigna solicitud a un admin
  */
@@ -572,6 +600,7 @@ module.exports = {
   // Endpoints para admins (9)
   getVerificationQueue,
   getRequestDetails,
+  checkSacs,
   assignRequest,
   approveDocument,
   rejectDocument,

@@ -111,6 +111,17 @@ router.get(
 );
 
 /**
+ * GET /api/kyc/admin/requests/:id/sacs
+ * Compara el MPPS del médico con el registro del SACS
+ */
+router.get(
+  '/admin/requests/:id/sacs',
+  authMiddleware,
+  requireRole(['admin']),
+  kycController.checkSacs
+);
+
+/**
  * POST /api/kyc/admin/requests/:id/assign
  * Asigna solicitud a un admin
  */

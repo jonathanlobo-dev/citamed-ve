@@ -105,6 +105,14 @@ export const getRequestDetails = async (requestId) => {
 };
 
 /**
+ * Compara el MPPS del médico con el registro del SACS
+ */
+export const checkSacs = async (requestId) => {
+  const response = await api.get(`/kyc/admin/requests/${requestId}/sacs`);
+  return response.data;
+};
+
+/**
  * Asigna solicitud a un admin
  * @param {number} requestId - ID de la solicitud
  * @param {number} adminId - ID del admin (opcional, si no se pasa se asigna al usuario actual)
@@ -282,6 +290,7 @@ export default {
   getVerificationQueue,
   getVerificationStats,
   getRequestDetails,
+  checkSacs,
   assignRequest,
   updateRequestPriority,
   holdRequest,
