@@ -24,6 +24,11 @@ describe('SACS', () => {
     expect(out.record.cedula).toBe('21053073');
   });
 
+  test('acepta nombres compuestos del SACS', () => {
+    const rows = [{ matricula: 'MPPS-1', profesion: 'MÉDICO(A) CIRUJANO(A)', nombre: 'RAFAEL FERMIN', apellido: 'PATIÑO ROJAS' }];
+    expect(compareWithDoctor(rows, { matricula: 'MPPS-1', firstName: 'Rafael', lastName: 'Patino' }).status).toBe('match');
+  });
+
   test('otro nombre con ese número no coincide', () => {
     const out = compareWithDoctor(parseSacsResponse(XML), { matricula: 'MPPS-148020', firstName: 'Pedro', lastName: 'Pérez' });
     expect(out.status).toBe('name_mismatch');

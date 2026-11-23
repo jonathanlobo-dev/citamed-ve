@@ -62,7 +62,8 @@ function compareWithDoctor(records, { matricula, firstName, lastName }) {
   if (!doctors.length) return { status: 'not_doctor', record: exact[0], records: exact };
   const first = tokens(firstName);
   const last = tokens(lastName);
-  const hit = doctors.find((r) => first.includes(plain(r.nombre)) && last.includes(plain(r.apellido)));
+  // El SACS puede traer uno o dos nombres/apellidos: basta con que coincida el primero de cada uno
+  const hit = doctors.find((r) => first.includes(tokens(r.nombre)[0]) && last.includes(tokens(r.apellido)[0]));
   if (hit) return { status: 'match', record: hit, records: exact };
   return { status: 'name_mismatch', record: doctors[0], records: exact };
 }
