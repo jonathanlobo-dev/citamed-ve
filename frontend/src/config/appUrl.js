@@ -44,6 +44,8 @@ export function landingOrigin() {
 
 /** Dirección del "inicio": la presentación si estamos en el sistema, y "/" en cualquier otro caso */
 export function homeUrl() {
+  // Con sesión abierta, "inicio" es el panel (la presentación es otro dominio y no ve la sesión)
+  if (hasSession()) return '/dashboard';
   const landing = landingOrigin();
   return isAppHost() && landing ? `${landing}/` : '/';
 }

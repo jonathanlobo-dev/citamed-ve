@@ -596,14 +596,21 @@ if (typeof window !== 'undefined' && isLandingHost()) {
 }
 
 function NotFoundPage() {
+  // Con sesión abierta se vuelve al panel: la presentación es otro dominio y parecería que se cerró la sesión
+  let loggedIn = false;
+  try {
+    loggedIn = !!window.localStorage.getItem('citamed_token');
+  } catch {
+    loggedIn = false;
+  }
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="text-center max-w-sm">
         <p className="text-5xl font-bold text-teal-600 mb-2">404</p>
         <h1 className="text-xl font-semibold text-gray-900 mb-2">Esta página no existe</h1>
-        <p className="text-gray-600 mb-6">Revisa el enlace o vuelve al inicio.</p>
-        <a href={homeUrl()} className="inline-block px-6 py-3 bg-teal-600 text-white rounded-xl font-medium hover:bg-teal-700">
-          Ir al inicio
+        <p className="text-gray-600 mb-6">Revisa el enlace o {loggedIn ? 'vuelve a tu panel' : 'vuelve al inicio'}.</p>
+        <a href={loggedIn ? '/dashboard' : homeUrl()} className="inline-block px-6 py-3 bg-teal-600 text-white rounded-xl font-medium hover:bg-teal-700">
+          {loggedIn ? 'Ir a mi panel' : 'Ir al inicio'}
         </a>
       </div>
     </div>
