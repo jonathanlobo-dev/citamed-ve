@@ -189,7 +189,7 @@ export default function ReportesPage() {
               <button type="button" aria-label="Mes anterior" onClick={() => setMonth(shiftMonth(month, -1))} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50">
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="min-w-[10rem] text-center font-bold capitalize">{monthLabel(month)}</span>
+              <span className="min-w-[10rem] text-center font-bold first-letter:uppercase">{monthLabel(month)}</span>
               <button type="button" aria-label="Mes siguiente" disabled={month >= thisMonth} onClick={() => setMonth(shiftMonth(month, 1))} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40">
                 <ChevronRight className="w-4 h-4" />
               </button>
