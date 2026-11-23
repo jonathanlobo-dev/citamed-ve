@@ -198,6 +198,11 @@ try {
   db.Payment = PaymentModel(sequelize);
   console.log('  ✅ Payment cargado');
 
+  // Reportes del médico - Egresos del consultorio
+  const DoctorExpenseModel = require('./DoctorExpense');
+  db.DoctorExpense = DoctorExpenseModel(sequelize);
+  console.log('  ✅ DoctorExpense cargado');
+
   // M03 / Semana 9 - Asistentes del médico
   const DoctorAssistantModel = require('./DoctorAssistant');
   db.DoctorAssistant = DoctorAssistantModel(sequelize);

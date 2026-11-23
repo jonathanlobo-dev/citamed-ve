@@ -17,7 +17,8 @@ const RELEASED_IN_PRODUCTION = {
   PUBLIC_PAGE: true, // Página pública del médico con enlace propio (liberada)
   WA_CONFIRM: true, // Confirmar o cancelar cita desde WhatsApp (liberada)
   AI_PATIENT_INSTRUCTIONS: false, // Indicaciones para el paciente con IA (mejora futura)
-  EXCEL_IMPORT: true // Importar pacientes desde Excel (liberada)
+  EXCEL_IMPORT: true, // Importar pacientes desde Excel (liberada)
+  DOCTOR_REPORTS: false // Reportes del médico: ingresos, egresos y utilidad (en construcción)
 };
 
 const branch = typeof __BUILD_BRANCH__ !== 'undefined' ? __BUILD_BRANCH__ : 'local';
@@ -38,7 +39,8 @@ export const FEATURES = {
   publicPage: flag('PUBLIC_PAGE'),
   waConfirm: flag('WA_CONFIRM'),
   aiPatientInstructions: flag('AI_PATIENT_INSTRUCTIONS'),
-  excelImport: flag('EXCEL_IMPORT')
+  excelImport: flag('EXCEL_IMPORT'),
+  doctorReports: flag('DOCTOR_REPORTS')
 };
 
 // Secciones que todavía no existen de verdad (módulos MarketMed, Telemedicina y Citamed Paga,

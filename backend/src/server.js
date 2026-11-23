@@ -120,6 +120,7 @@ const adminRoutes = require("./routes/admin");
 const aiRoutes = require("./routes/ai");
 const exchangeRateRoutes = require("./routes/exchangeRates");
 const paymentRoutes = require("./routes/payments");
+const doctorFinanceRoutes = require("./routes/doctorFinance");
 const assistantRoutes = require("./routes/assistants");
 const publicRoutes = require("./routes/public");
 
@@ -163,6 +164,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/exchange-rate", exchangeRateRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/doctor-finance", doctorFinanceRoutes);
 app.use("/api/assistants", assistantRoutes);
 
 // ==================== RUTAS BÁSICAS ====================

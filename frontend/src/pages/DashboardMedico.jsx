@@ -147,7 +147,7 @@ function DashboardMedico() {
     {
       title: 'Reportes',
       icon: BarChart3,
-      description: 'Informes médicos y reportes estadísticos',
+      description: 'Ingresos, egresos y utilidad de tu consultorio',
       path: '/medico/reportes',
       color: 'from-violet-500 to-violet-600'
     },
@@ -335,7 +335,7 @@ function DashboardMedico() {
 
         {/* Modules Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {modules.filter((m) => SHOW_UNBUILT_SECTIONS || !UNBUILT_PATHS.includes(m.path)).map((module, index) => {
+          {modules.filter((m) => SHOW_UNBUILT_SECTIONS || !UNBUILT_PATHS.includes(m.path) || (m.path === '/medico/reportes' && FEATURES.doctorReports)).map((module, index) => {
             const Icon = module.icon;
             return (
               <motion.div
