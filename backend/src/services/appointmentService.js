@@ -10,6 +10,7 @@ const db = require('../models');
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const { todayCaracas, nowTimeCaracas } = require('../utils/dateCaracas');
+const { findPatientOverlap, OVERLAP_MESSAGE, INACTIVE_STATUSES } = require('../utils/patientOverlap');
 const { validateClinicalNoteData } = require('../utils/clinicalNote');
 const { normalizeCedula, normalizePhoneVE } = require('../utils/identity');
 const auditService = require('./auditService');
@@ -202,9 +203,19 @@ class AppointmentService {
         transaction
       });
 
+      // Sin rollback aquí: el catch de abajo deshace la transacción (hacerlo dos veces tapaba el mensaje)
       if (existingAppointment) {
-        await transaction.rollback();
         throw new Error('Este horario acaba de ser reservado por otro paciente. Por favor selecciona otro horario.');
+      }
+
+      // 3.1b El paciente no puede tener otra cita que se cruce (aunque sea con otro médico)
+      const patientDay = await Appointment.findAll({
+        where: { patientId, appointmentDate, status: { [Op.notIn]: INACTIVE_STATUSES } },
+        attributes: ['id', 'appointmentTime', 'duration', 'status'],
+        transaction
+      });
+      if (findPatientOverlap(patientDay, appointmentTime, duration)) {
+        throw new Error(OVERLAP_MESSAGE);
       }
 
       // 3.2 Crear la cita
@@ -658,6 +669,14 @@ class AppointmentService {
 
     if (!isSlotAvailable) {
       throw new Error('El nuevo horario no esta disponible');
+    }
+
+    const patientDay = await Appointment.findAll({
+      where: { patientId: originalAppointment.patientId, appointmentDate: newDate, status: { [Op.notIn]: INACTIVE_STATUSES } },
+      attributes: ['id', 'appointmentTime', 'duration', 'status']
+    });
+    if (findPatientOverlap(patientDay, newTime, originalAppointment.duration, originalAppointment.id)) {
+      throw new Error(OVERLAP_MESSAGE);
     }
 
     // Crear nueva cita

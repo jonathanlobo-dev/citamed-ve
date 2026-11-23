@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar/Navbar';
 import appointmentService from '../../services/appointmentService';
+import { todayCaracas } from '../../utils/financeLabels';
 
 const SalaEsperaPage = () => {
   const navigate = useNavigate();
@@ -39,10 +40,12 @@ const SalaEsperaPage = () => {
       const response = await appointmentService.getMyAppointments();
 
       // Filtrar solo citas de hoy
-      const today = new Date().toISOString().split('T')[0];
+      // "Hoy" en hora de Venezuela (con UTC, después de las 8 p. m. ya era mañana).
+      // Las pendientes también se muestran, con aviso, para que no parezca que no hay cita.
+      const today = todayCaracas();
       const todayAppointments = (response.data || []).filter(apt => {
-        const aptDate = new Date(apt.appointmentDate).toISOString().split('T')[0];
-        return aptDate === today && ['scheduled', 'confirmed', 'in_progress'].includes(apt.status);
+        const aptDate = String(apt.appointmentDate || '').slice(0, 10);
+        return aptDate === today && ['pending', 'scheduled', 'confirmed', 'in_progress'].includes(apt.status);
       });
 
       setAppointments(todayAppointments);
@@ -60,6 +63,7 @@ const SalaEsperaPage = () => {
 
   const getStatusBadge = (status) => {
     const configs = {
+      pending: { label: 'Por confirmar', color: 'bg-amber-100 text-amber-800', icon: AlertCircle },
       scheduled: { label: 'Programada', color: 'bg-blue-100 text-blue-800', icon: Calendar },
       confirmed: { label: 'Confirmada', color: 'bg-green-100 text-green-800', icon: CheckCircle },
       in_progress: { label: 'En Curso', color: 'bg-purple-100 text-purple-800', icon: Clock }
@@ -237,7 +241,13 @@ const SalaEsperaPage = () => {
                         )}
                       </div>
 
-                      {/* Boton de entrar */}
+                      {/* Boton de entrar (solo si el médico ya confirmó) */}
+                      {appointment.status === 'pending' ? (
+                        <div className="w-full py-4 px-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-center">
+                          <p className="font-semibold">Tu médico aún no confirma esta cita</p>
+                          <p className="text-sm mt-1">Podrás entrar a la sala de espera cuando la confirme.</p>
+                        </div>
+                      ) : (
                       <button
                         onClick={() => handleEnterWaitingRoom(appointment.id)}
                         className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold text-lg hover:from-purple-700 hover:to-indigo-700 transition-all flex items-center justify-center gap-3 shadow-lg"
@@ -246,6 +256,7 @@ const SalaEsperaPage = () => {
                         Entrar a Sala de Espera
                         <ChevronRight className="w-5 h-5" />
                       </button>
+                      )}
                     </div>
                   </motion.div>
                 );
