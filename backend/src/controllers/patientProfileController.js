@@ -706,7 +706,7 @@ async function getCompleteness(req, res) {
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * POST /patients/me/profile-photo
+ * POST /patient-profile/me/profile-photo
  * Sube o cambia la foto de perfil del paciente
  */
 async function uploadProfilePhoto(req, res) {

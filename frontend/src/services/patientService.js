@@ -361,7 +361,7 @@ export const formatDate = (dateString) => {
 export const uploadProfilePhoto = async (file) => {
   const formData = new FormData();
   formData.append('profilePhoto', file);
-  const response = await api.post('/patients/me/profile-photo', formData, {
+  const response = await api.post('/patient-profile/me/profile-photo', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   });
   return response.data;
