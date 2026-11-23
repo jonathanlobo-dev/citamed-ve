@@ -401,7 +401,8 @@ export default function IdentifyPatientDrawer({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-bold text-slate-700">
-                  Documento de Identidad (Cédula)
+                  Documento de Identidad (Cédula){' '}
+                  {!newPatient.noIdentification && <span className="text-rose-600">*</span>}
                 </label>
                 <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
                   <input
@@ -465,7 +466,8 @@ export default function IdentifyPatientDrawer({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  {newPatient.noIdentification ? 'Teléfono del representante' : 'Teléfono'}
+                  {newPatient.noIdentification ? 'Teléfono del representante' : 'Teléfono'}{' '}
+                  <span className="text-rose-600">*</span>
                 </label>
                 <div className="relative">
                   <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-3" />
@@ -482,8 +484,10 @@ export default function IdentifyPatientDrawer({
                     disabled={loading}
                   />
                 </div>
-                {formErrors.phone && (
+                {formErrors.phone ? (
                   <p className="text-[11px] text-rose-600 mt-1">{formErrors.phone}</p>
+                ) : (
+                  <p className="text-[11px] text-slate-500 mt-1">Celular o fijo de Venezuela, ej. 0414-1234567 o 0212-1234567.</p>
                 )}
               </div>
 

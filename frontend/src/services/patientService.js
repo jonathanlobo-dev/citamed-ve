@@ -357,6 +357,16 @@ export const formatDate = (dateString) => {
   });
 };
 
+/** Sube o cambia la foto de perfil del paciente (JPG, PNG o WebP, hasta 5 MB) */
+export const uploadProfilePhoto = async (file) => {
+  const formData = new FormData();
+  formData.append('profilePhoto', file);
+  const response = await api.post('/patient-profile/me/profile-photo', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return response.data;
+};
+
 // ═══════════════════════════════════════════════════════════════
 // EXPORTAR
 // ═══════════════════════════════════════════════════════════════
@@ -364,6 +374,7 @@ export const formatDate = (dateString) => {
 export default {
   // Mi perfil
   getMyProfile,
+  uploadProfilePhoto,
   updateProfile,
   updateEmergencyContact,
   updateInsurance,

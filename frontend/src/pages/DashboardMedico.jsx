@@ -45,8 +45,9 @@ function DashboardMedico() {
     fetchCompleteness();
   }, [fetchMyProfile, fetchCompleteness]);
 
-  const slug = profile?.publicSlug || (user?.firstName ? `${user.firstName.toLowerCase().replace(/\s+/g, '-')}` : 'medico');
-  const publicPageUrl = `${window.location.origin}/dr/${slug}`;
+  // Solo el enlace guardado en el perfil: inventarlo con el nombre daba "Perfil no disponible"
+  const slug = profile?.publicSlug || null;
+  const publicPageUrl = slug ? `${window.location.origin}/dr/${slug}` : null;
 
   const handleCopyLink = () => {
     if (!publicPageUrl) return;
@@ -275,7 +276,7 @@ function DashboardMedico() {
         </div>
 
         {/* B4: Tarjeta "Tu página pública" con enlace, botón copiar y botón compartir por WhatsApp */}
-        {FEATURES.publicPage && (
+        {FEATURES.publicPage && publicPageUrl && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}

@@ -92,7 +92,7 @@ const SearchPage = () => {
 
     if (type === 'doctor') {
       // Navegar al perfil del médico
-      window.location.href = `/doctor/${item.doctor_id}`;
+      window.location.href = `/doctor/${item.doctor_profile_id || item.doctor_id}`;
     } else if (type === 'specialty') {
       setSearchInput('');
       updateFilters({ query: '', specialtyIds: [item.id] });

@@ -9,6 +9,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
+const PROFILE_PHOTOS_BUCKET = 'profile-photos';
+
 // Configuración
 const STORAGE_MODE = process.env.STORAGE_MODE || 'local'; // 'local' o 's3'
 const UPLOADS_DIR = path.join(__dirname, '../../uploads/doctor-documents');
@@ -263,11 +265,55 @@ async function getSignedUrlS3(fileUrl, expiresIn = 3600) {
 /**
  * Guarda un archivo (local o S3 según configuración)
  */
+// ── Supabase Storage (el disco de Render se borra en cada despliegue) ──
+const KYC_BUCKET = 'kyc-documents';
+const PRIVATE_PREFIX = 'supabase-private://';
+let _sb = null;
+function supabaseClient() {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
+  if (!_sb) {
+    const { createClient } = require('@supabase/supabase-js');
+    _sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+  }
+  return _sb;
+}
+
+/** Documentos de verificación del médico: bucket PRIVADO; se guarda una referencia, no una URL pública */
+async function saveFileSupabase(client, file, doctorProfileId) {
+  const { detectFileTypeFromBuffer } = require('./clinicalFileStorage');
+  const real = detectFileTypeFromBuffer(file.buffer);
+  if (!real) throw new Error('El archivo no es un PDF o imagen válido');
+  await client.storage.createBucket(KYC_BUCKET, { public: false, fileSizeLimit: MAX_FILE_SIZE }).catch(() => {});
+  const fileName = `${doctorProfileId}/${crypto.randomUUID()}.${real.ext}`;
+  const { error } = await client.storage.from(KYC_BUCKET).upload(fileName, file.buffer, { contentType: real.mimeType, upsert: false });
+  if (error) throw new Error(`No se pudo guardar el documento: ${error.message}`);
+  const ref = `${PRIVATE_PREFIX}${KYC_BUCKET}/${fileName}`;
+  return { fileName: file.originalname, fileUrl: ref, fullUrl: ref, fileSize: file.size, mimeType: real.mimeType };
+}
+
+/** Convierte una referencia privada en un enlace temporal (las URL normales se devuelven igual) */
+async function resolveFileUrl(fileUrl, expiresIn = 600) {
+  if (!fileUrl || !fileUrl.startsWith(PRIVATE_PREFIX)) return fileUrl;
+  const client = supabaseClient();
+  if (!client) return null;
+  const rest = fileUrl.slice(PRIVATE_PREFIX.length);
+  const bucket = rest.split('/')[0];
+  const { data, error } = await client.storage.from(bucket).createSignedUrl(rest.slice(bucket.length + 1), expiresIn);
+  return error ? null : data.signedUrl;
+}
+
 async function saveFile(file, doctorProfileId) {
   // Validar primero
   const validation = validateFile(file);
   if (!validation.valid) {
     throw new Error(validation.errors.join('. '));
+  }
+
+  const client = supabaseClient();
+  if (client) {
+    return await saveFileSupabase(client, file, doctorProfileId);
   }
 
   if (STORAGE_MODE === 's3') {
@@ -292,8 +338,33 @@ async function saveProfilePhoto(file, userId) {
     throw new Error('La imagen excede el tamaño máximo de 5MB');
   }
 
-  // Por ahora solo local, S3 se puede agregar después
-  return await saveProfilePhotoLocal(file, userId);
+  // En el servidor (Render) el disco se borra en cada despliegue: las fotos van a Supabase Storage.
+  // Sin Supabase configurado (desarrollo local) se guardan en disco como antes.
+  const { detectFileTypeFromBuffer } = require('./clinicalFileStorage');
+  const client = supabaseClient();
+  if (!client) {
+    return await saveProfilePhotoLocal(file, userId);
+  }
+
+  // El contenido real debe ser una imagen (no basta con la extensión)
+  const real = detectFileTypeFromBuffer(file.buffer);
+  if (!real || !['image/jpeg', 'image/png', 'image/webp'].includes(real.mimeType)) {
+    throw new Error('Solo se permiten imágenes JPG, PNG o WebP');
+  }
+
+  // Bucket público solo de fotos de perfil; el nombre es aleatorio para que no se pueda adivinar
+  await client.storage.createBucket(PROFILE_PHOTOS_BUCKET, {
+    public: true,
+    fileSizeLimit: 5 * 1024 * 1024,
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp']
+  }).catch(() => {});
+  const fileName = `${crypto.randomUUID()}.${real.ext}`;
+  const { error } = await client.storage
+    .from(PROFILE_PHOTOS_BUCKET)
+    .upload(fileName, file.buffer, { contentType: real.mimeType, upsert: false });
+  if (error) throw new Error(`No se pudo guardar la foto: ${error.message}`);
+  const { data } = client.storage.from(PROFILE_PHOTOS_BUCKET).getPublicUrl(fileName);
+  return { fileName, fileUrl: data.publicUrl, fullUrl: data.publicUrl, fileSize: file.size, mimeType: real.mimeType };
 }
 
 /**
@@ -303,6 +374,17 @@ async function deleteFile(fileUrl) {
   if (!fileUrl) return false;
 
   try {
+    const client = supabaseClient();
+    if (client && fileUrl.startsWith(PRIVATE_PREFIX)) {
+      const rest = fileUrl.slice(PRIVATE_PREFIX.length);
+      const bucket = rest.split('/')[0];
+      const { error } = await client.storage.from(bucket).remove([rest.slice(bucket.length + 1)]);
+      return !error;
+    }
+    if (client && fileUrl.includes(`/storage/v1/object/public/${PROFILE_PHOTOS_BUCKET}/`)) {
+      const { error } = await client.storage.from(PROFILE_PHOTOS_BUCKET).remove([fileUrl.split(`/${PROFILE_PHOTOS_BUCKET}/`)[1]]);
+      return !error;
+    }
     if (STORAGE_MODE === 's3' || fileUrl.includes('s3.amazonaws.com')) {
       return await deleteFileS3(fileUrl);
     }
@@ -359,6 +441,7 @@ function getStorageInfo() {
 
 module.exports = {
   saveFile,
+  resolveFileUrl,
   saveProfilePhoto,
   deleteFile,
   getFileUrl,

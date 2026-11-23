@@ -166,13 +166,13 @@ const DoctorCard = ({ doctor, index, onViewProfile, onSchedule }) => {
         {/* Botones de acción */}
         <div className="flex gap-3">
           <button
-            onClick={() => onViewProfile(doctor.doctor_id)}
+            onClick={() => onViewProfile(doctor.doctor_profile_id || doctor.doctor_id)}
             className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
           >
             Ver Perfil
           </button>
           <button
-            onClick={() => onSchedule(doctor.doctor_id)}
+            onClick={() => onSchedule(doctor.doctor_profile_id || doctor.doctor_id)}
             className="flex-1 py-3 px-4 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-teal-500/25"
           >
             <Calendar className="w-4 h-4" />

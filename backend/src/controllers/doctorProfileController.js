@@ -8,6 +8,7 @@
 const doctorProfileService = require('../services/doctorProfileService');
 const storageService = require('../services/storageService');
 const db = require('../models');
+const { uniquePublicSlug } = require('../utils/publicSlug');
 
 const { DoctorProfile, User } = db;
 
@@ -64,58 +65,26 @@ async function getOrCreateDoctorProfile(userId) {
 /**
  * GET /doctors/:doctorId
  * Obtiene perfil público de un doctor
- * Acepta tanto doctorProfileId como userId
+ * Recibe el doctorProfileId (el userId solo como respaldo si no hay perfil con ese número)
  */
 async function getProfile(req, res) {
   try {
     const { doctorId } = req.params;
     const id = parseInt(doctorId);
 
-    // Primero intentar buscar directamente por doctorProfileId
-    let profile;
-    try {
-      profile = await doctorProfileService.getPublicProfile(id);
-    } catch (error) {
-      if (error.message === 'Perfil de doctor no encontrado') {
-        // Si no se encuentra, intentar buscar por userId
-        console.log(`Perfil no encontrado por ID ${id}, buscando por userId...`);
+    // El id es el del PERFIL del médico (doctor_profile_id). Antes también se aceptaba el id de usuario
+    // y, si coincidía con el perfil de otro médico, se abría el médico equivocado (también al agendar).
+    // Solo si no existe ningún perfil con ese número se intenta como id de usuario (enlaces viejos).
+    if (!Number.isInteger(id) || id <= 0) throw new Error('Perfil de doctor no encontrado');
+    let row = await DoctorProfile.findByPk(id, { attributes: ['id', 'userId'] });
+    if (!row) row = await DoctorProfile.findOne({ where: { userId: id }, attributes: ['id', 'userId'] });
+    if (!row) throw new Error('Perfil de doctor no encontrado');
 
-        const doctorProfile = await DoctorProfile.findOne({
-          where: { userId: id }
-        });
+    // Misma regla que la página pública /dr/:slug: un médico inactivo no se muestra
+    const owner = await User.findByPk(row.userId, { attributes: ['id', 'isActive'] });
+    if (!owner || !owner.isActive) throw new Error('Perfil de doctor no encontrado');
 
-        if (doctorProfile) {
-          console.log(`Encontrado perfil por userId: ${doctorProfile.id}`);
-          profile = await doctorProfileService.getPublicProfile(doctorProfile.id);
-        } else {
-          // Si tampoco existe por userId, verificar si hay un usuario doctor sin perfil
-          const user = await User.findByPk(id);
-
-          if (user && user.role === 'doctor') {
-            // Auto-crear perfil básico para el doctor
-            console.log(`Auto-creando perfil de doctor para userId: ${id}`);
-
-            const newProfile = await DoctorProfile.create({
-              userId: user.id,
-              firstName: user.firstName || 'Sin nombre',
-              lastName: user.lastName || '',
-              phoneNumber: user.phone || null,
-              licenseNumber: `TEMP-${Date.now()}`,
-              profileStatus: 'incomplete',
-              isVerified: false,
-              acceptingNewPatients: true
-            });
-
-            console.log(`Perfil de doctor creado exitosamente: ${newProfile.id}`);
-            profile = await doctorProfileService.getPublicProfile(newProfile.id);
-          } else {
-            throw new Error('Perfil de doctor no encontrado');
-          }
-        }
-      } else {
-        throw error;
-      }
-    }
+    const profile = await doctorProfileService.getPublicProfile(row.id);
 
     res.json({
       success: true,
@@ -243,6 +212,18 @@ async function getMyProfile(req, res) {
 
     // Obtener o crear perfil
     const doctorProfile = await getOrCreateDoctorProfile(userId);
+
+    // Los médicos registrados antes del 21/11 no tienen enlace propio (/dr/:slug): se crea aquí la primera
+    // vez que abren su panel, para que el enlace que se les ofrece compartir siempre funcione.
+    if (!doctorProfile.publicSlug) {
+      try {
+        const slug = await uniquePublicSlug(DoctorProfile, doctorProfile.firstName, doctorProfile.lastName, { excludeId: doctorProfile.id });
+        await doctorProfile.update({ publicSlug: slug });
+      } catch (e) {
+        console.error('No se pudo crear el enlace propio del médico:', e.message);
+      }
+    }
+
     const profile = await doctorProfileService.getCompleteProfile(doctorProfile.id);
 
     res.json({

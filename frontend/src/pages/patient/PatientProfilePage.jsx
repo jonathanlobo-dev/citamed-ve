@@ -7,8 +7,10 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
+  Camera,
   User,
   Heart,
   AlertTriangle,
@@ -373,15 +375,8 @@ const FamilyHistorySection = ({ familyHistory = [] }) => {
 };
 
 // Componente de Acciones Rápidas del Perfil
-const ProfileActions = ({ onExportPDF, onShare, onPrint }) => {
-  const [copied, setCopied] = useState(false);
+const ProfileActions = ({ onExportPDF, onPrint }) => {
   const [showMenu, setShowMenu] = useState(false);
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <div className="relative">
@@ -418,20 +413,8 @@ const ProfileActions = ({ onExportPDF, onShare, onPrint }) => {
               <Printer className="w-4 h-4" />
               Imprimir perfil
             </button>
-            <button
-              onClick={() => { handleCopyLink(); setShowMenu(false); }}
-              className="w-full flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-              {copied ? 'Enlace copiado' : 'Copiar enlace'}
-            </button>
-            <button
-              onClick={() => { onShare(); setShowMenu(false); }}
-              className="w-full flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              <QrCode className="w-4 h-4" />
-              Mostrar QR
-            </button>
+            {/* "Copiar enlace" y "Mostrar QR" se quitaron: el QR nunca existió y el enlace es privado.
+                Compartir la historia de salud necesita reglas de acceso (Fase 2). */}
           </motion.div>
         )}
       </AnimatePresence>
@@ -492,6 +475,32 @@ const PatientProfilePage = () => {
 
   const [activeTab, setActiveTab] = useState('overview');
   const [showQRModal, setShowQRModal] = useState(false);
+  const photoInputRef = useRef(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const handlePhotoSelected = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('La foto debe ser JPG, PNG o WebP.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('La foto no puede pasar de 5 MB.');
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      await patientService.uploadProfilePhoto(file);
+      toast.success('Foto actualizada');
+      await fetchMyProfile();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'No se pudo subir la foto. Intenta de nuevo.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
   const printRef = useRef(null);
 
   // Función para exportar PDF
@@ -597,9 +606,9 @@ const PatientProfilePage = () => {
               className="relative"
             >
               <div className="w-32 h-32 md:w-40 md:h-40 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center overflow-hidden border-4 border-white/30 shadow-2xl">
-                {profile.photoUrl ? (
+                {(profile.profilePhoto || profile.photoUrl) ? (
                   <img
-                    src={profile.photoUrl}
+                    src={profile.profilePhoto || profile.photoUrl}
                     alt="Foto de perfil"
                     className="w-full h-full object-cover"
                   />
@@ -607,6 +616,24 @@ const PatientProfilePage = () => {
                   <User className="w-16 h-16 md:w-20 md:h-20 text-white/60" />
                 )}
               </div>
+              {/* Cambiar foto */}
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="absolute bottom-2 left-2 min-h-[40px] px-3 rounded-xl bg-white/90 text-teal-700 text-xs font-semibold flex items-center gap-1.5 shadow-lg hover:bg-white disabled:opacity-60"
+                aria-label="Cambiar foto de perfil"
+              >
+                <Camera className="w-4 h-4" />
+                {uploadingPhoto ? 'Subiendo…' : 'Cambiar foto'}
+              </button>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handlePhotoSelected}
+              />
               {/* Badge de verificado */}
               {profile.isVerified && (
                 <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-1.5 shadow-lg">

@@ -111,7 +111,7 @@ export default function DoctorPublicSlugPage() {
 
   const handleBookAppointment = () => {
     if (doctor?.doctorId) {
-      navigate(`/agendar/${doctor.doctorId}`);
+      navigate(`/agendar/${doctor.doctorProfileId || doctor.doctorId}`);
     } else {
       navigate('/login');
     }
