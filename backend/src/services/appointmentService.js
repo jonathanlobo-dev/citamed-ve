@@ -258,6 +258,11 @@ class AppointmentService {
       return appointment;
     } catch (error) {
       await transaction.rollback();
+      // El índice único uq_appointments_active_slot impide dos citas activas en el mismo cupo
+      // aunque lleguen en el mismo instante (el chequeo previo no basta con peticiones simultáneas)
+      if (error.name === 'SequelizeUniqueConstraintError' || error.parent?.code === '23505') {
+        throw new Error('Este horario acaba de ser reservado por otro paciente. Por favor selecciona otro horario.');
+      }
       throw error;
     }
   }
