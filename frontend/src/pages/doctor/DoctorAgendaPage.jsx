@@ -34,7 +34,7 @@ const DISPLAY_DAYS = [1, 2, 3, 4, 5, 6, 0];
 
 const SLOT_DURATION_OPTIONS = [15, 20, 30, 45, 60];
 
-const CONSULTATION_TYPE_OPTIONS = ['presencial', 'telemedicina', 'domicilio', 'mixto'];
+import { CONSULTATION_TYPE_OPTIONS, typesToValue, valueToTypes } from '../../utils/consultationTypes';
 
 const formatLocalDate = (date) => {
   if (!date) return '';
@@ -119,7 +119,7 @@ function DayRow({ day, onToggle, onAddBlock, onRemoveBlock, onUpdateBlock }) {
   return (
     <div className={`rounded-lg border p-4 transition-colors
       ${day.enabled ? 'border-primary/30 bg-primary/5' : 'border-gray-200 bg-white'}`}>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <label className="relative inline-flex items-center cursor-pointer">
             <input
@@ -139,7 +139,7 @@ function DayRow({ day, onToggle, onAddBlock, onRemoveBlock, onUpdateBlock }) {
           {!day.enabled && <span className="text-sm text-gray-400">No atiende</span>}
         </div>
         {day.enabled && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             {SCHEDULE_PARTS.map((part) => {
               const used = day.blocks.some((b) => partOfTime(b.startTime).key === part.key);
               return (
@@ -242,7 +242,8 @@ function DoctorAgendaPage() {
   // Estado de Disponibilidad
   const [days, setDays] = useState(buildInitialDays);
   const [slotDuration, setSlotDuration] = useState(30);
-  const [consultationType, setConsultationType] = useState('presencial');
+  const [consultationTypes, setConsultationTypes] = useState(['presencial']);
+  const consultationType = typesToValue(consultationTypes);
   const [loadingAvailability, setLoadingAvailability] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -289,7 +290,7 @@ function DoctorAgendaPage() {
         if (activeAvailability.length > 0) {
           const first = activeAvailability[0];
           if (first.slotDuration) setSlotDuration(first.slotDuration);
-          if (first.consultationType) setConsultationType(first.consultationType);
+          if (first.consultationType) setConsultationTypes(valueToTypes(first.consultationType));
         }
       } catch (err) {
         console.error('Error cargando agenda:', err);
@@ -1467,14 +1468,22 @@ function DoctorAgendaPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Tipo de consulta
                     </label>
+                    <p className="text-xs text-gray-500 -mt-1 mb-2">Puedes marcar varios.</p>
                     <div className="flex flex-wrap gap-2">
                       {CONSULTATION_TYPE_OPTIONS.map((option) => (
                         <button
                           key={option}
                           type="button"
-                          onClick={() => { setConsultationType(option); setSuccess(null); }}
+                          aria-pressed={consultationTypes.includes(option)}
+                          onClick={() => {
+                            setConsultationTypes((prev) => {
+                              if (prev.includes(option)) return prev.length > 1 ? prev.filter((t) => t !== option) : prev;
+                              return CONSULTATION_TYPE_OPTIONS.filter((t) => t === option || prev.includes(t));
+                            });
+                            setSuccess(null);
+                          }}
                           className={`px-4 py-2 border rounded-lg text-sm font-medium transition-colors
-                            ${consultationType === option
+                            ${consultationTypes.includes(option)
                               ? 'border-primary bg-primary/10 text-primary'
                               : 'border-gray-300 text-gray-700 hover:border-gray-400'}`}
                         >
