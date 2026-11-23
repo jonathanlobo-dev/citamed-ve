@@ -9,6 +9,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
+const PROFILE_PHOTOS_BUCKET = 'profile-photos';
+
 // Configuración
 const STORAGE_MODE = process.env.STORAGE_MODE || 'local'; // 'local' o 's3'
 const UPLOADS_DIR = path.join(__dirname, '../../uploads/doctor-documents');
@@ -292,8 +294,36 @@ async function saveProfilePhoto(file, userId) {
     throw new Error('La imagen excede el tamaño máximo de 5MB');
   }
 
-  // Por ahora solo local, S3 se puede agregar después
-  return await saveProfilePhotoLocal(file, userId);
+  // En el servidor (Render) el disco se borra en cada despliegue: las fotos van a Supabase Storage.
+  // Sin Supabase configurado (desarrollo local) se guardan en disco como antes.
+  const { createClient } = require('@supabase/supabase-js');
+  const { detectFileTypeFromBuffer } = require('./clinicalFileStorage');
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return await saveProfilePhotoLocal(file, userId);
+  }
+
+  // El contenido real debe ser una imagen (no basta con la extensión)
+  const real = detectFileTypeFromBuffer(file.buffer);
+  if (!real || !['image/jpeg', 'image/png', 'image/webp'].includes(real.mimeType)) {
+    throw new Error('Solo se permiten imágenes JPG, PNG o WebP');
+  }
+
+  const client = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+  // Bucket público solo de fotos de perfil; el nombre es aleatorio para que no se pueda adivinar
+  await client.storage.createBucket(PROFILE_PHOTOS_BUCKET, {
+    public: true,
+    fileSizeLimit: 5 * 1024 * 1024,
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp']
+  }).catch(() => {});
+  const fileName = `${crypto.randomUUID()}.${real.ext}`;
+  const { error } = await client.storage
+    .from(PROFILE_PHOTOS_BUCKET)
+    .upload(fileName, file.buffer, { contentType: real.mimeType, upsert: false });
+  if (error) throw new Error(`No se pudo guardar la foto: ${error.message}`);
+  const { data } = client.storage.from(PROFILE_PHOTOS_BUCKET).getPublicUrl(fileName);
+  return { fileName, fileUrl: data.publicUrl, fullUrl: data.publicUrl, fileSize: file.size, mimeType: real.mimeType };
 }
 
 /**

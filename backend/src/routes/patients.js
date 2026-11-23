@@ -10,6 +10,7 @@ const router = express.Router();
 const patientProfileController = require('../controllers/patientProfileController');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { requireDoctorPatientRelationship } = require('../middleware/ownership');
+const { uploadProfilePhoto, handleUploadError } = require('../middleware/uploadMiddleware');
 
 const {
   validateUpdateProfile,
@@ -36,6 +37,11 @@ router.get('/me', verifyToken, patientProfileController.getMyProfile);
 router.put('/me', verifyToken, validateUpdateProfile, patientProfileController.updateProfile);
 router.put('/me/emergency-contact', verifyToken, validateEmergencyContact, patientProfileController.updateEmergencyContact);
 router.put('/me/insurance', verifyToken, validateInsurance, patientProfileController.updateInsurance);
+
+// Foto de perfil del paciente (multipart, campo "profilePhoto", JPG/PNG/WebP hasta 5 MB)
+router.post('/me/profile-photo', verifyToken, requireRole(['patient']), (req, res, next) => {
+  uploadProfilePhoto(req, res, (err) => (err ? handleUploadError(err, req, res, next) : next()));
+}, patientProfileController.uploadProfilePhoto);
 router.get('/me/completeness', verifyToken, patientProfileController.getCompleteness);
 
 // Historial médico propio

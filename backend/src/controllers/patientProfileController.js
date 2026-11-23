@@ -7,6 +7,7 @@
 
 const patientProfileService = require('../services/patientProfileService');
 const db = require('../models');
+const storageService = require('../services/storageService');
 
 const { PatientProfile, User } = db;
 
@@ -704,7 +705,34 @@ async function getCompleteness(req, res) {
 // EXPORTAR
 // ═══════════════════════════════════════════════════════════════
 
+/**
+ * POST /patients/me/profile-photo
+ * Sube o cambia la foto de perfil del paciente
+ */
+async function uploadProfilePhoto(req, res) {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No se proporcionó ninguna imagen' });
+    }
+    const profile = await PatientProfile.findOne({ where: { userId: req.user.id } });
+    if (!profile) {
+      return res.status(404).json({ success: false, message: 'Perfil de paciente no encontrado' });
+    }
+    const saved = await storageService.saveProfilePhoto(req.file, req.user.id);
+    await profile.update({ profilePhoto: saved.fullUrl });
+    res.json({ success: true, data: { profilePhoto: saved.fullUrl }, message: 'Foto de perfil actualizada' });
+  } catch (error) {
+    console.error('Error subiendo foto del paciente:', error.message);
+    const isValidation = /Solo se permiten|excede/.test(error.message || '');
+    res.status(isValidation ? 400 : 500).json({
+      success: false,
+      message: isValidation ? error.message : 'No se pudo guardar la foto. Intenta de nuevo.'
+    });
+  }
+}
+
 module.exports = {
+  uploadProfilePhoto,
   // Perfil
   getProfile,
   getMyProfile,

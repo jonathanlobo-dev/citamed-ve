@@ -90,7 +90,7 @@ const DoctorSearchCard = ({ doctor, showDistance = false }) => {
 
   return (
     <Link
-      to={`/doctor/${doctor_id}`}
+      to={`/doctor/${doctor_profile_id || doctor_id}`}
       className="block bg-white rounded-lg border border-gray-200 hover:shadow-lg hover:border-teal-300 transition-all duration-200"
     >
       <div className="p-4">

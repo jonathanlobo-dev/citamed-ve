@@ -152,7 +152,7 @@ function Navbar() {
                         <button
                           key={doctor.doctor_id}
                           onClick={() => {
-                            navigate(`/doctor/${doctor.doctor_id}`);
+                            navigate(`/doctor/${doctor.doctor_profile_id || doctor.doctor_id}`);
                             setShowSearchDropdown(false);
                             setSearchQuery('');
                           }}

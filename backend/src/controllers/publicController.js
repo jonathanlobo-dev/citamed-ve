@@ -64,6 +64,7 @@ async function getDoctorBySlug(req, res) {
     // Sanitización estricta: CERO datos privados (sin correo, cédula ni teléfono personal)
     const publicData = {
       doctorId: profile.userId,
+      doctorProfileId: profile.id,
       publicSlug: profile.publicSlug,
       name: `Dr(a). ${profile.firstName} ${profile.lastName}`,
       firstName: profile.firstName,
