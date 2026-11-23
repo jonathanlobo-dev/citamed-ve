@@ -49,7 +49,7 @@ async function loadDoctor(doctorProfileId) {
       { model: Specialty, as: 'specialty', attributes: ['id', 'name'], required: false }
     ]
   });
-  if (!profile || !profile.user || profile.user.role !== 'doctor' || profile.user.isActive === false) {
+  if (!profile || !profile.user || profile.user.role !== 'doctor' || profile.user.isActive === false || !profile.isVerified) {
     throw Object.assign(new Error('El médico no está disponible'), { statusCode: 404 });
   }
   return profile;

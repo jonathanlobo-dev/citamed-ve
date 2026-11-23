@@ -291,7 +291,7 @@ const emailService = {
         throw new Error('Ni RESEND_API_KEY ni SENDGRID_API_KEY están configuradas');
       }
 
-      const resetUrl = `${CONFIG.baseUrl}/reset-password/${token}`;
+      const resetUrl = `${CONFIG.baseUrl}/reset-password?token=${encodeURIComponent(token)}`; // la ruta de la app lee ?token=
 
       const msg = {
         subject: 'Recupera tu contraseña - CITAMED.VE',

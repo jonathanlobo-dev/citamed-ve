@@ -40,7 +40,7 @@ beforeEach(() => {
   process.env = { ...OLD_ENV, APPOINTMENT_EMAILS_ENABLED: 'true', FRONTEND_URL: 'https://app.test' };
   db.sequelize.transaction.mockResolvedValue(mockTransaction);
   db.DoctorProfile.findByPk.mockResolvedValue({
-    id: 7, userId: 3, specialtyId: 2, consultationFee: 40, clinicAddress: 'Av. Principal',
+    id: 7, userId: 3, specialtyId: 2, consultationFee: 40, clinicAddress: 'Av. Principal', isVerified: true,
     user: { id: 3, firstName: 'Ana', lastName: 'Rojas', isActive: true, role: 'doctor' }
   });
   db.User.findOne.mockResolvedValue(null);
@@ -120,7 +120,12 @@ describe('primera cita sin registro', () => {
   test('un médico inexistente o suspendido da 404', async () => {
     db.DoctorProfile.findByPk.mockResolvedValue(null);
     await expect(service.createGuestAppointment(body())).rejects.toMatchObject({ statusCode: 404 });
-    db.DoctorProfile.findByPk.mockResolvedValue({ id: 7, user: { role: 'doctor', isActive: false } });
+    db.DoctorProfile.findByPk.mockResolvedValue({ id: 7, isVerified: true, user: { role: 'doctor', isActive: false } });
+    await expect(service.createGuestAppointment(body())).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  test('un médico sin verificar no recibe citas sin registro', async () => {
+    db.DoctorProfile.findByPk.mockResolvedValue({ id: 7, isVerified: false, user: { role: 'doctor', isActive: true } });
     await expect(service.createGuestAppointment(body())).rejects.toMatchObject({ statusCode: 404 });
   });
 
