@@ -307,3 +307,9 @@
   background: #dcfce7;
   border-color: #22c55e;
 }
+
+/* Sillitas dibujadas (ChairIcon) */
+.chair-icon.empty { opacity: 1; }
+.chair-person { display: flex; justify-content: center; }
+.chair-slot.occupied .chair-person { animation: float 3s ease-in-out infinite; }
+.chair-person.en-route { animation: bounce-slow 1.5s ease-in-out infinite; }

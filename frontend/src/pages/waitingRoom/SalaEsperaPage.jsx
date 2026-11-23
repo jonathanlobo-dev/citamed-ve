@@ -24,6 +24,7 @@ import Navbar from '../../components/common/Navbar/Navbar';
 import appointmentService from '../../services/appointmentService';
 import { todayCaracas } from '../../utils/financeLabels';
 import { formatTime12 } from '../../utils/appointmentLabels';
+import ChairIcon from '../../components/waitingRoom/ChairIcon';
 
 const SalaEsperaPage = () => {
   const navigate = useNavigate();
@@ -243,19 +244,31 @@ const SalaEsperaPage = () => {
                       </div>
 
                       {/* Puesto en la cola (también mientras el médico no confirma) */}
-                      {appointment.queuePosition && (
-                        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 text-indigo-800">
-                          <span className="flex items-center gap-2">
-                            <Armchair className="w-5 h-5 text-indigo-600" />
-                            <strong>Puesto #{appointment.queuePosition} en la cola</strong>
-                          </span>
-                          <span className="text-sm">
-                            {appointment.queuePosition === 1
-                              ? 'Eres el primero'
-                              : `${appointment.queuePosition - 1} persona(s) antes de ti`}
-                          </span>
-                        </div>
-                      )}
+                      {appointment.queuePosition && (() => {
+                        // Sillitas: los que van antes (ocupadas) y la tuya resaltada. Máximo 6 a la vista.
+                        const pos = appointment.queuePosition;
+                        const first = Math.max(1, pos - 5);
+                        const seats = Array.from({ length: pos - first + 1 }, (_, i) => first + i);
+                        return (
+                          <div className="mb-4 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 text-indigo-800">
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                              <strong>Puesto #{pos} en la cola</strong>
+                              <span className="text-sm">
+                                {pos === 1 ? 'Eres el primero' : `${pos - 1} persona(s) antes de ti`}
+                              </span>
+                            </div>
+                            <div className="mt-3 flex items-end gap-1.5 overflow-hidden" aria-hidden="true">
+                              {first > 1 && <span className="text-indigo-400 text-sm pb-2">…</span>}
+                              {seats.map((n) => (
+                                <div key={n} className={`flex flex-col items-center rounded-lg px-1 pt-1 ${n === pos ? 'bg-white ring-2 ring-indigo-500' : ''}`}>
+                                  <ChairIcon occupied size={n === pos ? 40 : 32} color={n === pos ? '#7c3aed' : '#a5b4fc'} />
+                                  <span className={`text-[10px] font-bold ${n === pos ? 'text-violet-700' : 'text-indigo-400'}`}>{n === pos ? 'Tú' : n}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {/* Boton de entrar (solo si el médico ya confirmó) */}
                       {appointment.status === 'pending' ? (

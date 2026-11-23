@@ -227,13 +227,14 @@ const PatientWaitingRoomPage = () => {
         scheduled.setHours(hours, mins, 0, 0);
 
         const estimatedWait = (myPosition.position - 1) * avgTime;
-        const estimatedEntry = new Date(now.getTime() + estimatedWait * 60000);
+        // Nadie entra antes de su hora: antes de la cita salía "va 22 min adelantado"
+        const estimatedEntry = new Date(Math.max(now.getTime() + estimatedWait * 60000, scheduled.getTime()));
 
         const diffMinutes = Math.round((estimatedEntry - scheduled) / 60000);
 
         setDoctorStatus({
           avgConsultationTime: avgTime,
-          isAhead: diffMinutes < -5,
+          isAhead: false,
           isDelayed: diffMinutes > 5,
           delayMinutes: Math.abs(diffMinutes)
         });
@@ -401,7 +402,14 @@ const PatientWaitingRoomPage = () => {
 
     const now = new Date();
     const waitMinutes = (myPosition.position - 1) * doctorStatus.avgConsultationTime;
-    const entry = new Date(now.getTime() + waitMinutes * 60000);
+    let entry = new Date(now.getTime() + waitMinutes * 60000);
+    // La hora estimada nunca es antes de la hora de la cita
+    const [h, m] = String(appointment?.appointmentTime || '').split(':').map(Number);
+    if (!Number.isNaN(h)) {
+      const scheduled = new Date();
+      scheduled.setHours(h, m || 0, 0, 0);
+      if (scheduled > entry) entry = scheduled;
+    }
 
     return entry.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
   };
@@ -448,7 +456,9 @@ const PatientWaitingRoomPage = () => {
   const position = myQueueEntry?.position || myPosition?.position || 0;
   const currentStatus = myQueueEntry?.status || myPosition?.status || 'scheduled';
   const estimatedMinutes = myQueueEntry?.estimatedWaitMinutes || myPosition?.estimatedMinutes || ((position - 1) * doctorStatus.avgConsultationTime);
-  const peopleAhead = myQueueEntry?.appointmentsAhead ?? Math.max(0, position - 1);
+  // Igual que el semáforo y la tarjeta de afuera: los que van antes según el puesto
+  // (appointmentsAhead del servidor podía venir en 0 y decía "0 personas delante").
+  const peopleAhead = Math.max(0, position - 1);
   const peopleBehind = Math.max(0, (queue?.length || localQueue?.length || 0) - position);
 
   const isToday = isAppointmentToday();
