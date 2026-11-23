@@ -5,6 +5,7 @@
  * Dashboard del doctor para manejar la cola en tiempo real
  */
 
+import { confirmar } from '../../components/common/confirmar';
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import DoctorQueueDashboard from '../../components/waitingRoom/DoctorQueueDashboard';
@@ -212,7 +213,7 @@ const DoctorWaitingRoomPage = () => {
   };
 
   const handleMarkNoShow = async (queueEntryId) => {
-    if (!confirm('¿Marcar paciente como no presentado?')) return;
+    if (!(await confirmar({ mensaje: '¿Marcar al paciente como no presentado?', aceptar: 'Marcar' }))) return;
 
     setActionLoading(true);
     try {

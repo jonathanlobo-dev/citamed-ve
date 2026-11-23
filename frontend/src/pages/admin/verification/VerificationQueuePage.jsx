@@ -5,6 +5,7 @@
  * Página de administración para revisar solicitudes de verificación
  */
 
+import { confirmar } from '../../../components/common/confirmar';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -155,7 +156,7 @@ export default function VerificationQueuePage() {
 
   // Aprobar verificación completa
   const handleApproveVerification = async (requestId) => {
-    if (window.confirm('¿Confirmas la aprobación de este médico? Se le otorgará el badge de Verificado.')) {
+    if (await confirmar({ titulo: 'Aprobar médico', mensaje: 'El médico quedará verificado y podrá atender, emitir documentos y cobrar.', aceptar: 'Aprobar' })) {
       setActionLoading(true);
       const result = await approveVerification(requestId);
       if (result.success) {

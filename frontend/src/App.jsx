@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react';
+import { ConfirmarHost } from './components/common/confirmar';
 import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { PermissionsProvider } from './hooks/usePermissions';
@@ -579,6 +580,7 @@ function AppRoutes() {
       {/* Cualquier ruta que no existe: aviso claro en vez de pantalla en blanco */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
+    <ConfirmarHost />
     </Suspense>
   );
 }

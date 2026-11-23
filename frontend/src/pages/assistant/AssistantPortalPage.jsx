@@ -4,6 +4,7 @@
  * Visualización de invitaciones pendientes, selector de médico activo y accesos permitidos
  */
 
+import { confirmar } from '../../components/common/confirmar';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -101,7 +102,7 @@ export default function AssistantPortalPage() {
   };
 
   const handleDeclineInvitation = async (linkId) => {
-    if (!window.confirm('¿Seguro que deseas rechazar esta invitación?')) return;
+    if (!(await confirmar({ mensaje: '¿Seguro que deseas rechazar esta invitación?', aceptar: 'Rechazar', peligro: true }))) return;
 
     setActionLoading(true);
     try {

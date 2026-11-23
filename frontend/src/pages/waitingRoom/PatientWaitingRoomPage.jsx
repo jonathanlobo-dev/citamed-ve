@@ -13,6 +13,7 @@
  * - Ejercicio de respiración
  */
 
+import { confirmar } from '../../components/common/confirmar';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
@@ -273,7 +274,7 @@ const PatientWaitingRoomPage = () => {
 
   const handleCancelTurn = async () => {
     if (!myPosition?.queueEntryId) return;
-    if (!confirm('¿Estás seguro de cancelar tu turno?')) return;
+    if (!(await confirmar({ mensaje: '¿Seguro que deseas cancelar tu turno?', aceptar: 'Cancelar turno', cancelar: 'Volver', peligro: true }))) return;
 
     try {
       const response = await fetch(

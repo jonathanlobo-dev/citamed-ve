@@ -3,6 +3,7 @@
  * Página para el médico: gestión e invitación de asistentes y control de permisos
  */
 
+import { confirmar } from '../../components/common/confirmar';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Users,
@@ -179,7 +180,7 @@ export default function DoctorAssistantsPage() {
       ? `${link.assistant.firstName || ''} ${link.assistant.lastName || ''}`.trim()
       : 'esta asistente';
 
-    if (!window.confirm(`¿Seguro que deseas desvincular a ${name}? Ya no tendrá acceso a tu agenda ni cobros.`)) {
+    if (!(await confirmar({ titulo: 'Desvincular asistente', mensaje: `¿Seguro que deseas desvincular a ${name}? Ya no tendrá acceso a tu agenda ni cobros.`, aceptar: 'Desvincular', peligro: true }))) {
       return;
     }
 

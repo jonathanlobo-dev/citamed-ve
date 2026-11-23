@@ -3,6 +3,7 @@
  * M05 / Semana 8 - Página principal de cobros del médico (/medico/cobros) (B2)
  */
 
+import { confirmar } from '../../components/common/confirmar';
 import { useState, useEffect, useCallback } from 'react';
 import {
   DollarSign,
@@ -210,7 +211,7 @@ export default function CobrosPage() {
 
   // Aprobar pago reportado
   const handleApprove = async (id) => {
-    if (!window.confirm('¿Confirmas que recibiste este pago en tu cuenta?')) return;
+    if (!(await confirmar({ titulo: 'Confirmar pago', mensaje: '¿Confirmas que recibiste este pago en tu cuenta?', aceptar: 'Sí, lo recibí' }))) return;
 
     setActionLoading(true);
     setError(null);

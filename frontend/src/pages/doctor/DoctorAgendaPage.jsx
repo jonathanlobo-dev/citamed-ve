@@ -6,6 +6,7 @@
  * Pestaña 2: Configurar Disponibilidad (días de atención, bloques horarios, duración)
  */
 
+import { confirmar } from '../../components/common/confirmar';
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 // eslint-disable-next-line no-unused-vars
@@ -442,7 +443,7 @@ function DoctorAgendaPage() {
   };
 
   const handleVoidPrescription = async (prescriptionId, appointmentId) => {
-    if (!window.confirm('¿Está seguro de anular este récipe médico? Esta acción no se puede deshacer.')) return;
+    if (!(await confirmar({ titulo: 'Anular récipe', mensaje: '¿Seguro que deseas anular este récipe? Esta acción no se puede deshacer.', aceptar: 'Anular', peligro: true }))) return;
     try {
       await prescriptionAPI.void(prescriptionId);
       toast.success('Récipe anulado exitosamente');
@@ -494,7 +495,7 @@ function DoctorAgendaPage() {
 
 
   const handleMarkNoShow = async (id) => {
-    if (!window.confirm('¿Marcar al paciente como no asistió a esta cita?')) return;
+    if (!(await confirmar({ mensaje: '¿Marcar al paciente como que no asistió a esta cita?', aceptar: 'Marcar' }))) return;
     try {
       await appointmentService.markNoShow(id);
       toast.success('Cita marcada como no asistió');

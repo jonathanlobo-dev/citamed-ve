@@ -3,6 +3,7 @@
  * M01 / Semana 7 - Panel de Superadministración: Resumen, Médicos, Usuarios y Configuración de IA
  */
 
+import { confirmar } from '../../components/common/confirmar';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -317,14 +318,10 @@ export default function AdminPanelPage() {
         toast.error('Debes indicar un motivo para suspender la cuenta');
         return;
       }
-      const confirmed = window.confirm(
-        `¿Confirmas que deseas suspender la cuenta de ${userToUpdate.name || userToUpdate.email}?`
-      );
+      const confirmed = await confirmar({ titulo: 'Suspender cuenta', mensaje: `¿Confirmas que deseas suspender la cuenta de ${userToUpdate.name || userToUpdate.email}?`, aceptar: 'Suspender', peligro: true });
       if (!confirmed) return;
     } else {
-      const confirmed = window.confirm(
-        `¿Confirmas que deseas reactivar la cuenta de ${userToUpdate.name || userToUpdate.email}?`
-      );
+      const confirmed = await confirmar({ titulo: 'Reactivar cuenta', mensaje: `¿Confirmas que deseas reactivar la cuenta de ${userToUpdate.name || userToUpdate.email}?`, aceptar: 'Reactivar' });
       if (!confirmed) return;
     }
 

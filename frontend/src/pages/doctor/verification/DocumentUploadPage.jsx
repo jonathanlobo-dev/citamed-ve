@@ -5,6 +5,7 @@
  * Página para que los doctores suban documentos de verificación
  */
 
+import { confirmar } from '../../../components/common/confirmar';
 import React, { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
@@ -103,7 +104,7 @@ export default function DocumentUploadPage() {
 
   // Eliminar documento
   const handleDelete = async (documentId) => {
-    if (window.confirm('¿Estás seguro de eliminar este documento?')) {
+    if (await confirmar({ mensaje: '¿Seguro que deseas eliminar este documento?', aceptar: 'Eliminar', peligro: true })) {
       await deleteDocument(documentId);
     }
   };
