@@ -63,8 +63,14 @@ const medicalDocumentService = {
    * @param {number|string} id
    * @returns {Promise<{success: boolean, data: {signedUrl: string, fileName: string}}>}
    */
+  // El servidor responde { success, url }; las pantallas leen data.signedUrl. Antes nadie
+  // encontraba el enlace y "Abrir" no hacía nada (QA 23/11). Se entrega en ambas formas.
   getFileSignedUrl: (id) =>
-    api.get(`/medical-documents/${id}/file`).then((res) => res.data),
+    api.get(`/medical-documents/${id}/file`).then((res) => {
+      const body = res.data || {};
+      const signedUrl = body.data?.signedUrl || body.url || null;
+      return { ...body, data: { ...(body.data || {}), signedUrl } };
+    }),
 
   /**
    * Elimina un archivo adjunto privado
