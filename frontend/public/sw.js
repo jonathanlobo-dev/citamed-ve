@@ -4,7 +4,7 @@
  * Las peticiones a otros orígenes (el API) y las que no son GET pasan directo a la red.
  * Al cambiar de versión, cambia CACHE y se borran las cachés viejas. */
 
-const CACHE = 'citamed-shell-v2';
+const CACHE = 'citamed-shell-v3';
 const SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
