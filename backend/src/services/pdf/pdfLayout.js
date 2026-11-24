@@ -5,7 +5,7 @@
 
 const QRCode = require('qrcode');
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://citamed-ve.pages.dev';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://app.citamedve.app';
 // Texto impreso bajo el QR: el dominio actual y la página donde se escribe el código (antes decía
 // citamed-ve.pages.dev/verificar, un dominio viejo y sin página: daba "no existe", QA 23/11)
 const VERIFY_DOMAIN_TEXT = `${FRONTEND_URL.replace(/^https?:\/\//, '').replace(/\/+$/, '')}/verificar`;
