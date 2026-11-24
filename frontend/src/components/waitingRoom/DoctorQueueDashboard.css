@@ -720,3 +720,17 @@
     justify-content: center;
   }
 }
+
+/* La sala no debe salirse de la pantalla en teléfono o tableta (QA 23/11: medía 14 a 104 px de más).
+   Con 1fr las columnas crecen al ancho de su contenido; minmax(0, 1fr) las deja encoger. */
+@media (max-width: 1024px) {
+  .dashboard-content { grid-template-columns: minmax(0, 1fr); }
+}
+.current-consultation,
+.waiting-queue { min-width: 0; max-width: 100%; }
+@media (max-width: 640px) {
+  .current-consultation,
+  .waiting-queue { padding: 16px; }
+}
+/* Los botones de cada turno bajan de línea en vez de salirse por la derecha (tableta, QA 23/11) */
+.queue-actions { flex-wrap: wrap; justify-content: flex-end; min-width: 0; }

@@ -33,6 +33,8 @@ function generateVerificationCode() {
 /**
  * Carga un documento médico con relaciones
  */
+const { extractDoctorData } = require('./pdf/pdfLayout');
+
 async function getMedicalDocumentWithDetails(id) {
   return await MedicalDocument.findByPk(id, {
     include: [
@@ -140,8 +142,9 @@ async function createDocument({ appointmentId, type, content = {} }, user) {
     }
 
     case 'rest_note': {
-      const days = parseInt(content.days, 10);
-      if (isNaN(days) || days < 1 || days > 90) {
+      // 1,5 se convertía en 1 sin avisar (QA 23/11): solo se aceptan días enteros
+      const days = Number(String(content.days ?? '').trim().replace(',', '.'));
+      if (!Number.isInteger(days) || days < 1 || days > 90) {
         const err = new Error('Los días de reposo deben ser un número entero entre 1 y 90');
         err.statusCode = 400;
         throw err;
@@ -223,6 +226,11 @@ async function createDocument({ appointmentId, type, content = {} }, user) {
     status: 'active'
   });
 
+  // Se guarda el encabezado tal como quedó al emitir (médico, consultorio, dirección y teléfono):
+  // si después el médico cambia su perfil, las copias del documento emitido no cambian (QA 23/11)
+  const full = await getMedicalDocumentWithDetails(doc.id);
+  const issuedHeader = extractDoctorData(full.doctor, full.appointment);
+  await doc.update({ content: { ...cleanContent, issuedHeader } });
   return await getMedicalDocumentWithDetails(doc.id);
 }
 

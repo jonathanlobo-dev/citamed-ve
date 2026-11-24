@@ -64,9 +64,11 @@ module.exports = (sequelize) => {
       field: 'diagnosed_date',
       validate: {
         isDate: true,
-        isBefore: {
-          args: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-          msg: 'La fecha de diagnóstico no puede ser futura'
+        // Se calcula en cada guardado: antes la fecha límite quedaba fija al arrancar el servidor (QA 23/11)
+        notFuture(value) {
+          if (value && String(value) > new Date(Date.now() + 86400000).toISOString().split('T')[0]) {
+            throw new Error('La fecha de diagnóstico no puede ser futura');
+          }
         }
       },
       comment: 'Fecha de diagnóstico'

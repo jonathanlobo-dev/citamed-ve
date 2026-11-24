@@ -56,6 +56,7 @@ const EspacioClinicoPage = lazy(() => import('./pages/doctor/EspacioClinicoPage'
 const CobrosPage = lazy(() => import('./pages/doctor/CobrosPage'));
 const ReportesPage = lazy(() => import('./pages/doctor/ReportesPage'));
 const VerificarDocumentoPage = lazy(() => import('./pages/public/VerificarDocumentoPage'));
+const VerificarCodigoPage = lazy(() => import('./pages/public/VerificarCodigoPage'));
 const AdminPanelPage = lazy(() => import('./pages/admin/AdminPanelPage'));
 const DoctorAssistantsPage = lazy(() => import('./pages/doctor/DoctorAssistantsPage'));
 const AssistantPortalPage = lazy(() => import('./pages/assistant/AssistantPortalPage'));
@@ -107,6 +108,9 @@ function AppRoutes() {
       <Route path="/privacidad" element={<PrivacidadPage />} />
       <Route path="/codigo-etica" element={<CodigoEticaPage />} />
       <Route path="/verificar-recipe/:code" element={<VerificarRecipeRedirect />} />
+      {/* Dirección impresa bajo el QR: aquí se escribe el código a mano */}
+      <Route path="/verificar" element={<Suspense fallback={null}><VerificarCodigoPage /></Suspense>} />
+      <Route path="/verificar-recipe" element={<Navigate to="/verificar" replace />} />
       <Route
         path="/verificar/:code"
         element={

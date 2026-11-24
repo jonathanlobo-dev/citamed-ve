@@ -34,6 +34,7 @@ import patientService from '../../services/patientService';
 import { prefetchDocumentPdf, shareDocument } from '../../utils/shareDocument';
 import { examSystemLabel, labelOf, SEVERITY_LABELS, CONDITION_STATUS_LABELS } from '../../utils/physicalExamLabels';
 import './PatientMyRecordPage.css';
+import { todayCaracas } from '../../utils/financeLabels';
 
 export default function PatientMyRecordPage() {
   const navigate = useNavigate();
@@ -180,15 +181,22 @@ export default function PatientMyRecordPage() {
   };
 
   // Abrir archivo adjunto en nueva pestaña con URL firmada
+  // La pestaña se abre en el mismo toque y después se carga el archivo: si se abría tras esperar
+  // al servidor, el navegador la bloqueaba como ventana emergente y no pasaba nada (QA 23/11)
   const handleOpenFile = async (docId) => {
+    const win = window.open('', '_blank');
     try {
       const res = await medicalDocumentService.getFileSignedUrl(docId);
       if (res.success && res.data?.signedUrl) {
-        window.open(res.data.signedUrl, '_blank', 'noopener,noreferrer');
+        if (win) win.location.href = res.data.signedUrl;
+        else window.location.href = res.data.signedUrl;
+        return;
       }
+      throw new Error('Sin enlace');
     } catch (err) {
+      if (win) win.close();
       console.error('Error al abrir archivo adjunto:', err);
-      alert('Error al abrir el archivo adjunto.');
+      alert('No pudimos abrir el archivo. Intenta de nuevo en unos segundos.');
     }
   };
 
@@ -249,7 +257,9 @@ export default function PatientMyRecordPage() {
     if (!conditionForm.condition.trim()) return;
     setSubmittingAction(true);
     try {
-      await patientService.addMedicalHistory(conditionForm);
+      // Sin fecha no se manda el campo vacío: el servidor lo rechazaba como fecha inválida (QA 23/11)
+      const { diagnosedDate, ...rest } = conditionForm;
+      await patientService.addMedicalHistory(diagnosedDate ? conditionForm : rest);
       setDrawerType(null);
       setConditionForm({ condition: '', status: 'active', severity: 'moderate', diagnosedDate: '', notes: '' });
       fetchMyRecord();
@@ -267,7 +277,9 @@ export default function PatientMyRecordPage() {
     if (!medicationForm.medicationName.trim()) return;
     setSubmittingAction(true);
     try {
-      await patientService.addMedication(medicationForm);
+      // El servidor espera la dosis como dosage y una fecha de inicio (QA 23/11: decía dosis requerida con la dosis escrita)
+      const { dose, ...med } = medicationForm;
+      await patientService.addMedication({ ...med, dosage: dose, startDate: todayCaracas() });
       setDrawerType(null);
       setMedicationForm({ medicationName: '', dose: '', frequency: '', route: 'oral', instructions: '', isActive: true });
       fetchMyRecord();
@@ -881,7 +893,7 @@ export default function PatientMyRecordPage() {
                       <div>
                         <strong className="text-slate-800 text-sm">{med.medicationName}</strong>
                         <div className="text-xs text-slate-500">
-                          {med.dose && `${med.dose} `}
+                          {(med.dosage || med.dose) && `${med.dosage || med.dose} `}
                           {med.frequency && `· ${med.frequency}`}
                         </div>
                         {med.instructions && (

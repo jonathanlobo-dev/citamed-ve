@@ -52,7 +52,8 @@ export default function PaymentSettingsDrawer({ open, onClose, onSaved }) {
     holderName: ''
   });
 
-  const [efectivoUsd, setEfectivoUsd] = useState({ enabled: true });
+  // Apagado hasta que el médico lo guarde: encendido por defecto, el médico lo veía activo pero no estaba guardado y al paciente le salía "no configurado" (QA 23/11)
+  const [efectivoUsd, setEfectivoUsd] = useState({ enabled: false });
   const [efectivoVes, setEfectivoVes] = useState({ enabled: false });
   const [notes, setNotes] = useState('');
 

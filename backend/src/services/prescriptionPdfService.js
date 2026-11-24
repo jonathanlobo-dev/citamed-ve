@@ -106,8 +106,7 @@ async function generatePrescriptionPdf(prescription) {
       doctorFullName: doctorData.doctorFullName,
       mpps: doctorData.mpps,
       verificationCode: prescription.verificationCode,
-      qrBuffer,
-      verifyDomainText: 'citamed-ve.pages.dev/verificar-recipe'
+      qrBuffer
     });
 
     // Si contiene indicaciones para el paciente generadas por IA y aprobadas por el médico, agregar página 2
@@ -133,8 +132,7 @@ async function generatePrescriptionPdf(prescription) {
         doctorFullName: doctorData.doctorFullName,
         mpps: doctorData.mpps,
         verificationCode: prescription.verificationCode,
-        qrBuffer,
-        verifyDomainText: 'citamed-ve.pages.dev/verificar-recipe'
+        qrBuffer
       });
     }
 

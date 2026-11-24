@@ -29,7 +29,8 @@ const DOCUMENT_TITLES = {
  * @returns {Promise<Buffer>}
  */
 async function generateMedicalDocumentPdf(document) {
-  const doctorData = extractDoctorData(document.doctor, document.appointment);
+  // Documentos nuevos: encabezado guardado al emitir. Los anteriores se arman con el perfil actual
+  const doctorData = document.content?.issuedHeader || extractDoctorData(document.doctor, document.appointment);
   const patientData = extractPatientData(document.patient, document.createdAt);
   const docTitle = DOCUMENT_TITLES[document.type] || document.title || 'Documento Médico';
 
@@ -177,8 +178,7 @@ async function generateMedicalDocumentPdf(document) {
       doctorFullName: doctorData.doctorFullName,
       mpps: doctorData.mpps,
       verificationCode: document.verificationCode,
-      qrBuffer,
-      verifyDomainText: 'citamed-ve.pages.dev/verificar'
+      qrBuffer
     });
 
     doc.end();

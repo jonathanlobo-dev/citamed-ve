@@ -148,6 +148,12 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('citamed_token');
     localStorage.removeItem('citamed_acting_doctor_id');
     localStorage.removeItem('citamed_acting_doctor_permissions');
+    // Borradores clínicos guardados en este navegador: no deben quedar para la siguiente cuenta
+    try {
+      Object.keys(localStorage)
+        .filter((k) => /^citamed_(draft_|ai_draft_|recipe_draft_)/.test(k))
+        .forEach((k) => localStorage.removeItem(k));
+    } catch { /* sin acceso al almacenamiento */ }
     toast.success('Sesión cerrada');
   };
 

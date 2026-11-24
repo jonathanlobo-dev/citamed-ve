@@ -314,3 +314,13 @@
     font-size: 12px;
   }
 }
+
+/* Cabecera en teléfono: los botones bajan de línea en vez de taparse con el indicador de conexión (QA 23/11) */
+@media (max-width: 640px) {
+  .doctor-wr-header { flex-wrap: wrap; padding: 12px 16px; }
+  .doctor-wr-header > * { min-width: 0; }
+  /* flex: 1 dejaba la etiqueta en la misma fila que los botones, encima del de salir */
+  .header-center { flex: 0 0 100%; order: 3; }
+  .connection-status { padding: 6px 10px; font-size: 0.75rem; white-space: nowrap; }
+}
+.doctor-waiting-room { overflow-x: clip; }

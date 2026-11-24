@@ -120,6 +120,8 @@ export default function EspacioClinicoPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
+  // Borrador de consulta sin cita separado por usuario: en un equipo compartido no se lo ofrece a otra cuenta (QA 23/11)
+  const newDraftKey = `citamed_draft_new_${user?.id || 'anon'}`;
 
   const isDraftMode = !appointmentId || appointmentId === 'nueva';
 
@@ -481,7 +483,7 @@ export default function EspacioClinicoPage() {
         setLoading(false);
         // Comprobar borrador en localStorage para consulta sin cita
         try {
-          const rawDraft = localStorage.getItem('citamed_draft_new');
+          const rawDraft = localStorage.getItem(newDraftKey);
           if (rawDraft) {
             const draftData = JSON.parse(rawDraft);
             setNewDraftAlert(draftData);
@@ -686,7 +688,7 @@ export default function EspacioClinicoPage() {
         }
       }
       try {
-        localStorage.removeItem('citamed_draft_new');
+        localStorage.removeItem(newDraftKey);
       } catch {
         // Ignorar
       }
@@ -805,7 +807,7 @@ export default function EspacioClinicoPage() {
             identifiedPatient,
             savedAt: Date.now()
           };
-          localStorage.setItem('citamed_draft_new', JSON.stringify(draftData));
+          localStorage.setItem(newDraftKey, JSON.stringify(draftData));
           setSaveStatus('saved');
         } catch (lsErr) {
           console.warn('[EspacioClinico] Fallo al escribir borrador en localStorage:', lsErr);
@@ -919,7 +921,7 @@ export default function EspacioClinicoPage() {
   const handleDiscardLocalDraft = () => {
     if (isDraftMode) {
       try {
-        localStorage.removeItem('citamed_draft_new');
+        localStorage.removeItem(newDraftKey);
       } catch {
         // Ignorar
       }
@@ -1065,7 +1067,7 @@ export default function EspacioClinicoPage() {
         localStorage.removeItem(`citamed_ai_draft_${appointment.id}`);
         localStorage.removeItem(`citamed_recipe_draft_${appointment.id}`);
       }
-      localStorage.removeItem('citamed_draft_new');
+      localStorage.removeItem(newDraftKey);
     } catch {
       // Ignorar
     }
@@ -2094,7 +2096,7 @@ export default function EspacioClinicoPage() {
               type="button"
               onClick={() => {
                 try {
-                  localStorage.removeItem('citamed_draft_new');
+                  localStorage.removeItem(newDraftKey);
                 } catch {
                   // Ignorar
                 }

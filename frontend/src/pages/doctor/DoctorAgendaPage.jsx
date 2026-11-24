@@ -206,6 +206,18 @@ function DayRow({ day, onToggle, onAddBlock, onRemoveBlock, onUpdateBlock }) {
   );
 }
 
+// Colores de la vista Semana por estado: antes todo lo que no era pendiente, confirmada o
+// reprogramada salía como "Cancelada" tachada, también las atendidas (QA 23/11)
+const WEEK_STATUS_CLS = {
+  pending: 'bg-amber-50 border-amber-300 text-amber-900',
+  confirmed: 'bg-green-50 border-green-200 text-green-900',
+  in_progress: 'bg-blue-50 border-blue-200 text-blue-900',
+  completed: 'bg-teal-50 border-teal-200 text-teal-900',
+  no_show: 'bg-gray-50 border-gray-200 text-gray-600',
+  rescheduled: 'bg-purple-50 border-purple-200 text-purple-900 opacity-75',
+  cancelled: 'bg-gray-50 border-gray-200 text-gray-500 opacity-75 line-through'
+};
+
 function DoctorAgendaPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -1284,26 +1296,12 @@ function DoctorAgendaPage() {
                             <div
                               key={apt.id}
                               onClick={() => setDrawerAppointment(apt)}
-                              className={`p-2 rounded-lg border text-xs cursor-pointer transition hover:scale-[1.02] ${
-                                apt.status === 'pending'
-                                  ? 'bg-amber-50 border-amber-300 text-amber-900'
-                                  : apt.status === 'confirmed'
-                                  ? 'bg-green-50 border-green-200 text-green-900'
-                                  : apt.status === 'rescheduled'
-                                  ? 'bg-purple-50 border-purple-200 text-purple-900 opacity-75'
-                                  : 'bg-gray-50 border-gray-200 text-gray-500 opacity-75 line-through'
-                              }`}
+                              className={`p-2 rounded-lg border text-xs cursor-pointer transition hover:scale-[1.02] ${WEEK_STATUS_CLS[apt.status] || WEEK_STATUS_CLS.cancelled}`}
                             >
                               <div className="flex items-center justify-between font-bold mb-1">
                                 <span>{shortTime(apt.appointmentTime)}</span>
                                 <span className="text-[10px]">
-                                  {apt.status === 'pending'
-                                    ? '⏳ Pendiente'
-                                    : apt.status === 'confirmed'
-                                    ? '✓ Confirmada'
-                                    : apt.status === 'rescheduled'
-                                    ? '🔄 Reprog.'
-                                    : '✗ Cancelada'}
+                                  {appointmentStatusLabel(apt.status)}
                                 </span>
                               </div>
                               <p className="font-semibold truncate">

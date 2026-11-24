@@ -156,8 +156,7 @@ async function generatePaymentReceiptPdf(payment) {
       doctorFullName: doctorData.doctorFullName,
       mpps: doctorData.mpps,
       verificationCode,
-      qrBuffer,
-      verifyDomainText: 'citamed-ve.pages.dev/verificar'
+      qrBuffer
     });
 
     doc.end();

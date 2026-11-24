@@ -6,6 +6,9 @@
 const QRCode = require('qrcode');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://citamed-ve.pages.dev';
+// Texto impreso bajo el QR: el dominio actual y la página donde se escribe el código (antes decía
+// citamed-ve.pages.dev/verificar, un dominio viejo y sin página: daba "no existe", QA 23/11)
+const VERIFY_DOMAIN_TEXT = `${FRONTEND_URL.replace(/^https?:\/\//, '').replace(/\/+$/, '')}/verificar`;
 
 /**
  * Formatea fecha en zona horaria de Caracas
@@ -204,7 +207,7 @@ function drawPatientBox(doc, patientData) {
 /**
  * Dibuja el pie de página fijo con firma, QR y leyenda de CitaMed
  */
-function drawFooter(doc, { doctorFullName, mpps, verificationCode, qrBuffer, verifyDomainText = 'citamed-ve.pages.dev/verificar' }) {
+function drawFooter(doc, { doctorFullName, mpps, verificationCode, qrBuffer, verifyDomainText = VERIFY_DOMAIN_TEXT }) {
   const footerTop = 640;
   if (doc.y > footerTop - 10) {
     doc.addPage();
