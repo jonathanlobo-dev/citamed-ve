@@ -15,6 +15,7 @@ import { Mail, Lock, Eye, EyeOff, Check, X, AlertCircle, Loader2, User, Phone } 
 import { debounce } from 'lodash';
 import authService from '../../../services/authService';
 
+import { phoneError } from '../../../utils/phoneValidation';
 /**
  * Evalúa la fortaleza de la contraseña
  */
@@ -83,11 +84,8 @@ function DoctorStep1Credentials({ formData, updateField, errors, setFieldErrors,
     if (!formData.lastName?.trim() || formData.lastName.trim().length < 2) {
       newErrors.lastName = 'Escribe tu apellido';
     }
-    if (!formData.phone?.trim()) {
-      newErrors.phone = 'Teléfono es requerido';
-    } else if (!/^(0412|0414|0416|0422|0424|0426)\d{7}$/.test(formData.phone)) {
-      newErrors.phone = 'Teléfono venezolano válido (04XX-XXXXXXX)';
-    }
+    const phoneMsg = phoneError(formData.phone);
+    if (phoneMsg) newErrors.phone = phoneMsg;
 
     if (!formData.email) {
       newErrors.email = 'Email es requerido';

@@ -17,6 +17,7 @@ import DocumentInput from '../../common/DocumentInput/DocumentInput';
 import { debounce } from 'lodash';
 import authService from '../../../services/authService';
 
+import { phoneError } from '../../../utils/phoneValidation';
 // Igual que el servidor (authValidator nameOnly): letras con acentos y espacios
 const NAME_PATTERN = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
 
@@ -124,11 +125,8 @@ function PatientStep2Personal({ formData, updateField, errors, setFieldErrors, o
     }
 
     // Teléfono
-    if (!formData.phone?.trim()) {
-      newErrors.phone = 'Teléfono es requerido';
-    } else if (!/^(0412|0414|0416|0424|0426)\d{7}$/.test(formData.phone)) {
-      newErrors.phone = 'Teléfono venezolano válido (04XX-XXXXXXX)';
-    }
+    const phoneMsg = phoneError(formData.phone);
+    if (phoneMsg) newErrors.phone = phoneMsg;
 
     setFieldErrors(newErrors);
     return Object.keys(newErrors).length === 0;

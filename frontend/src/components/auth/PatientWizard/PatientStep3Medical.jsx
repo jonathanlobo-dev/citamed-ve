@@ -12,6 +12,7 @@
 import { motion } from 'framer-motion';
 import { Heart, Droplet, AlertTriangle, Phone, User, AlertCircle } from 'lucide-react';
 
+import { phoneError } from '../../../utils/phoneValidation';
 const BLOOD_TYPES = [
   { value: 'A+', label: 'A+' },
   { value: 'A-', label: 'A-' },
@@ -54,8 +55,8 @@ function PatientStep3Medical({ formData, updateField, errors, setFieldErrors, on
     // Contacto de emergencia - Teléfono
     if (!formData.emergencyContactPhone?.trim()) {
       newErrors.emergencyContactPhone = 'Teléfono del contacto es requerido';
-    } else if (!/^(0412|0414|0416|0424|0426|0212|0251|0261|0241|0243)\d{7}$/.test(formData.emergencyContactPhone)) {
-      newErrors.emergencyContactPhone = 'Teléfono venezolano válido';
+    } else if (phoneError(formData.emergencyContactPhone, { allowLandline: true })) {
+      newErrors.emergencyContactPhone = phoneError(formData.emergencyContactPhone, { allowLandline: true });
     }
 
     // Alergias - validación opcional (solo longitud)
