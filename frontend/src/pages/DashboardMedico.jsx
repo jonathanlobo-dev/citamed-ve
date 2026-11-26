@@ -41,9 +41,9 @@ const MY_ACCOUNT = [
 
 // Estado de la verificación, con el perfil recién consultado (no con la sesión guardada)
 const VERIFICATION = {
-  pending: { pill: 'En revisión', pillCls: 'bg-amber-50 text-amber-700 border-amber-200', text: 'Recibimos tus documentos y los estamos revisando. Mientras tanto puedes preparar tu consultorio; para atender, emitir documentos o cobrar hace falta la aprobación.', action: 'Ver estado' },
+  pending: { pill: 'En revisión', pillCls: 'bg-amber-50 text-amber-700 border-amber-200', text: 'Consultamos tu MPPS en el SACS y estamos revisando tu solicitud. Mientras tanto puedes preparar tu consultorio; para atender, emitir documentos o cobrar hace falta la aprobación.', action: 'Ver estado' },
   rejected: { pill: 'Rechazada', pillCls: 'bg-red-50 text-red-700 border-red-200', text: 'Tu verificación fue rechazada. Revisa el motivo y vuelve a enviar tus documentos.', action: 'Revisar verificación' },
-  documents_incomplete: { pill: 'Faltan documentos', pillCls: 'bg-orange-50 text-orange-700 border-orange-200', text: 'Necesitamos más documentos para revisar tu verificación. Sube lo que falta.', action: 'Subir documentos' },
+  documents_incomplete: { pill: 'Faltan documentos', pillCls: 'bg-orange-50 text-orange-700 border-orange-200', text: 'No pudimos confirmar tu MPPS en el SACS. Sube tu título, tu certificado MPPS y tu cédula para revisarlo a mano.', action: 'Subir documentos' },
   unverified: { pill: 'Pendiente', pillCls: 'bg-orange-50 text-orange-700 border-orange-200', text: 'Puedes preparar tu consultorio. Para atender, emitir documentos o cobrar, primero debes completar la verificación.', action: 'Revisar verificación' }
 };
 

@@ -95,4 +95,18 @@ async function checkDoctor({ mpps, firstName, lastName }) {
   }
 }
 
-module.exports = { checkDoctor, parseSacsResponse, compareWithDoctor, normalizeMatricula, SACS_URL };
+/**
+ * Qué hacer con el médico según el resultado del SACS (decisión del 26/11):
+ * - match: el MPPS es de un médico con ese nombre. No se le piden documentos; queda "en revisión"
+ *   y el admin lo aprueba con un clic (la aprobación sigue siendo humana).
+ * - unavailable: el SACS no respondió. No se castiga al médico: queda en revisión y el admin
+ *   vuelve a consultar desde el panel.
+ * - not_found, name_mismatch, not_doctor, invalid: no se pudo confirmar. Se le piden el título,
+ *   el certificado MPPS y la cédula para revisarlo a mano.
+ */
+function sacsDecision(status) {
+  const documentsRequired = !['match', 'unavailable'].includes(status);
+  return { documentsRequired, verificationStatus: documentsRequired ? 'documents_incomplete' : 'pending' };
+}
+
+module.exports = { checkDoctor, sacsDecision, parseSacsResponse, compareWithDoctor, normalizeMatricula, SACS_URL };

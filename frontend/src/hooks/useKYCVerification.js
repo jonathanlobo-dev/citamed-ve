@@ -191,6 +191,8 @@ export function useKYCVerification({ autoLoad = true, onStatusChange } = {}) {
   const canSubmit = status?.canSubmitVerification === true;
   const documentsComplete = status?.documents?.missing?.length === 0;
   const missingDocuments = status?.documents?.missing || [];
+  // Los documentos solo son obligatorios si el SACS no confirmó el MPPS
+  const documentsRequired = status?.documentsRequired === true;
   const uploadedDocuments = status?.documents?.list || [];
 
   return {
@@ -214,6 +216,7 @@ export function useKYCVerification({ autoLoad = true, onStatusChange } = {}) {
     isRejected,
     canSubmit,
     documentsComplete,
+    documentsRequired,
     missingDocuments,
     uploadedDocuments,
 

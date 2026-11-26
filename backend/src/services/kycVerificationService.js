@@ -9,6 +9,7 @@ const { Op } = require('sequelize');
 const storageService = require('./storageService');
 const db = require('../models');
 const auditService = require('./auditService');
+const sacsService = require('./sacsService');
 
 const { DoctorProfile, DoctorDocument, VerificationRequest, User } = db;
 
@@ -93,7 +94,10 @@ async function getVerificationStatus(doctorProfileId) {
       requestDate: activeRequest.requestDate,
       waitingDays: activeRequest.getWaitingDays()
     } : null,
-    canSubmitVerification: missingDocs.length === 0 && !activeRequest
+    // Los documentos solo hacen falta si el SACS no confirmó el MPPS
+    sacs: activeRequest?.sacsCheck ? { status: activeRequest.sacsCheck.status, checkedAt: activeRequest.sacsCheck.checkedAt } : null,
+    documentsRequired: doctorProfile.verificationStatus === 'documents_incomplete',
+    canSubmitVerification: !activeRequest && ['unverified', 'rejected', 'documents_incomplete'].includes(doctorProfile.verificationStatus)
   };
 }
 
@@ -148,7 +152,9 @@ async function uploadDocument(doctorProfileId, documentData) {
   if (doctorProfile.verificationStatus === 'documents_incomplete') {
     const completeness = await checkDocumentCompleteness(doctorProfileId);
     if (completeness.isComplete) {
-      await doctorProfile.update({ verificationStatus: 'unverified' });
+      // Si ya tiene una solicitud abierta, vuelve a "en revisión" para que el admin revise los documentos
+      const active = await VerificationRequest.getActiveByDoctor(doctorProfileId);
+      await doctorProfile.update({ verificationStatus: active ? 'pending' : 'unverified' });
     }
   }
 
@@ -186,11 +192,13 @@ async function deleteDocument(documentId, doctorProfileId) {
 // ═══════════════════════════════════════════════════════════════
 
 async function submitVerificationRequest(doctorProfileId, userId) {
-  // Verificar que todos los documentos requeridos estén subidos
+  // Primero el SACS: si confirma el MPPS no hacen falta documentos
+  const sacs = await checkSacsForProfile(doctorProfileId);
   const completeness = await checkDocumentCompleteness(doctorProfileId);
 
-  if (!completeness.isComplete) {
-    throw new Error(`Faltan documentos requeridos: ${completeness.missing.map(m => DOCUMENT_TYPES[m].name).join(', ')}`);
+  if (sacsService.sacsDecision(sacs.status).documentsRequired && !completeness.isComplete) {
+    await DoctorProfile.update({ verificationStatus: 'documents_incomplete' }, { where: { id: doctorProfileId } });
+    throw new Error(`No pudimos confirmar tu MPPS en el SACS. Sube estos documentos para revisarlo a mano: ${completeness.missing.map(m => DOCUMENT_TYPES[m].name).join(', ')}`);
   }
 
   // Verificar que no haya solicitud activa
@@ -209,7 +217,8 @@ async function submitVerificationRequest(doctorProfileId, userId) {
   const request = await VerificationRequest.create({
     doctorProfileId,
     status: 'submitted',
-    priority: 0
+    priority: sacs.status === 'match' ? 1 : 0,
+    sacsCheck: sacs
   });
 
   // Actualizar estado del doctor
@@ -506,16 +515,13 @@ async function approveVerification(requestId, adminId, notes = null) {
     throw new Error('La solicitud ya fue aprobada');
   }
 
-  // Verificar que todos los documentos requeridos estén aprobados
-  const allApproved = await DoctorDocument.areAllRequiredApproved(request.doctorProfileId);
-  // Si el médico no ha cargado ningún documento, el admin puede aprobar
-  // verificando el MPPS manualmente (flujo MVP). Si hay documentos,
-  // todos los requeridos deben estar aprobados.
-  const documentsCount = await DoctorDocument.count({
-    where: { doctorProfileId: request.doctorProfileId }
+  // Los documentos son opcionales (el SACS confirma el MPPS). Pero si el médico subió alguno,
+  // el admin debe revisarlo (aprobarlo o rechazarlo) antes de aprobar al médico.
+  const pendingDocs = await DoctorDocument.count({
+    where: { doctorProfileId: request.doctorProfileId, status: 'pending' }
   });
-  if (documentsCount > 0 && !allApproved) {
-    throw new Error('Todos los documentos requeridos deben estar aprobados antes de aprobar la verificación');
+  if (pendingDocs > 0) {
+    throw new Error('Revisa primero los documentos que subió el médico (aprobar o rechazar cada uno)');
   }
 
   // Actualizar solicitud
@@ -752,7 +758,54 @@ async function holdRequest(requestId, adminId, reason) {
   return request;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// SACS: consulta y guarda el resultado
+// ═══════════════════════════════════════════════════════════════
+
+/** Consulta el SACS con los datos del médico. Nunca lanza (si falla devuelve "unavailable"). */
+async function checkSacsForProfile(doctorProfileId) {
+  const profile = await DoctorProfile.findByPk(doctorProfileId, {
+    include: [{ model: User, as: 'user', attributes: ['firstName', 'lastName'] }]
+  });
+  if (!profile) return { status: 'invalid', checkedAt: new Date().toISOString() };
+  const result = await sacsService.checkDoctor({
+    mpps: profile.mppsNumber || profile.licenseNumber,
+    firstName: profile.user?.firstName || profile.firstName,
+    lastName: profile.user?.lastName || profile.lastName
+  });
+  return { ...result, checkedAt: new Date().toISOString() };
+}
+
+/**
+ * Consulta el SACS para una solicitud, guarda el resultado y decide si hacen falta documentos.
+ * La usan el registro (en segundo plano) y el admin al abrir la solicitud.
+ * No cambia el estado de un médico ya aprobado o rechazado.
+ */
+async function applySacsCheck(requestId) {
+  const request = await VerificationRequest.findByPk(requestId);
+  if (!request) throw new Error('Solicitud no encontrada');
+  const sacs = await checkSacsForProfile(request.doctorProfileId);
+  await request.update({
+    sacsCheck: sacs,
+    priority: sacs.status === 'match' ? Math.max(request.priority || 0, 1) : request.priority
+  });
+
+  const isOpen = ['submitted', 'in_review', 'on_hold'].includes(request.status);
+  const profile = await DoctorProfile.findByPk(request.doctorProfileId);
+  if (isOpen && profile && ['unverified', 'pending', 'documents_incomplete'].includes(profile.verificationStatus)) {
+    let next = sacsService.sacsDecision(sacs.status).verificationStatus;
+    // Si el SACS no coincide pero ya subió los tres documentos, queda en revisión
+    if (next === 'documents_incomplete' && (await checkDocumentCompleteness(profile.id)).isComplete) next = 'pending';
+    // Si el SACS no respondió, no se le quita el aviso de documentos a quien ya se le pidieron
+    if (sacs.status === 'unavailable' && profile.verificationStatus === 'documents_incomplete') next = 'documents_incomplete';
+    if (next !== profile.verificationStatus) await profile.update({ verificationStatus: next });
+  }
+  return sacs;
+}
+
 module.exports = {
+  checkSacsForProfile,
+  applySacsCheck,
   // Funciones principales (13)
   getVerificationStatus,
   uploadDocument,

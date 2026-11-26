@@ -1,4 +1,4 @@
-const { parseSacsResponse, compareWithDoctor, normalizeMatricula, checkDoctor } = require('../../../src/services/sacsService');
+const { parseSacsResponse, compareWithDoctor, normalizeMatricula, checkDoctor, sacsDecision } = require('../../../src/services/sacsService');
 
 const XML = `<?xml version="1.0" encoding="UTF-8" ?><xjx><cmd n="js"><![CDATA[xajax_createTable('[{"fecha_registro":"2023-01-18","cedula":"24914872","codprofesion":"8","profesion":"T.S.U. EN ENFERMER&Iacute;A","nombre1":"ROOSCELIS","apellido1":"VENTURA","tomo_registro":"561","folio_registro":"21","matricula":"MPPS-148020"},{"fecha_registro":"2022-02-10","cedula":"21053073","codprofesion":"1","profesion":"M&Eacute;DICO(A) CIRUJANO(A)","nombre1":"RAYNIX","apellido1":"PINEDA","tomo_registro":"423","folio_registro":"221","matricula":"MPPS-148020"}]')]]></cmd></xjx>`;
 const NOT_FOUND = `<xjx><cmd n="js"><![CDATA[Swal.fire({title: 'Información', text: 'LA MATRÍCULA INGRESADA NO EXISTE, VERIFIQUE.', icon: 'info'});]]></cmd></xjx>`;
@@ -47,5 +47,14 @@ describe('SACS', () => {
     global.fetch = orig;
     expect(out.status).toBe('unavailable');
     expect(out.consultUrl).toContain('sacs.gob.ve');
+  });
+
+  test('solo pide documentos cuando el SACS no confirma el MPPS', () => {
+    expect(sacsDecision('match')).toEqual({ documentsRequired: false, verificationStatus: 'pending' });
+    // Si el SACS no responde no se castiga al médico: queda en revisión
+    expect(sacsDecision('unavailable')).toEqual({ documentsRequired: false, verificationStatus: 'pending' });
+    for (const s of ['not_found', 'name_mismatch', 'not_doctor', 'invalid']) {
+      expect(sacsDecision(s)).toEqual({ documentsRequired: true, verificationStatus: 'documents_incomplete' });
+    }
   });
 });

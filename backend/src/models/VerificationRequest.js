@@ -64,6 +64,12 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT,
       allowNull: true,
       comment: 'Notas de la revisión'
+    },
+    sacsCheck: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      field: 'sacs_check',
+      comment: 'Último resultado de la consulta al SACS {status, matricula, record, checkedAt}'
     }
   }, {
     tableName: 'verification_requests',

@@ -299,6 +299,15 @@ export default function VerificationQueuePage() {
                       <span className={`px-3 py-1 rounded-full text-sm font-medium ${requestStatusColors[request.status]}`}>
                         {requestStatusLabels[request.status]}
                       </span>
+                      {request.sacsCheck?.status && (
+                        <span className={`block mt-1 text-xs font-semibold ${
+                          request.sacsCheck.status === 'match' ? 'text-green-700' :
+                          request.sacsCheck.status === 'unavailable' ? 'text-amber-700' : 'text-red-700'
+                        }`}>
+                          {request.sacsCheck.status === 'match' ? 'SACS: coincide' :
+                            request.sacsCheck.status === 'unavailable' ? 'SACS: sin respuesta' : 'SACS: no coincide'}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1">
@@ -508,12 +517,15 @@ export default function VerificationQueuePage() {
                   </div>
                 </div>
 
-                {/* Documentos requeridos faltantes */}
+                {/* Documentos faltantes: solo importan si el SACS no confirmó el MPPS */}
                 {requestDetails.requiredDocuments?.some(d => !d.uploaded) && (
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                     <p className="font-medium text-yellow-800 flex items-center gap-2">
                       <AlertTriangle className="h-5 w-5" />
-                      Documentos Faltantes
+                      Documentos no subidos
+                    </p>
+                    <p className="text-xs text-yellow-700 mt-1">
+                      Son opcionales si el SACS coincide. Si no coincide, pídelos o confirma la identidad del médico antes de aprobar.
                     </p>
                     <ul className="mt-2 space-y-1">
                       {requestDetails.requiredDocuments
@@ -530,10 +542,12 @@ export default function VerificationQueuePage() {
                 {/* Acciones finales */}
                 {requestDetails.request.status !== 'approved' && requestDetails.request.status !== 'rejected' && (
                   <div className="border-t pt-4 space-y-3">
-                    {/* Verificar si todos los requeridos están aprobados */}
-                    {/* Igual que el servidor: sin documentos subidos se aprueba revisando el MPPS a mano;
-                        si subió documentos, todos los requeridos deben estar aprobados */}
-                    {((requestDetails.documents?.length || 0) === 0 || requestDetails.requiredDocuments?.every(d => d.approved)) && (
+                    {/* Igual que el servidor: los documentos son opcionales, pero los que subió
+                        deben estar revisados (aprobados o rechazados) antes de aprobar al médico */}
+                    {requestDetails.documents?.some(d => d.status === 'pending') && (
+                      <p className="text-sm text-amber-700">Revisa primero los documentos que subió el médico.</p>
+                    )}
+                    {!requestDetails.documents?.some(d => d.status === 'pending') && (
                       <button
                         onClick={() => handleApproveVerification(requestDetails.request.id)}
                         disabled={actionLoading}

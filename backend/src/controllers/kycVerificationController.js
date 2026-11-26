@@ -309,11 +309,8 @@ const checkSacs = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Solicitud no encontrada' });
     }
     const profile = request.doctorProfile;
-    const result = await require('../services/sacsService').checkDoctor({
-      mpps: profile.mppsNumber || profile.licenseNumber,
-      firstName: profile.user?.firstName,
-      lastName: profile.user?.lastName
-    });
+    // Consulta, guarda el resultado en la solicitud y ajusta si hacen falta documentos
+    const result = await kycService.applySacsCheck(request.id);
     res.json({
       success: true,
       data: { ...result, declared: { mpps: profile.mppsNumber || profile.licenseNumber, firstName: profile.user?.firstName, lastName: profile.user?.lastName } }

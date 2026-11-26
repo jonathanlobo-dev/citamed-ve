@@ -10,8 +10,8 @@ export function buildSetupTasks(profile, { onSharePublicPage } = {}) {
   return [
     {
       id: 'documents',
-      label: 'Envía tus documentos de verificación',
-      hint: 'Título y MPPS. Los necesitamos para habilitar tus consultas.',
+      label: 'Completa tu verificación',
+      hint: 'Confirmamos tu MPPS en el SACS. Solo si no coincide te pedimos título, MPPS y cédula.',
       done: profile.isVerified === true || !NEEDS_DOCUMENTS.includes(profile.verificationStatus),
       to: '/medico/verificacion'
     },

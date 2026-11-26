@@ -312,12 +312,20 @@ const createDoctor = async (data) => {
 
     // Crear solicitud de verificación KYC automáticamente para que el admin
     // la vea en la cola (/admin/verificacion) y pueda aprobar o rechazar
-    await VerificationRequest.create({
+    const verificationRequest = await VerificationRequest.create({
       doctorProfileId: profile.id,
       status: 'submitted'
     }, { transaction });
+    await profile.update({ verificationStatus: 'pending', verificationRequestedAt: new Date() }, { transaction });
 
     await transaction.commit();
+
+    // Consulta el MPPS en el SACS en segundo plano (puede tardar hasta 12 s): si coincide, no se le
+    // piden documentos; si no, se le piden título, MPPS y cédula. No retrasa ni rompe el registro.
+    setImmediate(() => {
+      require('./kycVerificationService').applySacsCheck(verificationRequest.id)
+        .catch((err) => console.warn('No se pudo consultar el SACS tras el registro:', err.message));
+    });
 
     // Generar token
     const token = generateToken(user);

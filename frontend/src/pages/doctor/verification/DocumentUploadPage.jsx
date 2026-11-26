@@ -63,6 +63,7 @@ export default function DocumentUploadPage() {
     isVerified,
     isPending,
     canSubmit,
+    documentsRequired,
     missingDocuments,
     uploadedDocuments,
     uploadDocument,
@@ -141,7 +142,7 @@ export default function DocumentUploadPage() {
             </Link>
             <div>
               <h1 className="text-xl font-bold text-gray-900">Verificación de Cuenta</h1>
-              <p className="text-sm text-gray-500">Sube tus documentos para obtener el badge de Médico Verificado</p>
+              <p className="text-sm text-gray-500">Confirmamos tu MPPS en el registro del SACS</p>
             </div>
           </div>
 
@@ -179,8 +180,9 @@ export default function DocumentUploadPage() {
             <div>
               <h3 className="font-semibold text-yellow-800">Verificación en Proceso</h3>
               <p className="text-yellow-700 mt-1">
-                Tu solicitud está siendo revisada por nuestro equipo. Te notificaremos cuando el proceso termine.
-                Tiempo estimado: 1-3 días hábiles.
+                {status?.sacs?.status === 'match'
+                  ? 'Tu MPPS coincide con el registro del SACS. No necesitas subir documentos: solo falta que nuestro equipo apruebe tu cuenta.'
+                  : 'Estamos revisando tus datos. Te avisaremos cuando el proceso termine.'}
               </p>
             </div>
           </div>
@@ -200,12 +202,32 @@ export default function DocumentUploadPage() {
           </div>
         )}
 
-        {/* Sección de documentos requeridos */}
+        {/* El SACS no confirmó el MPPS: ahí sí hacen falta los documentos */}
+        {documentsRequired && (
+          <div className="mb-6 bg-orange-50 border border-orange-200 rounded-xl p-6 flex items-start gap-4">
+            <AlertTriangle className="h-8 w-8 text-orange-600 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold text-orange-800">No pudimos confirmar tu MPPS en el SACS</h3>
+              <p className="text-orange-700 mt-1">
+                Puede pasar si el número o el nombre no están escritos igual que en el SACS. Sube tu título,
+                tu certificado MPPS y tu cédula para que nuestro equipo lo revise a mano.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Sección de documentos (solo obligatorios si el SACS no confirmó el MPPS) */}
         <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
             <FileText className="h-6 w-6 text-teal-600" />
-            Documentos Requeridos
+            {documentsRequired ? 'Documentos requeridos' : 'Documentos (opcionales)'}
           </h2>
+          {!documentsRequired && (
+            <p className="text-sm text-gray-500 mb-4">
+              Si tu MPPS coincide con el SACS no hace falta subirlos. Solo te los pediremos si no lo podemos confirmar.
+            </p>
+          )}
+          {documentsRequired && <div className="mb-4" />}
 
           <div className="grid md:grid-cols-3 gap-4">
             {documentTypes.filter(dt => dt.required).map((docType) => {
@@ -233,11 +255,13 @@ export default function DocumentUploadPage() {
                             {statusLabels[uploaded.status]}
                           </span>
                         </div>
-                      ) : (
+                      ) : documentsRequired ? (
                         <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
                           <AlertTriangle className="h-3 w-3" />
                           Pendiente de subir
                         </p>
+                      ) : (
+                        <p className="text-xs text-gray-400 mt-2">Opcional</p>
                       )}
                     </div>
 
@@ -421,10 +445,10 @@ export default function DocumentUploadPage() {
             <div className="flex items-start gap-4">
               <ShieldCheck className="h-10 w-10 flex-shrink-0" />
               <div className="flex-1">
-                <h3 className="text-lg font-semibold">¡Documentos Completos!</h3>
+                <h3 className="text-lg font-semibold">Solicita tu verificación</h3>
                 <p className="text-teal-100 mt-1">
-                  Has subido todos los documentos requeridos. Envía tu solicitud para que nuestro equipo
-                  revise tu información y verifique tu cuenta.
+                  Consultaremos tu MPPS en el SACS. Si coincide, no necesitas documentos; si no, te pediremos
+                  el título, el certificado MPPS y la cédula.
                 </p>
               </div>
             </div>
@@ -448,8 +472,7 @@ export default function DocumentUploadPage() {
                 Confirmar Envío de Solicitud
               </h3>
               <p className="text-gray-600 mb-6">
-                Una vez enviada la solicitud, no podrás modificar los documentos hasta que se complete
-                la revisión. ¿Deseas continuar?
+                Consultaremos tu MPPS en el SACS y nuestro equipo revisará tu solicitud. ¿Deseas continuar?
               </p>
 
               <div className="flex gap-3">
