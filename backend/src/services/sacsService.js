@@ -22,10 +22,15 @@ function decodeEntities(s) {
   });
 }
 
-/** "MPPS-148.020", "148020" o "mpps 148020" -> "MPPS-148020"; null si no hay número */
+/**
+ * "MPPS-148.020", "148020" o "mpps 148020" -> "MPPS-148020"; null si no hay número.
+ * También null si tiene más de 7 dígitos: ningún MPPS es tan largo y el SACS responde con un error
+ * en vez de "no existe" (así el médico queda como "número no válido" y se le piden documentos).
+ */
 function normalizeMatricula(value) {
-  const digits = String(value || '').replace(/\D/g, '');
-  return digits ? `MPPS-${Number(digits)}` : null;
+  const digits = String(value || '').replace(/\D/g, '').replace(/^0+/, '');
+  if (!digits || digits.length > 7) return null;
+  return `MPPS-${Number(digits)}`;
 }
 
 /** Extrae los registros del XML que devuelve el SACS */

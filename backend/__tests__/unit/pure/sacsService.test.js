@@ -57,4 +57,11 @@ describe('SACS', () => {
       expect(sacsDecision(s)).toEqual({ documentsRequired: true, verificationStatus: 'documents_incomplete' });
     }
   });
+
+  test('un número de más de 7 dígitos no es un MPPS (se marca no válido sin consultar)', async () => {
+    expect(normalizeMatricula('9999910311')).toBeNull();
+    expect(normalizeMatricula('0148020')).toBe('MPPS-148020');
+    const out = await checkDoctor({ mpps: '9999910311', firstName: 'A', lastName: 'B' });
+    expect(out.status).toBe('invalid');
+  });
 });
