@@ -134,4 +134,22 @@ describe('conexión en las pantallas', () => {
       expect(t).toContain('afterProtectedRequest(error.config)');
     }
   });
+
+  test('mientras Cloudflare verifica, no hay token y se avisa en vez de mandar la petición', async () => {
+    const t = await load('0xSITE');
+    expect(t.turnstilePending()).toBe(true);
+    t.setTurnstileToken('tok');
+    expect(t.turnstilePending()).toBe(false);
+    const off = await load('');
+    expect(off.turnstilePending()).toBe(false);
+  });
+
+  test('un 403 de la verificación anti robots no se muestra como "cuenta suspendida"', () => {
+    const login = readFileSync(join(SRC, 'pages/LoginPage.jsx'), 'utf8');
+    expect(login).not.toMatch(/result\.status === 403/);
+    for (const f of ['pages/LoginPage.jsx', 'pages/auth/ForgotPasswordPage.jsx',
+      'components/auth/DoctorWizard/DoctorStep2Professional.jsx', 'components/auth/PatientWizard/PatientStep4Confirmation.jsx']) {
+      expect(readFileSync(join(SRC, f), 'utf8')).toContain('turnstilePending()');
+    }
+  });
 });

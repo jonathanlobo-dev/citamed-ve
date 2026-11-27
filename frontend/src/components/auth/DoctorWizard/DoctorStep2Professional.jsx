@@ -11,6 +11,8 @@ import { motion } from 'framer-motion';
 import TurnstileWidget from '../../common/TurnstileWidget';
 import { Award, GraduationCap, AlertCircle, Loader2, Check } from 'lucide-react';
 
+import toast from 'react-hot-toast';
+import { turnstilePending, TURNSTILE_PENDING_MESSAGE } from '../../../utils/turnstile';
 function DoctorStep2Professional({
   formData,
   updateField,
@@ -37,7 +39,12 @@ function DoctorStep2Professional({
   };
 
   const handleSubmit = async () => {
-    if (validateStep()) await onSubmit();
+    if (!validateStep()) return;
+    if (turnstilePending()) {
+      toast.error(TURNSTILE_PENDING_MESSAGE);
+      return;
+    }
+    await onSubmit();
   };
 
   const inputClass = (field) => `w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2

@@ -15,6 +15,12 @@ export const turnstileEnabled = () => !!SITE_KEY;
 let currentToken = '';
 
 export const setTurnstileToken = (token) => { currentToken = token || ''; };
+
+/** Mensaje cuando se pulsa el botón antes de que Cloudflare termine de verificar */
+export const TURNSTILE_PENDING_MESSAGE = 'Espera a que termine la verificación de Cloudflare (la casilla debe quedar en verde) y vuelve a intentarlo.';
+
+/** true si la verificación está encendida pero todavía no hay token (sigue en "Verificando...") */
+export const turnstilePending = () => turnstileEnabled() && !currentToken;
 export const getTurnstileToken = () => currentToken;
 
 // Mismas rutas que protege el servidor (backend/src/routes)

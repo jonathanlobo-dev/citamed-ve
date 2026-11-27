@@ -11,6 +11,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import TurnstileWidget from '../../common/TurnstileWidget';
+import toast from 'react-hot-toast';
+import { turnstilePending, TURNSTILE_PENDING_MESSAGE } from '../../../utils/turnstile';
 import {
   Mail, User, CreditCard, Calendar, Phone, Heart, Droplet,
   AlertTriangle, Check, Edit2, Loader2, AlertCircle
@@ -89,6 +91,10 @@ function PatientStep4Confirmation({
     }
 
     setFieldErrors({});
+    if (turnstilePending()) {
+      toast.error(TURNSTILE_PENDING_MESSAGE);
+      return;
+    }
     await onSubmit();
   };
 

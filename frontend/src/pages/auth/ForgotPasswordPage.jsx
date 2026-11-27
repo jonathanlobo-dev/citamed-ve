@@ -15,6 +15,7 @@ import { usePasswordRecovery, RECOVERY_STEPS } from '../../hooks/usePasswordReco
 import toast from 'react-hot-toast';
 import TurnstileWidget from '../../components/common/TurnstileWidget';
 
+import { turnstilePending, TURNSTILE_PENDING_MESSAGE } from '../../utils/turnstile';
 function ForgotPasswordPage() {
   const navigate = useNavigate();
   const {
@@ -86,6 +87,11 @@ function ForgotPasswordPage() {
     e.preventDefault();
 
     if (!validateEmail(inputEmail)) {
+      return;
+    }
+
+    if (turnstilePending()) {
+      toast.error(TURNSTILE_PENDING_MESSAGE);
       return;
     }
 

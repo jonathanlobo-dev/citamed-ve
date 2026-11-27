@@ -10,6 +10,7 @@ import TwoFactorLoginModal from '../components/auth/TwoFactorLoginModal';
 import toast from 'react-hot-toast';
 import TurnstileWidget from '../components/common/TurnstileWidget';
 
+import { turnstilePending, TURNSTILE_PENDING_MESSAGE } from '../utils/turnstile';
 function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -97,6 +98,11 @@ function LoginPage() {
       return;
     }
 
+    if (turnstilePending()) {
+      setErrors({ general: TURNSTILE_PENDING_MESSAGE });
+      return;
+    }
+
     setLoading(true);
     setErrors({});
 
@@ -122,9 +128,7 @@ function LoginPage() {
           navigate(targetPath, { replace: true });
         }, 1000);
       } else {
-        const isSuspended =
-          result.code === 'ACCOUNT_SUSPENDED' ||
-          result.status === 403;
+        const isSuspended = result.code === 'ACCOUNT_SUSPENDED';
         const errorMessage = isSuspended
           ? 'Tu cuenta está suspendida. Escríbenos a soporte si crees que es un error.'
           : result.message || 'Error al iniciar sesión';
